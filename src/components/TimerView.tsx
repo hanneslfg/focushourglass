@@ -45,6 +45,7 @@ export function TimerView() {
         const next = r - 1;
         focusedRef.current += 1;
         if (next <= 0) {
+          playGong();
           setPhase("asking");
           return 0;
         }
