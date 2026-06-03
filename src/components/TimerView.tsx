@@ -213,3 +213,66 @@ export function TimerView() {
     </div>
   );
 }
+
+function AskingControls({
+  task,
+  onDone,
+  onAddExtra,
+}: {
+  task: string;
+  onDone: () => void;
+  onAddExtra: (mins: number) => void;
+}) {
+  const [extra, setExtra] = useState(10);
+  return (
+    <div className="flex flex-col items-center gap-5 w-full">
+      <div className="text-sm text-muted-foreground text-center">
+        Is <span className="text-foreground">{task}</span> done?
+      </div>
+      <button
+        onClick={onDone}
+        className="px-6 py-2.5 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
+      >
+        Yes, complete
+      </button>
+      <div className="flex flex-col items-center gap-2">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          Or add more time
+        </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <button
+            onClick={() => setExtra((m) => Math.max(1, m - 5))}
+            className="h-8 w-8 rounded-full border border-border hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center"
+            aria-label="Less extra"
+          >
+            <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <input
+            type="number"
+            min={1}
+            max={240}
+            value={extra}
+            onChange={(e) =>
+              setExtra(Math.max(1, Math.min(240, Number(e.target.value) || 1)))
+            }
+            className="w-14 bg-transparent text-center text-sm tabular-nums outline-none border-b border-border focus:border-foreground/60 py-1"
+          />
+          <span className="text-xs uppercase tracking-[0.18em]">min</span>
+          <button
+            onClick={() => setExtra((m) => Math.min(240, m + 5))}
+            className="h-8 w-8 rounded-full border border-border hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center"
+            aria-label="More extra"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => onAddExtra(extra)}
+            className="ml-2 px-4 py-2 rounded-md border border-border text-foreground text-sm hover:border-foreground/60 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
