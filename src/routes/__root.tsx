@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "10x hourglass" },
+      { name: "description", content: "Flow State Timer is a minimal web app for focused work sessions with a visual hourglass." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "10x hourglass" },
+      { property: "og:description", content: "Flow State Timer is a minimal web app for focused work sessions with a visual hourglass." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "10x hourglass" },
+      { name: "twitter:description", content: "Flow State Timer is a minimal web app for focused work sessions with a visual hourglass." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c2e3f20e-03f4-4783-b42d-6bb55b5a1592/id-preview-f372b578--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app-1780490616026.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c2e3f20e-03f4-4783-b42d-6bb55b5a1592/id-preview-f372b578--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app-1780490616026.png" },
     ],
     links: [
       {
