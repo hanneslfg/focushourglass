@@ -176,31 +176,7 @@ export function TimerView() {
 
         {/* Controls */}
         {phase === "asking" ? (
-          <div className="flex flex-col items-center gap-4 w-full">
-            <div className="text-sm text-muted-foreground text-center">
-              Is <span className="text-foreground">{task}</span> done?
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={finalize}
-                className="px-5 py-2.5 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
-              >
-                Yes, complete
-              </button>
-              <button
-                onClick={() => addExtra(5)}
-                className="px-4 py-2.5 rounded-md border border-border text-sm hover:border-foreground/60 transition-colors"
-              >
-                +5 min
-              </button>
-              <button
-                onClick={() => addExtra(15)}
-                className="px-4 py-2.5 rounded-md border border-border text-sm hover:border-foreground/60 transition-colors"
-              >
-                +15 min
-              </button>
-            </div>
-          </div>
+          <AskingControls task={task} onDone={finalize} onAddExtra={addExtra} />
         ) : (
           <div className="flex items-center gap-2">
             <button
