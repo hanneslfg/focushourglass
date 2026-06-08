@@ -28,6 +28,10 @@ export function TimerView() {
   const focusedRef = useRef(0);
   const startedAtRef = useRef<string | null>(null);
   const tickRef = useRef<number | null>(null);
+  /** Timestamp (ms) when the timer should hit zero */
+  const endAtRef = useRef<number | null>(null);
+  /** Timestamp (ms) of the last tick — used to catch up background time */
+  const lastCheckRef = useRef<number>(0);
 
   // Keep remaining synced when idle and minutes change
   useEffect(() => {
@@ -37,20 +41,22 @@ export function TimerView() {
     }
   }, [minutes, phase]);
 
-  // Tick loop
+  // Tick loop — uses Date.now() so it catches up after background tabs
   useEffect(() => {
     if (phase !== "running") return;
     const id = window.setInterval(() => {
-      setRemaining((r) => {
-        const next = r - 1;
-        focusedRef.current += 1;
-        if (next <= 0) {
-          playGong();
-          setPhase("asking");
-          return 0;
-        }
-        return next;
-      });
+      const now = Date.now();
+      const delta = Math.max(0, Math.round((now - lastCheckRef.current) / 1000));
+      focusedRef.current += delta;
+      lastCheckRef.current = now;
+
+      const r = Math.max(0, Math.ceil((endAtRef.current! - now) / 1000));
+      setRemaining(r);
+      if (r <= 0) {
+        endAtRef.current = null;
+        playGong();
+        setPhase("asking");
+      }
     }, 1000);
     tickRef.current = id;
     return () => window.clearInterval(id);
@@ -62,16 +68,31 @@ export function TimerView() {
 
   function start() {
     if (!canStart) return;
+    const now = Date.now();
     focusedRef.current = 0;
     startedAtRef.current = new Date().toISOString();
+    endAtRef.current = now + minutes * 60 * 1000;
+    lastCheckRef.current = now;
     setTotal(minutes * 60);
     setRemaining(minutes * 60);
     setPhase("running");
   }
 
   function pause() {
-    if (phase === "running") setPhase("paused");
-    else if (phase === "paused") setPhase("running");
+    if (phase === "running") {
+      const r = Math.max(
+        0,
+        Math.ceil((endAtRef.current! - Date.now()) / 1000)
+      );
+      setRemaining(r);
+      endAtRef.current = null;
+      setPhase("paused");
+    } else if (phase === "paused") {
+      const now = Date.now();
+      endAtRef.current = now + remaining * 1000;
+      lastCheckRef.current = now;
+      setPhase("running");
+    }
   }
 
   function finalize() {
@@ -84,6 +105,7 @@ export function TimerView() {
       completedAt: new Date().toISOString(),
     });
     setPhase("complete");
+    endAtRef.current = null;
     window.setTimeout(() => {
       setPhase("idle");
       setTask("");
@@ -96,6 +118,13 @@ export function TimerView() {
   }
 
   function addExtra(mins: number) {
+    const now = Date.now();
+    if (endAtRef.current && endAtRef.current > now) {
+      endAtRef.current += mins * 60 * 1000;
+    } else {
+      endAtRef.current = now + (remaining + mins * 60) * 1000;
+    }
+    lastCheckRef.current = now;
     setTotal((t) => t + mins * 60);
     setRemaining((r) => r + mins * 60);
     setPhase("running");
