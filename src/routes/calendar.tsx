@@ -60,15 +60,15 @@ function CalendarPage() {
   const selectedMinutes = selectedSessions.reduce((sum, s) => sum + s.focusedMinutes, 0);
 
   return (
-    <main className="min-h-screen flex bg-background text-foreground">
+    <main className="min-h-screen flex bg-background text-foreground pb-16 md:pb-0">
       <Sidebar />
-      <div className="flex-1 px-6 md:px-12 py-10 max-w-5xl mx-auto w-full">
-        <header className="flex items-center justify-between mb-10">
+      <div className="flex-1 px-4 md:px-12 py-6 md:py-10 max-w-5xl mx-auto w-full">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-10 gap-3">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
               Calendar
             </div>
-            <h1 className="font-display text-3xl tracking-tight">{monthName}</h1>
+            <h1 className="font-display text-2xl md:text-3xl tracking-tight">{monthName}</h1>
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -94,9 +94,14 @@ function CalendarPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-7 gap-px text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+        <div className="hidden md:grid grid-cols-7 gap-px text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <div key={d} className="px-2 py-1">{d}</div>
+          ))}
+        </div>
+        <div className="grid md:hidden grid-cols-7 gap-px text-[9px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+            <div key={i} className="px-1 py-1 text-center">{d}</div>
           ))}
         </div>
 
@@ -110,26 +115,26 @@ function CalendarPage() {
             const isSelected = selected === k;
             const intensity = Math.min(1, mins / 180); // 3h saturates
             return (
-              <button
+                <button
                 key={i}
                 onClick={() => setSelected(list.length ? k : null)}
                 disabled={!list.length}
-                className={`aspect-square bg-card relative p-2 text-left transition-colors ${
+                className={`aspect-square bg-card relative p-1 md:p-2 text-left transition-colors ${
                   list.length ? "hover:bg-accent cursor-pointer" : "cursor-default"
                 } ${isSelected ? "ring-1 ring-foreground/60 z-10" : ""}`}
               >
-                <div className={`text-xs tabular-nums ${isToday ? "text-foreground" : "text-muted-foreground"}`}>
+                <div className={`text-[11px] md:text-xs tabular-nums ${isToday ? "text-foreground" : "text-muted-foreground"}`}>
                   {d.getDate()}
                 </div>
                 {mins > 0 && (
                   <>
-                    <div className="absolute bottom-2 left-2 right-2 h-1 rounded-full bg-foreground/10 overflow-hidden">
+                    <div className="absolute bottom-1.5 md:bottom-2 left-1.5 md:left-2 right-1.5 md:right-2 h-0.5 md:h-1 rounded-full bg-foreground/10 overflow-hidden">
                       <div
                         className="h-full bg-sand"
                         style={{ width: `${Math.max(8, intensity * 100)}%`, opacity: 0.5 + intensity * 0.5 }}
                       />
                     </div>
-                    <div className="absolute top-2 right-2 text-[10px] tabular-nums text-foreground/80">
+                    <div className="absolute top-1.5 md:top-2 right-1.5 md:right-2 text-[9px] md:text-[10px] tabular-nums text-foreground/80">
                       {mins}m
                     </div>
                   </>
@@ -140,32 +145,32 @@ function CalendarPage() {
         </div>
 
         {selected && (
-          <section className="mt-10">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-display text-xl tracking-tight">
+          <section className="mt-8 md:mt-10">
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between mb-4 gap-1">
+              <h2 className="font-display text-lg md:text-xl tracking-tight">
                 {new Date(selected).toLocaleDateString(undefined, {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
                 })}
               </h2>
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="text-[11px] md:text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 {selectedMinutes} min focused · {selectedSessions.length} session
                 {selectedSessions.length === 1 ? "" : "s"}
               </div>
             </div>
             <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
               {selectedSessions.map((s) => (
-                <li key={s.id} className="px-4 py-3 flex items-center justify-between bg-card">
-                  <div>
-                    <div className="text-sm">{s.task}</div>
+                <li key={s.id} className="px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between bg-card gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm truncate">{s.task}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
                       {new Date(s.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       {" → "}
                       {new Date(s.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="text-sm tabular-nums">{s.focusedMinutes} min</div>
                     <div className="text-[11px] text-muted-foreground">of {s.plannedMinutes} planned</div>
                   </div>

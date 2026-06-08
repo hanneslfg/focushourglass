@@ -131,8 +131,8 @@ export function TimerView() {
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-md flex flex-col items-center gap-10">
+    <div className="flex-1 flex items-center justify-center px-4 md:px-6 py-6 md:py-10">
+      <div className="w-full max-w-md flex flex-col items-center gap-6 md:gap-10">
         {/* Task */}
         <div className="w-full">
           <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2 text-center">
@@ -144,7 +144,7 @@ export function TimerView() {
             disabled={locked}
             maxLength={60}
             placeholder="What are you working on?"
-            className="w-full bg-transparent text-center font-display text-2xl md:text-3xl tracking-tight placeholder:text-muted-foreground/50 border-b border-border focus:border-foreground/60 outline-none py-3 transition-colors disabled:opacity-90"
+            className="w-full bg-transparent text-center font-display text-xl md:text-3xl tracking-tight placeholder:text-muted-foreground/50 border-b border-border focus:border-foreground/60 outline-none py-3 transition-colors disabled:opacity-90"
           />
           <div className="mt-1 text-[10px] text-right text-muted-foreground/60 tabular-nums">
             {task.length}/60
@@ -152,7 +152,7 @@ export function TimerView() {
         </div>
 
         {/* Hourglass */}
-        <div className="relative w-64 h-80 text-foreground/85">
+        <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
           <Hourglass
             progress={progress}
             flowing={phase === "running"}
@@ -162,7 +162,7 @@ export function TimerView() {
 
         {/* Time + duration */}
         <div className="flex flex-col items-center gap-3">
-          <div className="font-display text-5xl tabular-nums tracking-tight">
+          <div className="font-display text-4xl md:text-5xl tabular-nums tracking-tight">
             {fmt(remaining)}
           </div>
           {phase === "idle" ? (
@@ -207,7 +207,7 @@ export function TimerView() {
         {phase === "asking" ? (
           <AskingControls task={task} onDone={finalize} onAddExtra={addExtra} />
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               onClick={start}
               disabled={!canStart}
