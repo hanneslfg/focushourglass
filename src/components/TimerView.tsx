@@ -207,7 +207,7 @@ export function TimerView() {
         {phase === "asking" ? (
           <AskingControls task={task} onDone={finalize} onAddExtra={addExtra} />
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               onClick={start}
               disabled={!canStart}

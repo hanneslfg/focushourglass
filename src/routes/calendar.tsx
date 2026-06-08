@@ -94,9 +94,14 @@ function CalendarPage() {
           </div>
         </header>
 
-        <div className="grid grid-cols-7 gap-px text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+        <div className="hidden md:grid grid-cols-7 gap-px text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
             <div key={d} className="px-2 py-1">{d}</div>
+          ))}
+        </div>
+        <div className="grid md:hidden grid-cols-7 gap-px text-[9px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+            <div key={i} className="px-1 py-1 text-center">{d}</div>
           ))}
         </div>
 
@@ -110,26 +115,26 @@ function CalendarPage() {
             const isSelected = selected === k;
             const intensity = Math.min(1, mins / 180); // 3h saturates
             return (
-              <button
+                <button
                 key={i}
                 onClick={() => setSelected(list.length ? k : null)}
                 disabled={!list.length}
-                className={`aspect-square bg-card relative p-2 text-left transition-colors ${
+                className={`aspect-square bg-card relative p-1 md:p-2 text-left transition-colors ${
                   list.length ? "hover:bg-accent cursor-pointer" : "cursor-default"
                 } ${isSelected ? "ring-1 ring-foreground/60 z-10" : ""}`}
               >
-                <div className={`text-xs tabular-nums ${isToday ? "text-foreground" : "text-muted-foreground"}`}>
+                <div className={`text-[11px] md:text-xs tabular-nums ${isToday ? "text-foreground" : "text-muted-foreground"}`}>
                   {d.getDate()}
                 </div>
                 {mins > 0 && (
                   <>
-                    <div className="absolute bottom-2 left-2 right-2 h-1 rounded-full bg-foreground/10 overflow-hidden">
+                    <div className="absolute bottom-1.5 md:bottom-2 left-1.5 md:left-2 right-1.5 md:right-2 h-0.5 md:h-1 rounded-full bg-foreground/10 overflow-hidden">
                       <div
                         className="h-full bg-sand"
                         style={{ width: `${Math.max(8, intensity * 100)}%`, opacity: 0.5 + intensity * 0.5 }}
                       />
                     </div>
-                    <div className="absolute top-2 right-2 text-[10px] tabular-nums text-foreground/80">
+                    <div className="absolute top-1.5 md:top-2 right-1.5 md:right-2 text-[9px] md:text-[10px] tabular-nums text-foreground/80">
                       {mins}m
                     </div>
                   </>
