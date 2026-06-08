@@ -145,32 +145,32 @@ function CalendarPage() {
         </div>
 
         {selected && (
-          <section className="mt-10">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="font-display text-xl tracking-tight">
+          <section className="mt-8 md:mt-10">
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between mb-4 gap-1">
+              <h2 className="font-display text-lg md:text-xl tracking-tight">
                 {new Date(selected).toLocaleDateString(undefined, {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
                 })}
               </h2>
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="text-[11px] md:text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 {selectedMinutes} min focused · {selectedSessions.length} session
                 {selectedSessions.length === 1 ? "" : "s"}
               </div>
             </div>
             <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
               {selectedSessions.map((s) => (
-                <li key={s.id} className="px-4 py-3 flex items-center justify-between bg-card">
-                  <div>
-                    <div className="text-sm">{s.task}</div>
+                <li key={s.id} className="px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between bg-card gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm truncate">{s.task}</div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
                       {new Date(s.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       {" → "}
                       {new Date(s.completedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <div className="text-sm tabular-nums">{s.focusedMinutes} min</div>
                     <div className="text-[11px] text-muted-foreground">of {s.plannedMinutes} planned</div>
                   </div>
