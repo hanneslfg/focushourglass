@@ -8,24 +8,49 @@ export function Sidebar() {
     { to: "/calendar", label: "Calendar", icon: CalendarDays },
   ];
   return (
-    <aside className="hidden md:flex w-16 shrink-0 flex-col items-center border-r border-border bg-card/40 py-6 gap-2">
-      <div className="mb-6 font-display text-xl tracking-tight text-foreground/90 select-none">H</div>
-      {items.map((it) => {
-        const active = path === it.to;
-        const Icon = it.icon;
-        return (
-          <Link
-            key={it.to}
-            to={it.to}
-            className={`group flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
-              active ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-            }`}
-            aria-label={it.label}
-          >
-            <Icon className="h-4 w-4" strokeWidth={1.5} />
-          </Link>
-        );
-      })}
-    </aside>
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-16 shrink-0 flex-col items-center border-r border-border bg-card/40 py-6 gap-2">
+        <div className="mb-6 font-display text-xl tracking-tight text-foreground/90 select-none">H</div>
+        {items.map((it) => {
+          const active = path === it.to;
+          const Icon = it.icon;
+          return (
+            <Link
+              key={it.to}
+              to={it.to}
+              className={`group flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+                active ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              }`}
+              aria-label={it.label}
+            >
+              <Icon className="h-4 w-4" strokeWidth={1.5} />
+            </Link>
+          );
+        })}
+      </aside>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background/90 backdrop-blur-sm">
+        <div className="flex items-center justify-around h-14">
+          {items.map((it) => {
+            const active = path === it.to;
+            const Icon = it.icon;
+            return (
+              <Link
+                key={it.to}
+                to={it.to}
+                className={`flex flex-col items-center justify-center gap-0.5 w-16 h-full transition-colors ${
+                  active ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <Icon className="h-5 w-5" strokeWidth={1.5} />
+                <span className="text-[10px] leading-none tracking-wide">{it.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 }

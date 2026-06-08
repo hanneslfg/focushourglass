@@ -20,7 +20,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <main className="min-h-screen flex bg-background text-foreground">
+    <main className="min-h-screen flex bg-background text-foreground pb-16 md:pb-0">
       <Sidebar />
       <TimerView />
     </main>

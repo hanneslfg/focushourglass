@@ -60,9 +60,9 @@ function CalendarPage() {
   const selectedMinutes = selectedSessions.reduce((sum, s) => sum + s.focusedMinutes, 0);
 
   return (
-    <main className="min-h-screen flex bg-background text-foreground">
+    <main className="min-h-screen flex bg-background text-foreground pb-16 md:pb-0">
       <Sidebar />
-      <div className="flex-1 px-6 md:px-12 py-10 max-w-5xl mx-auto w-full">
+      <div className="flex-1 px-4 md:px-12 py-6 md:py-10 max-w-5xl mx-auto w-full">
         <header className="flex items-center justify-between mb-10">
           <div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">
