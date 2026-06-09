@@ -60,7 +60,7 @@ function CalendarPage() {
   const selectedMinutes = selectedSessions.reduce((sum, s) => sum + s.focusedMinutes, 0);
 
   return (
-    <main className="min-h-screen flex bg-background text-foreground pb-16 md:pb-0">
+    <main className="min-h-screen flex bg-background text-foreground pb-20 md:pb-0">
       <Sidebar />
       <div className="flex-1 px-4 md:px-12 py-6 md:py-10 max-w-5xl mx-auto w-full">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 md:mb-10 gap-3">
@@ -73,20 +73,20 @@ function CalendarPage() {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setCursor(new Date(year, month - 1, 1))}
-              className="h-9 w-9 rounded-md border border-border hover:border-foreground/60 flex items-center justify-center transition-colors"
+              className="h-11 w-11 md:h-9 md:w-9 rounded-md border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center transition-colors touch-manipulation"
               aria-label="Previous month"
             >
               <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
             </button>
             <button
               onClick={() => setCursor(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}
-              className="px-3 h-9 rounded-md border border-border text-xs uppercase tracking-[0.18em] hover:border-foreground/60 transition-colors"
+              className="px-4 min-h-11 md:min-h-9 rounded-md border border-border text-xs uppercase tracking-[0.18em] hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
               Today
             </button>
             <button
               onClick={() => setCursor(new Date(year, month + 1, 1))}
-              className="h-9 w-9 rounded-md border border-border hover:border-foreground/60 flex items-center justify-center transition-colors"
+              className="h-11 w-11 md:h-9 md:w-9 rounded-md border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center transition-colors touch-manipulation"
               aria-label="Next month"
             >
               <ChevronRight className="h-4 w-4" strokeWidth={1.5} />

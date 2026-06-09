@@ -31,8 +31,11 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background/90 backdrop-blur-sm">
-        <div className="flex items-center justify-around h-14">
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="flex items-stretch justify-around h-16">
           {items.map((it) => {
             const active = path === it.to;
             const Icon = it.icon;
@@ -40,9 +43,11 @@ export function Sidebar() {
               <Link
                 key={it.to}
                 to={it.to}
-                className={`flex flex-col items-center justify-center gap-0.5 w-16 h-full transition-colors ${
+                className={`flex flex-1 flex-col items-center justify-center gap-1 min-h-11 touch-manipulation transition-colors active:bg-accent/60 ${
                   active ? "text-foreground" : "text-muted-foreground"
                 }`}
+                aria-label={it.label}
+                aria-current={active ? "page" : undefined}
               >
                 <Icon className="h-5 w-5" strokeWidth={1.5} />
                 <span className="text-[10px] leading-none tracking-wide">{it.label}</span>
