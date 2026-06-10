@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/Sidebar";
+import { StatsSidebar } from "@/components/StatsSidebar";
 import { TimerView } from "@/components/TimerView";
 
 export const Route = createFileRoute("/")({
