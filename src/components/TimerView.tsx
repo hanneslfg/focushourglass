@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check } from "lucide-react";
 import { Hourglass } from "./Hourglass";
+import { ProjectPicker } from "./ProjectPicker";
 import { addSession } from "@/lib/sessions";
 import { playGong } from "@/lib/gong";
+import type { ProjectTag } from "@/lib/projects";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
