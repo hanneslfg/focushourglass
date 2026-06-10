@@ -24,6 +24,7 @@ function Index() {
     <main className="min-h-screen flex bg-background text-foreground pb-20 md:pb-0">
       <Sidebar />
       <TimerView />
+      <StatsSidebar />
     </main>
   );
 }
