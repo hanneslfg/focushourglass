@@ -158,6 +158,15 @@ export function TimerView() {
           </div>
         </div>
 
+        {/* Project tag */}
+        <ProjectPicker
+          selectedId={project?.id ?? null}
+          onSelect={setProject}
+          disabled={locked}
+        />
+
+
+
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
           <Hourglass
