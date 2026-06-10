@@ -106,12 +106,16 @@ export function TimerView() {
       focusedMinutes: Math.round(focusedRef.current / 60),
       startedAt: startedAtRef.current ?? new Date().toISOString(),
       completedAt: new Date().toISOString(),
+      projectId: project?.id,
+      projectName: project?.name,
+      projectColor: project?.color,
     });
     setPhase("complete");
     endAtRef.current = null;
     window.setTimeout(() => {
       setPhase("idle");
       setTask("");
+      setProject(null);
       setMinutes(90);
       setRemaining(90 * 60);
       setTotal(90 * 60);
