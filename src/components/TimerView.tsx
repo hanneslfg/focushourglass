@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check } from "lucide-react";
 import { Hourglass } from "./Hourglass";
+import { ProjectPicker } from "./ProjectPicker";
 import { addSession } from "@/lib/sessions";
 import { playGong } from "@/lib/gong";
+import type { ProjectTag } from "@/lib/projects";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
@@ -18,6 +20,7 @@ function fmt(seconds: number) {
 
 export function TimerView() {
   const [task, setTask] = useState("");
+  const [project, setProject] = useState<ProjectTag | null>(null);
   const [minutes, setMinutes] = useState(90);
   const [phase, setPhase] = useState<Phase>("idle");
   /** Remaining seconds */
@@ -103,12 +106,16 @@ export function TimerView() {
       focusedMinutes: Math.round(focusedRef.current / 60),
       startedAt: startedAtRef.current ?? new Date().toISOString(),
       completedAt: new Date().toISOString(),
+      projectId: project?.id,
+      projectName: project?.name,
+      projectColor: project?.color,
     });
     setPhase("complete");
     endAtRef.current = null;
     window.setTimeout(() => {
       setPhase("idle");
       setTask("");
+      setProject(null);
       setMinutes(90);
       setRemaining(90 * 60);
       setTotal(90 * 60);
@@ -150,6 +157,15 @@ export function TimerView() {
             {task.length}/60
           </div>
         </div>
+
+        {/* Project tag */}
+        <ProjectPicker
+          selectedId={project?.id ?? null}
+          onSelect={setProject}
+          disabled={locked}
+        />
+
+
 
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
