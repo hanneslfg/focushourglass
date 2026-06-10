@@ -7,6 +7,11 @@ export interface Session {
   focusedMinutes: number;
   startedAt: string; // ISO
   completedAt: string; // ISO
+  /** Optional project tag (denormalized so renaming/deleting a tag doesn't
+   * break historical sessions). */
+  projectId?: string;
+  projectName?: string;
+  projectColor?: string;
 }
 
 const KEY = "hourglass.sessions.v1";
