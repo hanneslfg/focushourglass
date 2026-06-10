@@ -20,6 +20,7 @@ function fmt(seconds: number) {
 
 export function TimerView() {
   const [task, setTask] = useState("");
+  const [project, setProject] = useState<ProjectTag | null>(null);
   const [minutes, setMinutes] = useState(90);
   const [phase, setPhase] = useState<Phase>("idle");
   /** Remaining seconds */
