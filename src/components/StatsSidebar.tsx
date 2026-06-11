@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, X, RotateCcw } from "lucide-react";
+import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 
