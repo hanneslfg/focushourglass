@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, X, RotateCcw } from "lucide-react";
+import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 
@@ -74,6 +74,7 @@ export function StatsSidebar() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
+  const [showProjectFilter, setShowProjectFilter] = useState(false);
 
   useEffect(() => {
     const sync = () => setSessions(getSessions());
@@ -270,37 +271,63 @@ export function StatsSidebar() {
               )}
             </section>
 
-            {/* Project filter */}
+            {/* Project filter (collapsible) */}
             {projects.length > 0 && (
               <section>
-                <SectionTitle>Projects</SectionTitle>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {projects.map((p) => {
-                    const active = selectedProjectIds.has(p.id);
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => toggleProject(p.id)}
-                        className={`inline-flex items-center gap-1.5 pl-2 pr-2.5 h-8 rounded-full text-xs border transition-colors touch-manipulation ${
-                          active
-                            ? "border-foreground/70 bg-foreground/5"
-                            : "border-border hover:border-foreground/40"
-                        }`}
-                        style={
-                          active
-                            ? { boxShadow: `inset 0 0 0 1px ${p.color}66` }
-                            : undefined
-                        }
-                      >
-                        <span
-                          className="h-2 w-2 rounded-full"
-                          style={{ background: p.color }}
-                        />
-                        <span className="text-foreground/90">{p.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <button
+                  onClick={() => setShowProjectFilter((v) => !v)}
+                  className="w-full flex items-center justify-between text-left touch-manipulation group"
+                  aria-expanded={showProjectFilter}
+                >
+                  <SectionTitle>Filter by project</SectionTitle>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${
+                      showProjectFilter ? "rotate-180" : ""
+                    }`}
+                    strokeWidth={1.75}
+                  />
+                </button>
+                {showProjectFilter && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setSelectedProjectIds(new Set())}
+                      className={`px-2.5 h-8 rounded-full text-xs border transition-colors touch-manipulation ${
+                        selectedProjectIds.size === 0
+                          ? "border-foreground/70 bg-foreground text-background"
+                          : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                      }`}
+                    >
+                      All projects
+                    </button>
+                    {projects.map((p) => {
+                      const active = selectedProjectIds.has(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => toggleProject(p.id)}
+                          className="inline-flex items-center gap-1.5 pl-2 pr-2.5 h-8 rounded-full text-xs border transition-colors touch-manipulation"
+                          style={
+                            active
+                              ? {
+                                  background: p.color,
+                                  borderColor: p.color,
+                                  color: "#1a1208",
+                                }
+                              : { borderColor: "var(--border)" }
+                          }
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{
+                              background: active ? "#1a1208" : p.color,
+                            }}
+                          />
+                          <span>{p.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
             )}
 
