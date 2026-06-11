@@ -67,6 +67,11 @@ export function TimerView() {
 
   const canStart = task.trim().length > 0 && phase === "idle";
   const locked = phase !== "idle";
+
+  function computeEndTime(offsetSeconds: number) {
+    const d = new Date(Date.now() + offsetSeconds * 1000);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
   const progress = total > 0 ? 1 - remaining / total : 1;
 
   function start() {
