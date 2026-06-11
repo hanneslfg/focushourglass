@@ -74,6 +74,7 @@ export function StatsSidebar() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
+  const [showProjectFilter, setShowProjectFilter] = useState(false);
 
   useEffect(() => {
     const sync = () => setSessions(getSessions());
