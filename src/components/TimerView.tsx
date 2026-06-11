@@ -230,6 +230,11 @@ export function TimerView() {
               {phase === "complete" && "Done"}
             </div>
           )}
+          {endTimeLabel && (
+            <div className="text-[11px] text-muted-foreground/50 tracking-wide tabular-nums">
+              Ends at {endTimeLabel}
+            </div>
+          )}
         </div>
 
         {/* Controls */}
