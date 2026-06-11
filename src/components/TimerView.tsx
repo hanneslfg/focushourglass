@@ -72,6 +72,13 @@ export function TimerView() {
     const d = new Date(Date.now() + offsetSeconds * 1000);
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
+  const endTimeLabel = (() => {
+    if (phase === "idle") return computeEndTime(minutes * 60);
+    if (phase === "running" && endAtRef.current)
+      return computeEndTime(Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000)));
+    if (phase === "paused") return computeEndTime(remaining);
+    return null;
+  })();
   const progress = total > 0 ? 1 - remaining / total : 1;
 
   function start() {
