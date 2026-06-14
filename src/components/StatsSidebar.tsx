@@ -433,9 +433,8 @@ export function StatsSidebar() {
     </section>
   </div>
 
-  <div className="shrink-0 px-5 py-4 border-t border-border">
-    <AuthButton />
-  </div>
+
+
 </div>
 </aside>
     </>
