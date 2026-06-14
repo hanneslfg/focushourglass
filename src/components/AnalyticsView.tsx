@@ -295,76 +295,6 @@ export function AnalyticsView({
         />
       </section>
 
-      <section>
-        <SectionTitle>By project</SectionTitle>
-        {stats.breakdown.length === 0 ? (
-          <EmptyHint>No tagged sessions in this range.</EmptyHint>
-        ) : (
-          <div className="flex items-center gap-6 mt-3">
-            <RingChart segments={stats.breakdown} />
-            <ul className="flex-1 space-y-2 min-w-0">
-              {stats.breakdown.map((s) => (
-                <li key={s.name} className="flex items-center gap-2 text-sm">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ background: s.color }}
-                  />
-                  <span className="truncate flex-1">{s.name}</span>
-                  <span className="tabular-nums text-muted-foreground text-xs">
-                    {Math.round(s.pct * 100)}%
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      <section>
-        <SectionTitle>Timeline</SectionTitle>
-        {stats.byDay.length === 0 ? (
-          <EmptyHint>No sessions match these filters.</EmptyHint>
-        ) : (
-          <ol className="mt-3 space-y-4">
-            {stats.byDay.map((day) => (
-              <li key={day.key}>
-                <div className="flex items-baseline justify-between mb-1.5">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {day.label}
-                  </div>
-                  <div className="text-[11px] tabular-nums text-muted-foreground">
-                    {fmtHours(day.total)}
-                  </div>
-                </div>
-                <ul className="divide-y divide-border border border-border rounded-md overflow-hidden">
-                  {day.sessions.map((s) => (
-                    <li
-                      key={s.id}
-                      className="px-3 py-2 flex items-center gap-2.5 bg-background/40"
-                    >
-                      <span
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ background: s.projectColor ?? "var(--muted-foreground)" }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm truncate">{s.task}</div>
-                        {s.projectName && (
-                          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
-                            {s.projectName}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-xs tabular-nums text-muted-foreground shrink-0">
-                        {s.focusedMinutes}m
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
     </div>
   );
 }
@@ -388,76 +318,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function EmptyHint({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mt-3 text-xs text-muted-foreground/70 italic">{children}</p>
-  );
-}
 
-function RingChart({
-  segments,
-}: {
-  segments: { name: string; color: string; pct: number }[];
-}) {
-  const size = 120;
-  const stroke = 16;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  let acc = 0;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-      {segments.map((s) => {
-        const dash = s.pct * c;
-        const offset = c - acc;
-        const el = (
-          <circle
-            key={s.name}
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={stroke}
-            strokeDasharray={`${dash} ${c - dash}`}
-            strokeDashoffset={offset}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            strokeLinecap="butt"
-          />
-        );
-        acc += dash;
-        return el;
-      })}
-    </svg>
-  );
-}
-
-interface DayBucket {
-  key: string;
-  label: string;
-  total: number;
-  sessions: Session[];
-}
 
 function computeStats(sessions: Session[]) {
-  let totalMin = 0;
-  const projectMap = new Map<string, { name: string; color: string; minutes: number }>();
-  for (const s of sessions) {
-    totalMin += s.focusedMinutes;
-    const key = s.projectId ?? "__untagged";
-    const name = s.projectName ?? "Untagged";
-    const color = s.projectColor ?? "#6b7280";
-    const cur = projectMap.get(key);
-    if (cur) cur.minutes += s.focusedMinutes;
-    else projectMap.set(key, { name, color, minutes: s.focusedMinutes });
-  }
-  const total = Array.from(projectMap.values()).reduce((a, b) => a + b.minutes, 0);
-  const breakdown =
-    total > 0
-      ? Array.from(projectMap.values())
-          .map((p) => ({ name: p.name, color: p.color, pct: p.minutes / total }))
-          .sort((a, b) => b.pct - a.pct)
-      : [];
+  const totalMin = sessions.reduce((a, s) => a + s.focusedMinutes, 0);
   const ordered = [...sessions].sort(
     (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime(),
   );
@@ -477,32 +341,5 @@ function computeStats(sessions: Session[]) {
     sessions.length > 0
       ? Math.round(sessions.reduce((a, s) => a + s.focusedMinutes, 0) / sessions.length)
       : 0;
-  const dayMap = new Map<string, DayBucket>();
-  for (const s of sessions) {
-    const d = new Date(s.completedAt);
-    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    let b = dayMap.get(k);
-    if (!b) {
-      b = {
-        key: k,
-        label: d.toLocaleDateString(undefined, {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }),
-        total: 0,
-        sessions: [],
-      };
-      dayMap.set(k, b);
-    }
-    b.total += s.focusedMinutes;
-    b.sessions.push(s);
-  }
-  const byDay = Array.from(dayMap.values())
-    .sort((a, b) => (a.key < b.key ? 1 : -1))
-    .map((d) => ({
-      ...d,
-      sessions: d.sessions.sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
-    }));
-  return { totalMin, count: sessions.length, breakdown, streak: best, avgMin, byDay };
+  return { totalMin, count: sessions.length, streak: best, avgMin };
 }
