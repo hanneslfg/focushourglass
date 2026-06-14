@@ -248,7 +248,14 @@ export function ActivityGraph() {
       </div>
 
       <Tooltip state={hover} />
-      {open && <YearlyModal onClose={() => setOpen(false)} totals={totals} sessions={sessions} />}
+      {modalMode && (
+        <YearlyModal
+          mode={modalMode}
+          onClose={() => setView("month")}
+          totals={totals}
+          sessions={sessions}
+        />
+      )}
     </section>
   );
 }
