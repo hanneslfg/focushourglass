@@ -70,9 +70,35 @@ export interface RemoteSession {
   was_aborted: boolean;
 }
 
-export async function saveSessionRemote(s: RemoteSession) {
-  const payload = {
-    user_id: String(s.user_id),
+const PENDING_KEY = "hourglass.pending_sessions.v1";
+
+function readPending(): RemoteSession[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PENDING_KEY);
+    return raw ? (JSON.parse(raw) as RemoteSession[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePending(list: RemoteSession[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+}
+
+function queuePending(s: RemoteSession) {
+  const list = readPending();
+  list.push(s);
+  writePending(list);
+  console.warn(
+    `[supabase] queued session in localStorage (pending=${list.length}). Will sync on next auth.`,
+  );
+}
+
+function buildPayload(s: RemoteSession, userId: string) {
+  return {
+    user_id: userId,
     task_name: String(s.task_name),
     project_tag: s.project_tag ?? null,
     planned_duration: Math.round(Number(s.planned_duration)),
@@ -81,6 +107,40 @@ export async function saveSessionRemote(s: RemoteSession) {
     completed_at: s.completed_at,
     was_aborted: Boolean(s.was_aborted),
   };
+}
+
+/**
+ * Save a session to Supabase if the user is authenticated, otherwise queue
+ * it in localStorage so it can be flushed once the user signs in.
+ *
+ * If inserts always fail with an RLS error like
+ *   "new row violates row-level security policy"
+ * add this policy in the Supabase dashboard (Database → sessions → Policies):
+ *
+ *   CREATE POLICY "Users can insert their own sessions"
+ *     ON public.sessions FOR INSERT TO authenticated
+ *     WITH CHECK (auth.uid() = user_id);
+ *
+ * (Plus matching SELECT/UPDATE/DELETE policies scoped to auth.uid() = user_id.)
+ */
+export async function saveSessionRemote(s: RemoteSession) {
+  let authUserId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
+  } catch (e) {
+    console.error("[supabase] saveSession: auth.getUser threw:", e);
+  }
+
+  if (!authUserId) {
+    console.warn(
+      "[supabase] saveSession: user not authenticated → saving to localStorage queue",
+    );
+    queuePending(s);
+    return;
+  }
+
+  const payload = buildPayload(s, authUserId);
   console.log("[supabase] saveSession → inserting", payload);
   try {
     const { data, error } = await supabase
@@ -88,11 +148,68 @@ export async function saveSessionRemote(s: RemoteSession) {
       .insert(payload)
       .select();
     if (error) {
-      console.error("[supabase] saveSession failed:", error);
+      console.error("[supabase] saveSession failed:", error.message, error);
+      if (
+        error.message?.toLowerCase().includes("row-level security") ||
+        error.code === "42501"
+      ) {
+        console.error(
+          "[supabase] ⚠ RLS BLOCKER: Add an INSERT policy on public.sessions for authenticated users (see saveSessionRemote docs).",
+        );
+      }
+      queuePending(s);
     } else {
       console.log("[supabase] saveSession OK", data);
     }
   } catch (e) {
     console.error("[supabase] saveSession threw:", e);
+    queuePending(s);
   }
+}
+
+/**
+ * Push any sessions queued in localStorage to Supabase. Safe to call on
+ * component mount or after sign-in. No-op when the user isn't authenticated.
+ */
+export async function syncPendingSessions(): Promise<{ synced: number; remaining: number }> {
+  const pending = readPending();
+  if (pending.length === 0) return { synced: 0, remaining: 0 };
+
+  let authUserId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
+  } catch (e) {
+    console.error("[supabase] syncPending: auth.getUser threw:", e);
+  }
+  if (!authUserId) {
+    console.log(
+      `[supabase] syncPending: ${pending.length} queued, but no auth user — skipping.`,
+    );
+    return { synced: 0, remaining: pending.length };
+  }
+
+  console.log(`[supabase] syncPending: attempting to flush ${pending.length} sessions…`);
+  const failed: RemoteSession[] = [];
+  let synced = 0;
+  for (const s of pending) {
+    const payload = buildPayload(s, authUserId);
+    try {
+      const { error } = await supabase.from("sessions").insert(payload);
+      if (error) {
+        console.error("[supabase] syncPending: insert failed:", error.message, error);
+        failed.push(s);
+      } else {
+        synced += 1;
+      }
+    } catch (e) {
+      console.error("[supabase] syncPending: insert threw:", e);
+      failed.push(s);
+    }
+  }
+  writePending(failed);
+  console.log(
+    `[supabase] syncPending: synced=${synced}, remaining=${failed.length}`,
+  );
+  return { synced, remaining: failed.length };
 }

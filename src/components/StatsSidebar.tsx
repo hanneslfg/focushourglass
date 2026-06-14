@@ -5,6 +5,7 @@ import { ProjectsPanel } from "@/components/ProjectsPanel";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { AuthButton } from "@/components/AuthButton";
+import { syncPendingSessions, supabase } from "@/lib/supabase";
 import {
   getTodayGoal,
   getTodayFocusedMinutes,
@@ -101,6 +102,23 @@ export function StatsSidebar() {
       window.removeEventListener("hourglass:projects", syncP);
       window.removeEventListener("storage", sync);
     };
+  }, []);
+
+  // Try to flush any locally queued sessions on mount and whenever auth changes.
+  useEffect(() => {
+    syncPendingSessions().catch((e) =>
+      console.error("[StatsSidebar] syncPendingSessions failed:", e),
+    );
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        syncPendingSessions()
+          .then((r) => {
+            if (r.synced > 0) window.dispatchEvent(new Event("hourglass:sessions"));
+          })
+          .catch((e) => console.error("[StatsSidebar] syncPendingSessions failed:", e));
+      }
+    });
+    return () => data.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
