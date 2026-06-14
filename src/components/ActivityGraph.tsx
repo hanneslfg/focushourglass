@@ -324,9 +324,8 @@ export function FullScreenActivity({
   }, []);
 
   const { weeks, monthLabels } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayIdx = (today.getDay() + 6) % 7;
+    const today = effectiveToday();
+    const dayIdx = weekColumnIndex(today);
     const currentMonday = new Date(today);
     currentMonday.setDate(today.getDate() - dayIdx);
 
@@ -345,7 +344,7 @@ export function FullScreenActivity({
         }, Date.now());
         const ed = new Date(earliest);
         ed.setHours(0, 0, 0, 0);
-        const eIdx = (ed.getDay() + 6) % 7;
+        const eIdx = weekColumnIndex(ed);
         firstMonday = new Date(ed);
         firstMonday.setDate(ed.getDate() - eIdx);
       }
