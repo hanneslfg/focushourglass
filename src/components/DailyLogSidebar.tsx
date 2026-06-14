@@ -20,13 +20,7 @@ function fmtHM(mins: number) {
 }
 
 function isToday(iso: string) {
-  const d = new Date(iso);
-  const n = new Date();
-  return (
-    d.getFullYear() === n.getFullYear() &&
-    d.getMonth() === n.getMonth() &&
-    d.getDate() === n.getDate()
-  );
+  return effectiveDayKey(iso) === effectiveDayKey(new Date());
 }
 
 export function DailyLogSidebar() {
