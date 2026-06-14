@@ -62,14 +62,14 @@ export function AuthButton() {
 
   if (email) {
     return (
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+      <div className="inline-flex items-center gap-2 rounded-md bg-background px-2 py-1 text-[11px] text-muted-foreground">
         <span className="hidden sm:inline tracking-wide truncate max-w-[160px]">
           {email}
         </span>
         <button
           onClick={handleSignOut}
           disabled={loading}
-          className="inline-flex items-center gap-1.5 px-2.5 min-h-7 rounded-md border border-border/60 hover:border-foreground/40 hover:text-foreground active:bg-accent transition-colors disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 px-2.5 min-h-7 rounded-md border border-border/60 bg-background hover:border-foreground/40 hover:text-foreground active:bg-accent transition-colors disabled:opacity-40"
           aria-label="Sign out"
         >
           <LogOut className="h-3 w-3" strokeWidth={1.75} />
@@ -78,6 +78,7 @@ export function AuthButton() {
       </div>
     );
   }
+
 
   return (
     <button
