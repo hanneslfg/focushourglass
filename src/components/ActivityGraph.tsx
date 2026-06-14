@@ -105,11 +105,16 @@ function cellHandlers(
 }
 
 // ============ Monthly grid (default sidebar view) ============
-type View = "month" | "year" | "all";
+export type View = "month" | "year" | "all";
 
-export function ActivityGraph() {
+export function ActivityGraph({
+  view,
+  onViewChange,
+}: {
+  view: View;
+  onViewChange: (view: View) => void;
+}) {
   const sessions = useSessions();
-  const [view, setView] = useState<View>("month");
   const [hover, setHover] = useState<HoverState>(null);
   const totals = useMemo(() => buildTotals(sessions), [sessions]);
 
@@ -146,9 +151,6 @@ export function ActivityGraph() {
     return { weeks, monthLabel: `${MONTH_NAMES[m]} ${y}` };
   }, [today]);
 
-  const fullScreenMode: RangeMode | null =
-    view === "year" ? "12m" : view === "all" ? "all" : null;
-
   return (
     <section>
       <div className="flex items-center justify-between mb-3 gap-2">
@@ -173,7 +175,7 @@ export function ActivityGraph() {
                 key={opt.id}
                 role="tab"
                 aria-selected={active}
-                onClick={() => setView(opt.id)}
+                onClick={() => onViewChange(opt.id)}
                 className={`px-2.5 h-6 text-[9px] uppercase tracking-[0.16em] rounded-[4px] transition-colors ${
                   active
                     ? "bg-amber-500/15 text-amber-200"
@@ -244,35 +246,26 @@ export function ActivityGraph() {
       </div>
 
       <Tooltip state={hover} />
-      {fullScreenMode && (
-        <FullScreenActivity
-          mode={fullScreenMode}
-          onClose={() => setView("month")}
-          totals={totals}
-          sessions={sessions}
-        />
-      )}
     </section>
   );
 }
 
 // ============ Full-screen activity ============
-type RangeMode = "12m" | "all";
+export type RangeMode = "12m" | "all";
 
-function FullScreenActivity({
+export function FullScreenActivity({
   mode,
   onClose,
-  totals,
   sessions,
 }: {
   mode: RangeMode;
   onClose: () => void;
-  totals: DayTotals;
   sessions: Session[];
 }) {
   const [hover, setHover] = useState<HoverState>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const totals = useMemo(() => buildTotals(sessions), [sessions]);
   const [box, setBox] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth - 64 : 1200,
     h: typeof window !== "undefined" ? window.innerHeight - 180 : 700,
