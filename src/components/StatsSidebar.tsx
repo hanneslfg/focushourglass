@@ -84,6 +84,8 @@ export function StatsSidebar() {
   const [customTo, setCustomTo] = useState("");
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [showProjectFilter, setShowProjectFilter] = useState(false);
+  const [tab, setTab] = useState<"stats" | "projects">("stats");
+
   
 
   useEffect(() => {
