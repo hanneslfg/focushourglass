@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, X, RotateCcw, ChevronDown, FolderKanban } from "lucide-react";
+import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
 import { ActivityGraph } from "@/components/ActivityGraph";
-import { ProjectsPanel } from "@/components/ProjectsPanel";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
-import { AuthButton } from "@/components/AuthButton";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
 import {
   getTodayGoal,
@@ -85,7 +83,7 @@ export function StatsSidebar() {
   const [customTo, setCustomTo] = useState("");
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [showProjectFilter, setShowProjectFilter] = useState(false);
-  const [tab, setTab] = useState<"stats" | "projects">("stats");
+  
 
   
 
@@ -184,9 +182,6 @@ export function StatsSidebar() {
         <BarChart3 className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.5} />
       </button>
 
-      <div className="fixed top-16 md:top-[68px] right-4 z-40">
-        <AuthButton />
-      </div>
 
 
       <div
@@ -222,37 +217,10 @@ export function StatsSidebar() {
             </button>
           </header>
 
-          {/* Tab bar */}
-          <div className="px-5 pt-4">
-            <div className="inline-flex rounded-md border border-border p-0.5 w-full">
-              {([
-                { id: "stats", label: "Stats", Icon: BarChart3 },
-                { id: "projects", label: "Projects", Icon: FolderKanban },
-              ] as const).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={`flex-1 inline-flex items-center justify-center gap-1.5 h-8 text-[11px] uppercase tracking-[0.18em] rounded-[5px] transition-colors ${
-                    tab === t.id
-                      ? "bg-amber-500/15 text-amber-200"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <t.Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div
             className="flex-1 overflow-y-auto px-5 py-5 space-y-7"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
           >
-            {tab === "projects" ? (
-              <ProjectsPanel />
-            ) : (
-            <>
 
             {/* Activity calendar */}
             <ActivityGraph />
@@ -497,8 +465,6 @@ export function StatsSidebar() {
         </ol>
       )}
     </section>
-            </>
-            )}
           </div>
         </div>
       </aside>
