@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
+import { ActivityGraph } from "@/components/ActivityGraph";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { AuthButton } from "@/components/AuthButton";
@@ -205,6 +206,9 @@ export function StatsSidebar() {
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
           >
             <>
+            {/* Activity calendar */}
+            <ActivityGraph />
+
             {/* Today's goal progress */}
             <GoalProgress />
 
