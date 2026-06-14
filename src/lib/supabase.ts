@@ -31,9 +31,27 @@ export interface RemoteSession {
 }
 
 export async function saveSessionRemote(s: RemoteSession) {
+  const payload = {
+    user_id: String(s.user_id),
+    task_name: String(s.task_name),
+    project_tag: s.project_tag ?? null,
+    planned_duration: Math.round(Number(s.planned_duration)),
+    actual_duration: Math.round(Number(s.actual_duration)),
+    started_at: s.started_at,
+    completed_at: s.completed_at,
+    was_aborted: Boolean(s.was_aborted),
+  };
+  console.log("[supabase] saveSession → inserting", payload);
   try {
-    const { error } = await supabase.from("sessions").insert(s);
-    if (error) console.error("[supabase] saveSession failed:", error.message);
+    const { data, error } = await supabase
+      .from("sessions")
+      .insert(payload)
+      .select();
+    if (error) {
+      console.error("[supabase] saveSession failed:", error);
+    } else {
+      console.log("[supabase] saveSession OK", data);
+    }
   } catch (e) {
     console.error("[supabase] saveSession threw:", e);
   }
