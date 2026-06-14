@@ -257,6 +257,45 @@ function SettingsPanel() {
       </section>
 
       <section>
+        <SectionTitle>Time</SectionTitle>
+        <div className="mt-3 space-y-3">
+          <label className="block">
+            <span className="text-xs text-muted-foreground">Day resets at</span>
+            <select
+              value={settings.dayStartHour}
+              onChange={(e) => setDayStart(Number(e.target.value))}
+              className="mt-1.5 w-full bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-foreground/60"
+            >
+              <option value={0}>00:00 (Midnight)</option>
+              <option value={1}>01:00 AM</option>
+              <option value={2}>02:00 AM</option>
+              <option value={3}>03:00 AM</option>
+              <option value={4}>04:00 AM</option>
+            </select>
+          </label>
+          <p className="text-[11px] text-muted-foreground/70 -mt-1">
+            Late-night focus blocks completed before this hour count toward the
+            previous day.
+          </p>
+
+          <label className="block">
+            <span className="text-xs text-muted-foreground">Week starts on</span>
+            <select
+              value={settings.weekStartsOn}
+              onChange={(e) => setWeekStart(Number(e.target.value) === 0 ? 0 : 1)}
+              className="mt-1.5 w-full bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-foreground/60"
+            >
+              <option value={1}>Monday</option>
+              <option value={0}>Sunday</option>
+            </select>
+          </label>
+          <p className="text-[11px] text-muted-foreground/70 -mt-1">
+            Controls weekly stats and the alignment of the activity grid.
+          </p>
+        </div>
+      </section>
+
+      <section>
         <SectionTitle>Notifications</SectionTitle>
         <div className="mt-3 rounded-md border border-border bg-background/40 px-4 py-3">
           <div className="flex items-center gap-2.5 text-sm">
