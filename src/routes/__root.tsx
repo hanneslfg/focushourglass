@@ -129,7 +129,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="fixed top-3 right-3 z-50">
+      <div className="fixed top-3 right-16 z-50">
         <AuthButton />
       </div>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
