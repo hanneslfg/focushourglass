@@ -5,6 +5,7 @@ import { ProjectsPanel } from "@/components/ProjectsPanel";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { AuthButton } from "@/components/AuthButton";
+import { syncPendingSessions, supabase } from "@/lib/supabase";
 import {
   getTodayGoal,
   getTodayFocusedMinutes,
