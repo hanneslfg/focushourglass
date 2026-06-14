@@ -113,16 +113,30 @@ export function TimerView() {
   }
 
   function finalize() {
+    const startedAt = startedAtRef.current ?? new Date().toISOString();
+    const completedAt = new Date().toISOString();
+    const plannedMinutes = Math.round(total / 60);
+    const focusedMinutes = Math.round(focusedRef.current / 60);
     addSession({
       id: crypto.randomUUID(),
       task: task.trim(),
-      plannedMinutes: Math.round(total / 60),
-      focusedMinutes: Math.round(focusedRef.current / 60),
-      startedAt: startedAtRef.current ?? new Date().toISOString(),
-      completedAt: new Date().toISOString(),
+      plannedMinutes,
+      focusedMinutes,
+      startedAt,
+      completedAt,
       projectId: project?.id,
       projectName: project?.name,
       projectColor: project?.color,
+    });
+    saveSessionRemote({
+      user_id: getUserId(),
+      task_name: task.trim(),
+      project_tag: project?.name ?? null,
+      planned_duration: plannedMinutes,
+      actual_duration: focusedMinutes,
+      started_at: startedAt,
+      completed_at: completedAt,
+      was_aborted: false,
     });
     setPhase("complete");
     endAtRef.current = null;
