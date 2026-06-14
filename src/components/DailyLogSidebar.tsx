@@ -132,8 +132,11 @@ export function DailyLogSidebar() {
           </header>
 
           <div
-            className="flex-1 overflow-y-auto px-5 py-6 space-y-8"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
+            className="flex-1 overflow-y-auto pl-5 pr-6 py-6 sm:px-5 space-y-8"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",
+              paddingRight: "max(1.5rem, env(safe-area-inset-right))",
+            }}
           >
             {/* Top: Total today */}
             <section className="text-center">
