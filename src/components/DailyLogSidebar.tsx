@@ -109,7 +109,6 @@ export function DailyLogSidebar() {
         className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[400px] bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-out overflow-x-hidden ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ paddingRight: "env(safe-area-inset-right)" }}
         aria-hidden={!open}
       >
         <div className="h-full flex flex-col">
