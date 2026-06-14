@@ -386,7 +386,7 @@ export function FullScreenActivity({
     }
 
     return { weeks, monthLabels };
-  }, [mode, sessions]);
+  }, [mode, sessions, settingsTick]);
 
   const totalWeeks = weeks.length;
 
