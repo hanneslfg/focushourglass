@@ -132,6 +132,7 @@ export function ActivityGraph({
     return () => window.removeEventListener("hourglass:settings", onSettings);
   }, []);
 
+  const totals = useMemo(() => buildTotals(sessions), [sessions, settingsTick]);
   const today = useMemo(() => effectiveToday(), [settingsTick]);
   const dow = useMemo(() => orderedDowLabels(true), [settingsTick]);
 
