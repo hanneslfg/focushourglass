@@ -4,14 +4,22 @@ const KEY = "hourglass.settings.v1";
 const OVERRIDE_KEY = "hourglass.dailyOverride.v1";
 const NOTIFIED_KEY = "hourglass.goalNotified.v1";
 
+export type WeekStart = 0 | 1; // 0 = Sunday, 1 = Monday
+
 export interface Settings {
   soundsEnabled: boolean;
   defaultDailyGoal: number; // minutes
+  /** Hour (0-4) at which a new "day" begins for stats purposes. Default 0 (midnight). */
+  dayStartHour: number;
+  /** Day index that starts the week (0 = Sunday, 1 = Monday). Default 1. */
+  weekStartsOn: WeekStart;
 }
 
 const DEFAULTS: Settings = {
   soundsEnabled: true,
   defaultDailyGoal: 180,
+  dayStartHour: 0,
+  weekStartsOn: 1,
 };
 
 export function getSettings(): Settings {
@@ -19,7 +27,12 @@ export function getSettings(): Settings {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+    const parsed = JSON.parse(raw) as Partial<Settings>;
+    const merged: Settings = { ...DEFAULTS, ...parsed };
+    // Sanitize ranges
+    merged.dayStartHour = Math.max(0, Math.min(4, Math.floor(merged.dayStartHour ?? 0)));
+    merged.weekStartsOn = (merged.weekStartsOn === 0 ? 0 : 1) as WeekStart;
+    return merged;
   } catch {
     return DEFAULTS;
   }
@@ -31,13 +44,58 @@ export function setSettings(patch: Partial<Settings>) {
   window.dispatchEvent(new Event("hourglass:settings"));
 }
 
-function todayKey(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+/* ----------------- Effective day / week helpers ----------------- */
+
+/**
+ * Returns the local-calendar day key (YYYY-MM-DD) that a timestamp belongs to,
+ * accounting for the user's custom `dayStartHour` cutoff. A completion at
+ * 01:30 with `dayStartHour = 2` is still part of the previous calendar day.
+ */
+export function effectiveDayKey(input: Date | string | number): string {
+  const d = input instanceof Date ? new Date(input.getTime()) : new Date(input);
+  const offsetMs = getSettings().dayStartHour * 3600_000;
+  const shifted = new Date(d.getTime() - offsetMs);
+  const y = shifted.getFullYear();
+  const m = String(shifted.getMonth() + 1).padStart(2, "0");
+  const day = String(shifted.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+/** YYYY-MM-DD for "right now", honoring the dayStartHour cutoff. */
+export function todayKey(): string {
+  return effectiveDayKey(new Date());
+}
+
+/**
+ * Returns a Date at local midnight representing the effective "today" anchor
+ * for the user. Useful for grid alignment.
+ */
+export function effectiveToday(): Date {
+  const key = todayKey();
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/**
+ * Column index (0-6) for a date within a week that starts on the user's
+ * configured `weekStartsOn` day. Mon-first → Mon=0..Sun=6. Sun-first →
+ * Sun=0..Sat=6.
+ */
+export function weekColumnIndex(date: Date): number {
+  const start = getSettings().weekStartsOn;
+  return (date.getDay() - start + 7) % 7;
+}
+
+/** Day-of-week labels ordered by the user's `weekStartsOn` setting. */
+export function orderedDowLabels(short = true): string[] {
+  const start = getSettings().weekStartsOn;
+  const sun = short
+    ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return start === 0 ? sun : [...sun.slice(1), sun[0]];
+}
+
+/* ----------------- Today's-goal override ----------------- */
 
 interface DailyOverride {
   date: string;
@@ -77,7 +135,7 @@ export function getTodayGoal(): number {
 export function getTodayFocusedMinutes(): number {
   const tk = todayKey();
   return getSessions()
-    .filter((s) => s.completedAt.slice(0, 10) === tk)
+    .filter((s) => effectiveDayKey(s.completedAt) === tk)
     .reduce((sum, s) => sum + s.focusedMinutes, 0);
 }
 

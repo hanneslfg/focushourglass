@@ -2,6 +2,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import {
+  effectiveDayKey,
+  effectiveToday,
+  getSettings,
+  orderedDowLabels,
+  weekColumnIndex,
+} from "@/lib/settings";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -11,7 +18,6 @@ const MONTH_SHORT = [
   "Jan","Feb","Mar","Apr","May","Jun",
   "Jul","Aug","Sep","Oct","Nov","Dec",
 ];
-const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function intensity(min: number): 0 | 1 | 2 | 3 | 4 {
   if (min <= 0) return 0;
@@ -40,7 +46,7 @@ type DayTotals = Map<string, { min: number; count: number }>;
 function buildTotals(sessions: Session[]): DayTotals {
   const m: DayTotals = new Map();
   for (const s of sessions) {
-    const k = s.completedAt.slice(0, 10);
+    const k = effectiveDayKey(s.completedAt);
     const cur = m.get(k) ?? { min: 0, count: 0 };
     cur.min += s.focusedMinutes || 0;
     cur.count += 1;
@@ -116,20 +122,26 @@ export function ActivityGraph({
 }) {
   const sessions = useSessions();
   const [hover, setHover] = useState<HoverState>(null);
-  const totals = useMemo(() => buildTotals(sessions), [sessions]);
+  // settingsTick is declared just below; include in deps so totals refresh on cutoff change.
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+  // Re-render this view when the user changes weekStartsOn / dayStartHour.
+  const [settingsTick, setSettingsTick] = useState(0);
+  useEffect(() => {
+    const onSettings = () => setSettingsTick((t) => t + 1);
+    window.addEventListener("hourglass:settings", onSettings);
+    return () => window.removeEventListener("hourglass:settings", onSettings);
   }, []);
+
+  const totals = useMemo(() => buildTotals(sessions), [sessions, settingsTick]);
+  const today = useMemo(() => effectiveToday(), [settingsTick]);
+  const dow = useMemo(() => orderedDowLabels(true), [settingsTick]);
 
   const { weeks, monthLabel } = useMemo(() => {
     const y = today.getFullYear();
     const m = today.getMonth();
     const first = new Date(y, m, 1);
     const last = new Date(y, m + 1, 0);
-    const startIdx = (first.getDay() + 6) % 7;
+    const startIdx = weekColumnIndex(first);
     const gridStart = new Date(y, m, 1 - startIdx);
     const totalDays = startIdx + last.getDate();
     const rows = Math.ceil(totalDays / 7);
@@ -195,7 +207,7 @@ export function ActivityGraph({
         </div>
 
         <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-          {DOW.map((d) => (
+          {dow.map((d: string) => (
             <div key={d} className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70 text-center">
               {d[0]}
             </div>
@@ -265,7 +277,14 @@ export function FullScreenActivity({
   const [hover, setHover] = useState<HoverState>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const totals = useMemo(() => buildTotals(sessions), [sessions]);
+  const [settingsTick, setSettingsTick] = useState(0);
+  useEffect(() => {
+    const onSettings = () => setSettingsTick((t) => t + 1);
+    window.addEventListener("hourglass:settings", onSettings);
+    return () => window.removeEventListener("hourglass:settings", onSettings);
+  }, []);
+  const totals = useMemo(() => buildTotals(sessions), [sessions, settingsTick]);
+  const dowFull = useMemo(() => orderedDowLabels(true), [settingsTick]);
   const [box, setBox] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth - 64 : 1200,
     h: typeof window !== "undefined" ? window.innerHeight - 180 : 700,
@@ -305,9 +324,8 @@ export function FullScreenActivity({
   }, []);
 
   const { weeks, monthLabels } = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayIdx = (today.getDay() + 6) % 7;
+    const today = effectiveToday();
+    const dayIdx = weekColumnIndex(today);
     const currentMonday = new Date(today);
     currentMonday.setDate(today.getDate() - dayIdx);
 
@@ -326,7 +344,7 @@ export function FullScreenActivity({
         }, Date.now());
         const ed = new Date(earliest);
         ed.setHours(0, 0, 0, 0);
-        const eIdx = (ed.getDay() + 6) % 7;
+        const eIdx = weekColumnIndex(ed);
         firstMonday = new Date(ed);
         firstMonday.setDate(ed.getDate() - eIdx);
       }
@@ -368,7 +386,7 @@ export function FullScreenActivity({
     }
 
     return { weeks, monthLabels };
-  }, [mode, sessions]);
+  }, [mode, sessions, settingsTick]);
 
   const totalWeeks = weeks.length;
 
@@ -442,7 +460,7 @@ export function FullScreenActivity({
               className="absolute flex flex-col"
               style={{ left: 0, top: topLabelH, width: leftLabelW, height: gridHeight }}
             >
-              {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+              {dowFull.map((d, i) => (i % 2 === 0 ? d : "")).map((d, i) => (
                 <div
                   key={i}
                   className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/70"
