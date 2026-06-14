@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
+import { Minus, Plus, Play, Pause, Check, X, Target } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPicker } from "./ProjectPicker";
 import { addSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
 import { playGong } from "@/lib/gong";
 import { playClick } from "@/lib/click";
+import {
+  getTodayGoal,
+  setTodayOverride,
+  maybeNotifyGoalReached,
+  getTodayFocusedMinutes,
+} from "@/lib/settings";
 import type { ProjectTag } from "@/lib/projects";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
@@ -129,6 +135,7 @@ export function TimerView() {
       projectName: project?.name,
       projectColor: project?.color,
     });
+    maybeNotifyGoalReached();
     saveSessionRemote({
       user_id: getUserId(),
       task_name: task.trim(),
@@ -362,6 +369,73 @@ export function TimerView() {
             Name your one thing to begin.
           </p>
         )}
+
+        <DailyGoalControl />
+      </div>
+    </div>
+  );
+}
+
+function DailyGoalControl() {
+  const [goal, setGoal] = useState(180);
+  const [done, setDone] = useState(0);
+
+  useEffect(() => {
+    const sync = () => {
+      setGoal(getTodayGoal());
+      setDone(getTodayFocusedMinutes());
+    };
+    sync();
+    window.addEventListener("hourglass:settings", sync);
+    window.addEventListener("hourglass:sessions", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("hourglass:settings", sync);
+      window.removeEventListener("hourglass:sessions", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  function adjust(delta: number) {
+    playClick();
+    const next = Math.max(15, Math.min(1440, goal + delta));
+    setTodayOverride(next);
+  }
+
+  const pct = goal > 0 ? Math.min(100, Math.round((done / goal) * 100)) : 0;
+
+  return (
+    <div className="w-full mt-2 pt-5 border-t border-border/60 flex flex-col items-center gap-2">
+      <div className="flex items-center gap-3 text-muted-foreground">
+        <Target className="h-3 w-3" strokeWidth={1.75} />
+        <span className="text-[10px] uppercase tracking-[0.22em]">Today&rsquo;s goal</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => adjust(-15)}
+          className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center touch-manipulation"
+          aria-label="Lower today's goal"
+        >
+          <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+        <div className="font-display text-xl tabular-nums tracking-tight min-w-[5rem] text-center">
+          {done}
+          <span className="text-muted-foreground/60"> / {goal}</span>
+          <span className="text-xs text-muted-foreground/60 ml-1">min</span>
+        </div>
+        <button
+          onClick={() => adjust(15)}
+          className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center touch-manipulation"
+          aria-label="Raise today's goal"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+      </div>
+      <div className="w-full max-w-[16rem] h-1 rounded-full bg-border/60 overflow-hidden">
+        <div
+          className="h-full bg-primary transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );

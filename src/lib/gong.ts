@@ -2,8 +2,11 @@
  * Synthesizes a deep temple-gong tone with Web Audio — no network call needed.
  * Layered low sine partials with a very long exponential decay through a low-pass.
  */
+import { getSettings } from "./settings";
+
 export function playGong() {
   if (typeof window === "undefined") return;
+  if (!getSettings().soundsEnabled) return;
   const AC: typeof AudioContext =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext })
