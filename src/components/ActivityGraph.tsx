@@ -272,7 +272,10 @@ function FullScreenActivity({
   const [hover, setHover] = useState<HoverState>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [box, setBox] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth - 64 : 1200,
+    h: typeof window !== "undefined" ? window.innerHeight - 180 : 700,
+  }));
 
   const scopeLabel = mode === "12m" ? "Yearly Overview" : "All-Time Overview";
 
@@ -364,31 +367,35 @@ function FullScreenActivity({
 
   const totalWeeks = weeks.length;
 
-  // Compute cell + gap to fit available box (no horizontal scroll, fills height)
-  const { cell, gap, leftLabelW, topLabelH } = useMemo(() => {
-    const leftLabelW = 36;
-    const topLabelH = 22;
+  // Compute cell + gap to fit available box exactly (no horizontal scroll)
+  const { cell, gap, leftLabelW, topLabelH, gridWidth, gridHeight } = useMemo(() => {
+    const leftLabelW = 40;
+    const topLabelH = 24;
     const w = Math.max(box.w - leftLabelW - 8, 100);
     const h = Math.max(box.h - topLabelH - 8, 100);
-    // gap is ~1/6 of cell, min 2
-    const cellW = w / totalWeeks;
-    const cellH = h / 7;
-    let cell = Math.floor(Math.min(cellW, cellH));
-    cell = Math.max(6, Math.min(cell, 40));
-    const gap = Math.max(2, Math.round(cell / 7));
-    // re-fit with gap
-    const fitW = (w - (totalWeeks - 1) * 2) / totalWeeks;
-    const fitH = (h - 6 * 2) / 7;
-    cell = Math.max(6, Math.min(40, Math.floor(Math.min(fitW, fitH))));
-    return { cell, gap: Math.max(2, Math.round(cell / 8)), leftLabelW, topLabelH };
+    // Try the largest cell that fits both dimensions, with gap = cell/8 (min 1)
+    let cell = 40;
+    let gap = 4;
+    for (let c = 56; c >= 3; c--) {
+      const g = Math.max(1, Math.round(c / 8));
+      const needW = totalWeeks * c + (totalWeeks - 1) * g;
+      const needH = 7 * c + 6 * g;
+      if (needW <= w && needH <= h) {
+        cell = c;
+        gap = g;
+        break;
+      }
+      cell = c;
+      gap = g;
+    }
+    const gridWidth = totalWeeks * cell + (totalWeeks - 1) * gap;
+    const gridHeight = 7 * cell + 6 * gap;
+    return { cell, gap, leftLabelW, topLabelH, gridWidth, gridHeight };
   }, [box, totalWeeks]);
-
-  const gridWidth = totalWeeks * cell + (totalWeeks - 1) * gap;
-  const gridHeight = 7 * cell + 6 * gap;
 
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-background animate-in fade-in duration-200 flex flex-col">
+      <div className="fixed inset-0 z-[100] bg-background animate-in fade-in duration-200 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-8 py-5 border-b border-border/60 shrink-0">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
