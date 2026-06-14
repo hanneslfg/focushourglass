@@ -459,11 +459,9 @@ export function StatsSidebar() {
         </ol>
       )}
     </section>
+            </>
+            )}
   </div>
-
-
-
-</div>
 </aside>
     </>
   );
