@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Hourglass as HourglassIcon,
   FolderKanban,
+  BarChart3,
   Settings as SettingsIcon,
   LogOut,
   User as UserIcon,
@@ -156,6 +157,7 @@ export function Sidebar() {
   const items = [
     { to: "/", label: "Timer", icon: HourglassIcon },
     { to: "/projects", label: "Projects", icon: FolderKanban },
+    { to: "/analytics", label: "Analytics", icon: BarChart3 },
   ];
   return (
     <>
