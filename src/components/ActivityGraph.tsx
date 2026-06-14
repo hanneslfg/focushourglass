@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 
@@ -280,6 +281,17 @@ function FullScreenActivity({
   const scopeLabel = mode === "12m" ? "Yearly Overview" : "All-Time Overview";
 
   useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       if (dayDetail) setDayDetail(null);
@@ -393,9 +405,11 @@ function FullScreenActivity({
     return { cell, gap, leftLabelW, topLabelH, gridWidth, gridHeight };
   }, [box, totalWeeks]);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-[100] bg-background animate-in fade-in duration-200 flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-[1000] bg-background animate-in fade-in duration-200 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-8 py-5 border-b border-border/60 shrink-0">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
@@ -416,7 +430,6 @@ function FullScreenActivity({
 
         <div ref={containerRef} className="flex-1 overflow-hidden px-8 py-6 min-h-0">
           <div className="relative w-full h-full">
-            {/* Month labels */}
             <div
               className="absolute"
               style={{ left: leftLabelW, top: 0, width: gridWidth, height: topLabelH }}
@@ -432,7 +445,6 @@ function FullScreenActivity({
               ))}
             </div>
 
-            {/* Day-of-week labels */}
             <div
               className="absolute flex flex-col"
               style={{ left: 0, top: topLabelH, width: leftLabelW, height: gridHeight }}
@@ -452,7 +464,6 @@ function FullScreenActivity({
               ))}
             </div>
 
-            {/* Grid */}
             <div
               className="absolute flex"
               style={{ left: leftLabelW, top: topLabelH, gap }}
@@ -501,7 +512,8 @@ function FullScreenActivity({
           onClose={() => setDayDetail(null)}
         />
       )}
-    </>
+    </>,
+    document.body,
   );
 }
 
