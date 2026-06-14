@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { getSessions, type Session } from "@/lib/sessions";
+import { getSessions, dayKey, type Session } from "@/lib/sessions";
 import {
   effectiveDayKey,
   effectiveToday,
@@ -223,7 +223,7 @@ export function ActivityGraph({
                 />
               );
             }
-            const t = totals.get(effectiveDayKey(cell.date));
+            const t = totals.get(dayKey(cell.date));
             const min = t?.min ?? 0;
             const count = t?.count ?? 0;
             const lvl = intensity(min);
@@ -478,7 +478,7 @@ export function FullScreenActivity({
                     if (c.future) {
                       return <div key={di} style={{ height: cell, width: cell }} />;
                     }
-                    const t = totals.get(effectiveDayKey(c.date));
+                    const t = totals.get(dayKey(c.date));
                     const min = t?.min ?? 0;
                     const count = t?.count ?? 0;
                     const lvl = intensity(min);
@@ -531,7 +531,7 @@ function DayDetailModal({
   sessions: Session[];
   onClose: () => void;
 }) {
-  const key = effectiveDayKey(date);
+  const key = dayKey(date);
   const daySessions = useMemo(
     () =>
       sessions
