@@ -206,7 +206,7 @@ export function ActivityGraph({
         </div>
 
         <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-          {DOW.map((d) => (
+          {dow.map((d: string) => (
             <div key={d} className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70 text-center">
               {d[0]}
             </div>
