@@ -46,7 +46,7 @@ type DayTotals = Map<string, { min: number; count: number }>;
 function buildTotals(sessions: Session[]): DayTotals {
   const m: DayTotals = new Map();
   for (const s of sessions) {
-    const k = s.completedAt.slice(0, 10);
+    const k = effectiveDayKey(s.completedAt);
     const cur = m.get(k) ?? { min: 0, count: 0 };
     cur.min += s.focusedMinutes || 0;
     cur.count += 1;
