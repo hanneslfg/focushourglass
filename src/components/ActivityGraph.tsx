@@ -223,7 +223,7 @@ export function ActivityGraph({
                 />
               );
             }
-            const t = totals.get(dayKey(cell.date));
+            const t = totals.get(effectiveDayKey(cell.date));
             const min = t?.min ?? 0;
             const count = t?.count ?? 0;
             const lvl = intensity(min);
@@ -478,7 +478,7 @@ export function FullScreenActivity({
                     if (c.future) {
                       return <div key={di} style={{ height: cell, width: cell }} />;
                     }
-                    const t = totals.get(dayKey(c.date));
+                    const t = totals.get(effectiveDayKey(c.date));
                     const min = t?.min ?? 0;
                     const count = t?.count ?? 0;
                     const lvl = intensity(min);
@@ -531,7 +531,7 @@ function DayDetailModal({
   sessions: Session[];
   onClose: () => void;
 }) {
-  const key = dayKey(date);
+  const key = effectiveDayKey(date);
   const daySessions = useMemo(
     () =>
       sessions
