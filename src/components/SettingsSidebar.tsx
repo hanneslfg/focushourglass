@@ -207,6 +207,48 @@ function SettingsPanel() {
       </section>
 
       <section>
+        <SectionTitle>Today&rsquo;s goal</SectionTitle>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={() => adjustTodayGoal(-15)}
+            className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center touch-manipulation"
+            aria-label="Lower today's goal"
+          >
+            <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <div className="flex-1 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
+              <Target className="h-3 w-3" strokeWidth={1.75} />
+              <span className="text-[10px] uppercase tracking-[0.22em]">Progress</span>
+            </div>
+            <div className="font-display text-xl tabular-nums tracking-tight mt-1">
+              {todayDone}
+              <span className="text-muted-foreground/60"> / {todayGoal}</span>
+              <span className="text-xs text-muted-foreground/60 ml-1">min</span>
+            </div>
+            <div className="w-full h-1 rounded-full bg-border/60 overflow-hidden mt-2">
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{
+                  width: `${todayGoal > 0 ? Math.min(100, Math.round((todayDone / todayGoal) * 100)) : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => adjustTodayGoal(15)}
+            className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center touch-manipulation"
+            aria-label="Raise today's goal"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground/70">
+          Ad-hoc override for today only. Resets to default at midnight.
+        </p>
+      </section>
+
+      <section>
         <SectionTitle>Notifications</SectionTitle>
         <div className="mt-3 rounded-md border border-border bg-background/40 px-4 py-3">
           <div className="flex items-center gap-2.5 text-sm">
