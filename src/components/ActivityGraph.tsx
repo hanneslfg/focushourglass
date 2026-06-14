@@ -124,18 +124,23 @@ export function ActivityGraph({
   const [hover, setHover] = useState<HoverState>(null);
   const totals = useMemo(() => buildTotals(sessions), [sessions]);
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+  // Re-render this view when the user changes weekStartsOn / dayStartHour.
+  const [settingsTick, setSettingsTick] = useState(0);
+  useEffect(() => {
+    const onSettings = () => setSettingsTick((t) => t + 1);
+    window.addEventListener("hourglass:settings", onSettings);
+    return () => window.removeEventListener("hourglass:settings", onSettings);
   }, []);
+
+  const today = useMemo(() => effectiveToday(), [settingsTick]);
+  const dow = useMemo(() => orderedDowLabels(true), [settingsTick]);
 
   const { weeks, monthLabel } = useMemo(() => {
     const y = today.getFullYear();
     const m = today.getMonth();
     const first = new Date(y, m, 1);
     const last = new Date(y, m + 1, 0);
-    const startIdx = (first.getDay() + 6) % 7;
+    const startIdx = weekColumnIndex(first);
     const gridStart = new Date(y, m, 1 - startIdx);
     const totalDays = startIdx + last.getDate();
     const rows = Math.ceil(totalDays / 7);
