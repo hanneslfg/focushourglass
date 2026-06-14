@@ -83,12 +83,13 @@ export function AuthButton() {
     <button
       onClick={handleSignIn}
       disabled={loading}
-      className="inline-flex items-center gap-2 px-3 min-h-8 rounded-md border border-border/70 text-xs text-foreground/80 hover:text-foreground hover:border-foreground/50 active:bg-accent transition-colors disabled:opacity-50"
+      className="inline-flex items-center gap-2 px-3 min-h-8 rounded-md border border-border/70 bg-background text-xs text-foreground/80 hover:text-foreground hover:border-foreground/50 active:bg-accent transition-colors disabled:opacity-50"
     >
       <GoogleIcon />
       Sign in with Google
     </button>
   );
+
 }
 
 function GoogleIcon() {
