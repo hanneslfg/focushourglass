@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
+import { BarChart3, X, RotateCcw, ChevronDown, FolderKanban } from "lucide-react";
 import { ActivityGraph } from "@/components/ActivityGraph";
+import { ProjectsPanel } from "@/components/ProjectsPanel";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { AuthButton } from "@/components/AuthButton";
