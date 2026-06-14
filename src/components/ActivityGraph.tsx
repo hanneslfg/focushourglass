@@ -368,35 +368,18 @@ function YearlyModal({
                 Overview
               </div>
               <h2 className="font-display text-2xl tracking-tight mt-0.5">
-                Yearly activity
+                {scopeLabel}
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
+              className="h-9 w-9 rounded-full border border-border/60 text-muted-foreground/80 hover:text-foreground hover:border-foreground/60 flex items-center justify-center transition-colors"
               aria-label="Close"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </header>
 
-          <div className="px-6 py-4 border-b border-border flex justify-center">
-            <div className="inline-flex rounded-md border border-border p-0.5">
-              {(["12m", "all"] as RangeMode[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`px-4 h-8 text-[11px] uppercase tracking-[0.18em] rounded-[5px] transition-colors ${
-                    mode === m
-                      ? "bg-amber-500/15 text-amber-200"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {m === "12m" ? "Last 12 months" : "All time"}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="flex-1 overflow-auto p-6">
             <div className="min-w-fit mx-auto">
