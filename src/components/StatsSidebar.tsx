@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
+import { AuthButton } from "@/components/AuthButton";
 
 type TimePreset = "today" | "week" | "month" | "year" | "ytd" | "custom";
 
@@ -419,15 +420,19 @@ export function StatsSidebar() {
                             </div>
                           </li>
                         ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
-          </div>
-        </div>
-      </aside>
+              </ul>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  </div>
+
+  <div className="shrink-0 px-5 py-4 border-t border-border">
+    <AuthButton />
+  </div>
+</div>
+</aside>
     </>
   );
 }
