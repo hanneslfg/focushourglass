@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Maximize2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 
 const MONTH_NAMES = [
@@ -100,9 +100,11 @@ function cellHandlers(
 }
 
 // ============ Monthly grid (default sidebar view) ============
+type View = "month" | "year" | "all";
+
 export function ActivityGraph() {
   const sessions = useSessions();
-  const [open, setOpen] = useState(false);
+  const [view, setView] = useState<View>("month");
   const [hover, setHover] = useState<HoverState>(null);
   const totals = useMemo(() => buildTotals(sessions), [sessions]);
 
@@ -142,20 +144,47 @@ export function ActivityGraph() {
     };
   }, [today]);
 
+  const modalMode: RangeMode | null =
+    view === "year" ? "12m" : view === "all" ? "all" : null;
+
   return (
     <section>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2">
         <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Activity
         </div>
-        <button
-          onClick={() => setOpen(true)}
-          className="h-7 w-7 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/60 flex items-center justify-center transition-colors"
-          aria-label="Expand activity"
+        <div
+          className="inline-flex rounded-md border border-border p-0.5"
+          role="tablist"
+          aria-label="Activity view"
         >
-          <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </button>
+          {(
+            [
+              { id: "month", label: "Month" },
+              { id: "year", label: "Year" },
+              { id: "all", label: "All-Time" },
+            ] as const
+          ).map((opt) => {
+            const active = view === opt.id;
+            return (
+              <button
+                key={opt.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setView(opt.id)}
+                className={`px-2.5 h-6 text-[9px] uppercase tracking-[0.16em] rounded-[4px] transition-colors ${
+                  active
+                    ? "bg-amber-500/15 text-amber-200"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
 
       <div className="rounded-md border border-border bg-background/40 p-4">
         <div className="text-[11px] uppercase tracking-[0.28em] text-foreground/80 text-center mb-3">
@@ -219,7 +248,14 @@ export function ActivityGraph() {
       </div>
 
       <Tooltip state={hover} />
-      {open && <YearlyModal onClose={() => setOpen(false)} totals={totals} sessions={sessions} />}
+      {modalMode && (
+        <YearlyModal
+          mode={modalMode}
+          onClose={() => setView("month")}
+          totals={totals}
+          sessions={sessions}
+        />
+      )}
     </section>
   );
 }
@@ -228,16 +264,18 @@ export function ActivityGraph() {
 type RangeMode = "12m" | "all";
 
 function YearlyModal({
+  mode,
   onClose,
   totals,
   sessions,
 }: {
+  mode: RangeMode;
   onClose: () => void;
   totals: DayTotals;
   sessions: Session[];
 }) {
-  const [mode, setMode] = useState<RangeMode>("12m");
   const [hover, setHover] = useState<HoverState>(null);
+  const scopeLabel = mode === "12m" ? "Yearly Overview" : "All-Time Overview";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -330,35 +368,18 @@ function YearlyModal({
                 Overview
               </div>
               <h2 className="font-display text-2xl tracking-tight mt-0.5">
-                Yearly activity
+                {scopeLabel}
               </h2>
             </div>
             <button
               onClick={onClose}
-              className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
+              className="h-9 w-9 rounded-full border border-border/60 text-muted-foreground/80 hover:text-foreground hover:border-foreground/60 flex items-center justify-center transition-colors"
               aria-label="Close"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </header>
 
-          <div className="px-6 py-4 border-b border-border flex justify-center">
-            <div className="inline-flex rounded-md border border-border p-0.5">
-              {(["12m", "all"] as RangeMode[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMode(m)}
-                  className={`px-4 h-8 text-[11px] uppercase tracking-[0.18em] rounded-[5px] transition-colors ${
-                    mode === m
-                      ? "bg-amber-500/15 text-amber-200"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {m === "12m" ? "Last 12 months" : "All time"}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="flex-1 overflow-auto p-6">
             <div className="min-w-fit mx-auto">
