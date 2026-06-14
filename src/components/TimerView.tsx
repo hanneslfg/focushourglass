@@ -172,6 +172,18 @@ export function TimerView() {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
+    if (startedAtRef.current && task.trim()) {
+      saveSessionRemote({
+        user_id: getUserId(),
+        task_name: task.trim(),
+        project_tag: project?.name ?? null,
+        planned_duration: Math.round(total / 60),
+        actual_duration: Math.round(focusedRef.current / 60),
+        started_at: startedAtRef.current,
+        completed_at: new Date().toISOString(),
+        was_aborted: true,
+      });
+    }
     setPhase("idle");
     setTask("");
     setProject(null);
