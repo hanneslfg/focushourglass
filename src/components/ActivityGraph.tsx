@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 
@@ -70,14 +70,16 @@ type HoverState = {
 
 function Tooltip({ state }: { state: HoverState }) {
   if (!state) return null;
+  const text =
+    state.count === 0
+      ? `${formatDate(state.date)}: no sessions`
+      : `${formatDate(state.date)}: ${state.min} focused minute${state.min === 1 ? "" : "s"} across ${state.count} session${state.count === 1 ? "" : "s"}`;
   return (
     <div
-      className="pointer-events-none fixed z-[80] -translate-x-1/2 -translate-y-full px-2.5 py-1.5 rounded-md border border-border bg-card text-[11px] text-foreground shadow-lg whitespace-nowrap"
+      className="pointer-events-none fixed z-[90] -translate-x-1/2 -translate-y-full px-3 py-1.5 rounded-md border border-amber-500/30 bg-card/95 backdrop-blur text-[11px] text-foreground shadow-lg whitespace-nowrap"
       style={{ left: state.x, top: state.y - 6 }}
     >
-      {state.count === 0
-        ? `No sessions on ${formatDate(state.date)}`
-        : `${state.count} session${state.count === 1 ? "" : "s"}, ${state.min} min on ${formatDate(state.date)}`}
+      {text}
     </div>
   );
 }
@@ -87,6 +89,7 @@ function cellHandlers(
   min: number,
   count: number,
   setHover: (s: HoverState) => void,
+  onClick?: () => void,
 ) {
   const enter = (e: React.SyntheticEvent<HTMLDivElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -96,6 +99,7 @@ function cellHandlers(
     onMouseEnter: enter,
     onMouseLeave: () => setHover(null),
     onTouchStart: enter,
+    onClick,
   };
 }
 
@@ -119,7 +123,7 @@ export function ActivityGraph() {
     const m = today.getMonth();
     const first = new Date(y, m, 1);
     const last = new Date(y, m + 1, 0);
-    const startIdx = (first.getDay() + 6) % 7; // Mon = 0
+    const startIdx = (first.getDay() + 6) % 7;
     const gridStart = new Date(y, m, 1 - startIdx);
     const totalDays = startIdx + last.getDate();
     const rows = Math.ceil(totalDays / 7);
@@ -138,13 +142,10 @@ export function ActivityGraph() {
       }
       weeks.push(row);
     }
-    return {
-      weeks,
-      monthLabel: `${MONTH_NAMES[m]} ${y}`,
-    };
+    return { weeks, monthLabel: `${MONTH_NAMES[m]} ${y}` };
   }, [today]);
 
-  const modalMode: RangeMode | null =
+  const fullScreenMode: RangeMode | null =
     view === "year" ? "12m" : view === "all" ? "all" : null;
 
   return (
@@ -185,7 +186,6 @@ export function ActivityGraph() {
         </div>
       </div>
 
-
       <div className="rounded-md border border-border bg-background/40 p-4">
         <div className="text-[11px] uppercase tracking-[0.28em] text-foreground/80 text-center mb-3">
           {monthLabel}
@@ -193,10 +193,7 @@ export function ActivityGraph() {
 
         <div className="grid grid-cols-7 gap-1.5 mb-1.5">
           {DOW.map((d) => (
-            <div
-              key={d}
-              className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70 text-center"
-            >
+            <div key={d} className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70 text-center">
               {d[0]}
             </div>
           ))}
@@ -208,9 +205,7 @@ export function ActivityGraph() {
               return (
                 <div
                   key={i}
-                  className={`aspect-square rounded-md ${
-                    cell.inMonth ? "bg-foreground/[0.03]" : ""
-                  }`}
+                  className={`aspect-square rounded-md ${cell.inMonth ? "bg-foreground/[0.03]" : ""}`}
                 />
               );
             }
@@ -248,9 +243,9 @@ export function ActivityGraph() {
       </div>
 
       <Tooltip state={hover} />
-      {modalMode && (
-        <YearlyModal
-          mode={modalMode}
+      {fullScreenMode && (
+        <FullScreenActivity
+          mode={fullScreenMode}
           onClose={() => setView("month")}
           totals={totals}
           sessions={sessions}
@@ -260,10 +255,10 @@ export function ActivityGraph() {
   );
 }
 
-// ============ Yearly modal ============
+// ============ Full-screen activity ============
 type RangeMode = "12m" | "all";
 
-function YearlyModal({
+function FullScreenActivity({
   mode,
   onClose,
   totals,
@@ -275,15 +270,31 @@ function YearlyModal({
   sessions: Session[];
 }) {
   const [hover, setHover] = useState<HoverState>(null);
+  const [dayDetail, setDayDetail] = useState<Date | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+
   const scopeLabel = mode === "12m" ? "Yearly Overview" : "All-Time Overview";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape") return;
+      if (dayDetail) setDayDetail(null);
+      else onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, dayDetail]);
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const { weeks, monthLabels } = useMemo(() => {
     const today = new Date();
@@ -297,7 +308,6 @@ function YearlyModal({
       firstMonday = new Date(currentMonday);
       firstMonday.setDate(currentMonday.getDate() - 52 * 7);
     } else {
-      // All time: from earliest session (or 12m default if none)
       if (sessions.length === 0) {
         firstMonday = new Date(currentMonday);
         firstMonday.setDate(currentMonday.getDate() - 52 * 7);
@@ -354,106 +364,229 @@ function YearlyModal({
 
   const totalWeeks = weeks.length;
 
+  // Compute cell + gap to fit available box (no horizontal scroll, fills height)
+  const { cell, gap, leftLabelW, topLabelH } = useMemo(() => {
+    const leftLabelW = 36;
+    const topLabelH = 22;
+    const w = Math.max(box.w - leftLabelW - 8, 100);
+    const h = Math.max(box.h - topLabelH - 8, 100);
+    // gap is ~1/6 of cell, min 2
+    const cellW = w / totalWeeks;
+    const cellH = h / 7;
+    let cell = Math.floor(Math.min(cellW, cellH));
+    cell = Math.max(6, Math.min(cell, 40));
+    const gap = Math.max(2, Math.round(cell / 7));
+    // re-fit with gap
+    const fitW = (w - (totalWeeks - 1) * 2) / totalWeeks;
+    const fitH = (h - 6 * 2) / 7;
+    cell = Math.max(6, Math.min(40, Math.floor(Math.min(fitW, fitH))));
+    return { cell, gap: Math.max(2, Math.round(cell / 8)), leftLabelW, topLabelH };
+  }, [box, totalWeeks]);
+
+  const gridWidth = totalWeeks * cell + (totalWeeks - 1) * gap;
+  const gridHeight = 7 * cell + 6 * gap;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[70] bg-background animate-in fade-in duration-200 flex flex-col">
+        <header className="flex items-center justify-between px-8 py-5 border-b border-border/60 shrink-0">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+              Activity
+            </div>
+            <h2 className="font-display text-2xl tracking-tight mt-0.5 text-amber-100/90">
+              {scopeLabel}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="h-10 w-10 rounded-full border border-border/60 text-muted-foreground/80 hover:text-amber-200 hover:border-amber-500/50 flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+        </header>
+
+        <div ref={containerRef} className="flex-1 overflow-hidden px-8 py-6 min-h-0">
+          <div className="relative w-full h-full">
+            {/* Month labels */}
+            <div
+              className="absolute"
+              style={{ left: leftLabelW, top: 0, width: gridWidth, height: topLabelH }}
+            >
+              {monthLabels.map((m) => (
+                <span
+                  key={`${m.col}-${m.label}`}
+                  className="absolute top-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80"
+                  style={{ left: m.col * (cell + gap) }}
+                >
+                  {m.label}
+                </span>
+              ))}
+            </div>
+
+            {/* Day-of-week labels */}
+            <div
+              className="absolute flex flex-col"
+              style={{ left: 0, top: topLabelH, width: leftLabelW, height: gridHeight }}
+            >
+              {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+                <div
+                  key={i}
+                  className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/70"
+                  style={{
+                    height: cell,
+                    marginBottom: i < 6 ? gap : 0,
+                    lineHeight: `${cell}px`,
+                  }}
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Grid */}
+            <div
+              className="absolute flex"
+              style={{ left: leftLabelW, top: topLabelH, gap }}
+            >
+              {weeks.map((col, wi) => (
+                <div key={wi} className="flex flex-col" style={{ gap }}>
+                  {col.map((c, di) => {
+                    if (c.future) {
+                      return <div key={di} style={{ height: cell, width: cell }} />;
+                    }
+                    const t = totals.get(dayKey(c.date));
+                    const min = t?.min ?? 0;
+                    const count = t?.count ?? 0;
+                    const lvl = intensity(min);
+                    return (
+                      <div
+                        key={di}
+                        className={`rounded-[3px] cursor-pointer transition-transform hover:scale-[1.35] hover:ring-1 hover:ring-amber-300/70 ${LEVEL_STYLES[lvl]}`}
+                        style={{ height: cell, width: cell }}
+                        {...cellHandlers(c.date, min, count, setHover, () => setDayDetail(c.date))}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <footer className="flex items-center justify-end gap-2 px-8 py-3 border-t border-border/60 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 shrink-0">
+          <span>Less</span>
+          {[0, 1, 2, 3, 4].map((l) => (
+            <span
+              key={l}
+              className={`h-3 w-3 rounded-[3px] ${LEVEL_STYLES[l as 0 | 1 | 2 | 3 | 4]}`}
+            />
+          ))}
+          <span>More</span>
+        </footer>
+      </div>
+      <Tooltip state={hover} />
+      {dayDetail && (
+        <DayDetailModal
+          date={dayDetail}
+          sessions={sessions}
+          onClose={() => setDayDetail(null)}
+        />
+      )}
+    </>
+  );
+}
+
+// ============ Day-detail modal ============
+function DayDetailModal({
+  date,
+  sessions,
+  onClose,
+}: {
+  date: Date;
+  sessions: Session[];
+  onClose: () => void;
+}) {
+  const key = dayKey(date);
+  const daySessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.completedAt.slice(0, 10) === key)
+        .sort((a, b) => (a.completedAt < b.completedAt ? -1 : 1)),
+    [sessions, key],
+  );
+  const totalMin = daySessions.reduce((a, s) => a + (s.focusedMinutes || 0), 0);
+
   return (
     <>
       <div
         onClick={onClose}
-        className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 z-[80] bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
       />
-      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200 flex flex-col">
-          <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 pointer-events-none">
+        <div className="pointer-events-auto w-full max-w-lg max-h-[80vh] flex flex-col rounded-xl border border-amber-500/20 bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+          <header className="flex items-start justify-between px-6 py-5 border-b border-border/60">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Overview
+              <div className="text-[10px] uppercase tracking-[0.28em] text-amber-400/70">
+                Work Blocks
               </div>
-              <h2 className="font-display text-2xl tracking-tight mt-0.5">
-                {scopeLabel}
-              </h2>
+              <h3 className="font-display text-xl tracking-tight mt-0.5">
+                {formatDate(date)}
+              </h3>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mt-2">
+                {totalMin} focused min · {daySessions.length} session
+                {daySessions.length === 1 ? "" : "s"}
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="h-9 w-9 rounded-full border border-border/60 text-muted-foreground/80 hover:text-foreground hover:border-foreground/60 flex items-center justify-center transition-colors"
+              className="h-9 w-9 rounded-full border border-border/60 text-muted-foreground/80 hover:text-amber-200 hover:border-amber-500/50 flex items-center justify-center transition-colors"
               aria-label="Close"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </header>
-
-
-          <div className="flex-1 overflow-auto p-6">
-            <div className="min-w-fit mx-auto">
-              <div className="flex" style={{ paddingLeft: 24 }}>
-                <div className="relative h-4" style={{ width: totalWeeks * 14 }}>
-                  {monthLabels.map((m) => (
-                    <span
-                      key={`${m.col}-${m.label}`}
-                      className="absolute top-0 text-[10px] uppercase tracking-[0.14em] text-muted-foreground"
-                      style={{ left: m.col * 14 }}
-                    >
-                      {m.label}
-                    </span>
-                  ))}
-                </div>
+          <div className="flex-1 overflow-auto px-6 py-4">
+            {daySessions.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-10">
+                No sessions on this day.
               </div>
-
-              <div className="flex mt-1">
-                <div
-                  className="flex flex-col mr-1 text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70 select-none"
-                  style={{ width: 22 }}
-                >
-                  {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
-                    <div
-                      key={i}
-                      className="leading-none flex items-center"
-                      style={{ height: 12, marginBottom: i < 6 ? 2 : 0 }}
-                    >
-                      {d}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex" style={{ gap: 2 }}>
-                  {weeks.map((col, wi) => (
-                    <div key={wi} className="flex flex-col" style={{ gap: 2 }}>
-                      {col.map((cell, di) => {
-                        if (cell.future) {
-                          return (
-                            <div key={di} style={{ height: 12, width: 12 }} />
-                          );
-                        }
-                        const t = totals.get(dayKey(cell.date));
-                        const min = t?.min ?? 0;
-                        const count = t?.count ?? 0;
-                        const lvl = intensity(min);
-                        return (
-                          <div
-                            key={di}
-                            className={`rounded-[3px] cursor-pointer transition-transform hover:scale-150 ${LEVEL_STYLES[lvl]}`}
-                            style={{ height: 12, width: 12 }}
-                            {...cellHandlers(cell.date, min, count, setHover)}
+            ) : (
+              <ul className="space-y-2">
+                {daySessions.map((s) => (
+                  <li
+                    key={s.id}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-md border border-border/50 bg-background/40"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {s.projectColor && (
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: s.projectColor }}
                           />
-                        );
-                      })}
+                        )}
+                        <span className="truncate text-sm text-foreground">
+                          {s.task || "Untitled session"}
+                        </span>
+                      </div>
+                      {s.projectName && (
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80 mt-0.5">
+                          {s.projectName}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-1.5 mt-4 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/70">
-                <span>Less</span>
-                {[0, 1, 2, 3, 4].map((l) => (
-                  <span
-                    key={l}
-                    className={`h-3 w-3 rounded-[3px] ${LEVEL_STYLES[l as 0 | 1 | 2 | 3 | 4]}`}
-                  />
+                    <div className="text-sm tabular-nums text-amber-200/90 shrink-0">
+                      {s.focusedMinutes} min
+                    </div>
+                  </li>
                 ))}
-                <span>More</span>
-              </div>
-            </div>
+              </ul>
+            )}
           </div>
         </div>
       </div>
-      <Tooltip state={hover} />
     </>
   );
 }
