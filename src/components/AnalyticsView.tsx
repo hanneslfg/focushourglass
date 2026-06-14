@@ -370,24 +370,7 @@ interface DayBucket {
 }
 
 function computeStats(sessions: Session[]) {
-  let totalMin = 0;
-  const projectMap = new Map<string, { name: string; color: string; minutes: number }>();
-  for (const s of sessions) {
-    totalMin += s.focusedMinutes;
-    const key = s.projectId ?? "__untagged";
-    const name = s.projectName ?? "Untagged";
-    const color = s.projectColor ?? "#6b7280";
-    const cur = projectMap.get(key);
-    if (cur) cur.minutes += s.focusedMinutes;
-    else projectMap.set(key, { name, color, minutes: s.focusedMinutes });
-  }
-  const total = Array.from(projectMap.values()).reduce((a, b) => a + b.minutes, 0);
-  const breakdown =
-    total > 0
-      ? Array.from(projectMap.values())
-          .map((p) => ({ name: p.name, color: p.color, pct: p.minutes / total }))
-          .sort((a, b) => b.pct - a.pct)
-      : [];
+  const totalMin = sessions.reduce((a, s) => a + s.focusedMinutes, 0);
   const ordered = [...sessions].sort(
     (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime(),
   );
@@ -407,32 +390,5 @@ function computeStats(sessions: Session[]) {
     sessions.length > 0
       ? Math.round(sessions.reduce((a, s) => a + s.focusedMinutes, 0) / sessions.length)
       : 0;
-  const dayMap = new Map<string, DayBucket>();
-  for (const s of sessions) {
-    const d = new Date(s.completedAt);
-    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    let b = dayMap.get(k);
-    if (!b) {
-      b = {
-        key: k,
-        label: d.toLocaleDateString(undefined, {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }),
-        total: 0,
-        sessions: [],
-      };
-      dayMap.set(k, b);
-    }
-    b.total += s.focusedMinutes;
-    b.sessions.push(s);
-  }
-  const byDay = Array.from(dayMap.values())
-    .sort((a, b) => (a.key < b.key ? 1 : -1))
-    .map((d) => ({
-      ...d,
-      sessions: d.sessions.sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
-    }));
-  return { totalMin, count: sessions.length, breakdown, streak: best, avgMin, byDay };
+  return { totalMin, count: sessions.length, streak: best, avgMin };
 }
