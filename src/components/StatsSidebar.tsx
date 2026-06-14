@@ -182,9 +182,6 @@ export function StatsSidebar() {
         <BarChart3 className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.5} />
       </button>
 
-      <div className="fixed top-16 md:top-[68px] right-4 z-40">
-        <AuthButton />
-      </div>
 
 
       <div
