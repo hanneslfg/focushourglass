@@ -47,26 +47,26 @@ export function playClick() {
 
     const now = audio.currentTime;
     const master = audio.createGain();
-    master.gain.value = 0.6;
+    master.gain.value = 0.7;
     master.connect(audio.destination);
 
-    // 1) Metallic ring — high-frequency oscillator with sharp exponential decay.
+    // 1) Wooden/mechanical body — low oscillator thump with sharp decay.
     const osc = audio.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(2600, now);
-    osc.frequency.exponentialRampToValueAtTime(1800, now + 0.03);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(320, now);
+    osc.frequency.exponentialRampToValueAtTime(160, now + 0.04);
 
     const oscGain = audio.createGain();
     oscGain.gain.setValueAtTime(0.0001, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.35, now + 0.001);
-    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    oscGain.gain.exponentialRampToValueAtTime(0.45, now + 0.001);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
 
     osc.connect(oscGain).connect(master);
     osc.start(now);
-    osc.stop(now + 0.06);
+    osc.stop(now + 0.08);
 
-    // 2) Mechanical impact — very short bandpassed noise burst.
-    const bufferLen = Math.max(1, Math.floor(audio.sampleRate * 0.004));
+    // 2) Mechanical impact — short lowpassed noise burst (the "tock").
+    const bufferLen = Math.max(1, Math.floor(audio.sampleRate * 0.006));
     const buffer = audio.createBuffer(1, bufferLen, audio.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferLen; i++) data[i] = Math.random() * 2 - 1;
@@ -76,17 +76,17 @@ export function playClick() {
 
     const bp = audio.createBiquadFilter();
     bp.type = "bandpass";
-    bp.frequency.value = 4200;
-    bp.Q.value = 2.4;
+    bp.frequency.value = 900;
+    bp.Q.value = 1.2;
 
     const noiseGain = audio.createGain();
     noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.25, now + 0.0008);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+    noiseGain.gain.exponentialRampToValueAtTime(0.3, now + 0.0008);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
 
     noise.connect(bp).connect(noiseGain).connect(master);
     noise.start(now);
-    noise.stop(now + 0.05);
+    noise.stop(now + 0.06);
   } catch (error) {
     console.error("Audio Playback Error:", error);
   }
