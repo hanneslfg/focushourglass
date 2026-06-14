@@ -394,7 +394,7 @@ function AskingControls({
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 text-muted-foreground">
           <button
-            onClick={() => setExtra((m) => Math.max(1, m - 5))}
+            onClick={() => { playClick(); setExtra((m) => Math.max(1, m - 5)); }}
             className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
             aria-label="Less extra"
           >
@@ -413,7 +413,7 @@ function AskingControls({
           />
           <span className="text-xs uppercase tracking-[0.18em]">min</span>
           <button
-            onClick={() => setExtra((m) => Math.min(240, m + 5))}
+            onClick={() => { playClick(); setExtra((m) => Math.min(240, m + 5)); }}
             className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
             aria-label="More extra"
           >
