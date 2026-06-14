@@ -324,50 +324,6 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
   );
 }
 
-function RingChart({
-  segments,
-}: {
-  segments: { name: string; color: string; pct: number }[];
-}) {
-  const size = 120;
-  const stroke = 16;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  let acc = 0;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-      {segments.map((s) => {
-        const dash = s.pct * c;
-        const offset = c - acc;
-        const el = (
-          <circle
-            key={s.name}
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={s.color}
-            strokeWidth={stroke}
-            strokeDasharray={`${dash} ${c - dash}`}
-            strokeDashoffset={offset}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            strokeLinecap="butt"
-          />
-        );
-        acc += dash;
-        return el;
-      })}
-    </svg>
-  );
-}
-
-interface DayBucket {
-  key: string;
-  label: string;
-  total: number;
-  sessions: Session[];
-}
 
 function computeStats(sessions: Session[]) {
   const totalMin = sessions.reduce((a, s) => a + s.focusedMinutes, 0);
