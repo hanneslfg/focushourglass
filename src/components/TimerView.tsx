@@ -242,7 +242,7 @@ export function TimerView() {
           {phase === "idle" ? (
             <div className="flex items-center gap-3 text-muted-foreground">
               <button
-                onClick={() => setMinutes((m) => Math.max(1, m - 5))}
+                onClick={() => { playClick(); setMinutes((m) => Math.max(1, m - 5)); }}
                 className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
                 aria-label="Decrease minutes"
               >
@@ -261,7 +261,7 @@ export function TimerView() {
               />
               <span className="text-xs uppercase tracking-[0.18em]">min</span>
               <button
-                onClick={() => setMinutes((m) => Math.min(600, m + 5))}
+                onClick={() => { playClick(); setMinutes((m) => Math.min(600, m + 5)); }}
                 className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
                 aria-label="Increase minutes"
               >
