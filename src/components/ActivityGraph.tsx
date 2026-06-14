@@ -46,8 +46,8 @@ export function ActivityGraph() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const isMobile = useIsMobile();
   const WEEKS = isMobile ? 26 : 53;
-  const CELL = isMobile ? 10 : 7;
-  const GAP = 2;
+  const CELL = isMobile ? 10 : 6;
+  const GAP = isMobile ? 2 : 1;
   const STEP = CELL + GAP;
 
   const [hover, setHover] = useState<{
