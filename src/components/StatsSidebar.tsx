@@ -203,10 +203,28 @@ export function StatsSidebar() {
             </button>
           </header>
 
+          {/* Tabs */}
+          <div className="flex items-center gap-1 px-5 pt-3 border-b border-border">
+            <TabButton active={tab === "stats"} onClick={() => setTab("stats")}>
+              <BarChart3 className="h-3 w-3" strokeWidth={1.75} /> Stats
+            </TabButton>
+            <TabButton active={tab === "settings"} onClick={() => setTab("settings")}>
+              <SettingsIcon className="h-3 w-3" strokeWidth={1.75} /> Settings
+            </TabButton>
+          </div>
+
           <div
             className="flex-1 overflow-y-auto px-5 py-5 space-y-7"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
           >
+            {tab === "settings" ? (
+              <SettingsPanel />
+            ) : (
+            <>
+            {/* Today's goal progress */}
+            <GoalProgress />
+
+
             {/* Active filter summary */}
             <section className="rounded-md border border-border bg-background/40 px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
