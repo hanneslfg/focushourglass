@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, X, RotateCcw, ChevronDown, Settings as SettingsIcon, Volume2, VolumeX, Bell } from "lucide-react";
+import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { AuthButton } from "@/components/AuthButton";
 import {
-  getSettings,
-  setSettings,
   getTodayGoal,
   getTodayFocusedMinutes,
   getTodayOverride,
