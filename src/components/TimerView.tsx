@@ -282,9 +282,9 @@ export function TimerView() {
           <div className="flex flex-col items-center gap-3 w-full">
             <button
               onClick={pause}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 min-h-14 rounded-md bg-foreground text-background text-lg font-medium hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 min-h-11 rounded-md bg-foreground text-background text-base font-medium hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
             >
-              <Pause className="h-5 w-5" strokeWidth={2} />
+              <Pause className="h-4 w-4" strokeWidth={2} />
               {phase === "paused" ? "Resume" : "Pause"}
             </button>
             <div className="flex items-center gap-2 w-full justify-center">
