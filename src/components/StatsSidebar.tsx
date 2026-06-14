@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
-import { ActivityGraph } from "@/components/ActivityGraph";
+import { ActivityGraph, type View as ActivityView } from "@/components/ActivityGraph";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
@@ -73,8 +73,17 @@ function presetRange(preset: TimePreset, customFrom: string, customTo: string): 
   }
 }
 
-export function StatsSidebar() {
-  const [open, setOpen] = useState(false);
+export function StatsSidebar({
+  open,
+  onOpenChange,
+  activityView,
+  onActivityViewChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  activityView: ActivityView;
+  onActivityViewChange: (view: ActivityView) => void;
+}) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [projects, setProjects] = useState<ProjectTag[]>([]);
 
@@ -122,11 +131,11 @@ export function StatsSidebar() {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") onOpenChange(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, onOpenChange]);
 
   const [from, to] = useMemo(
     () => presetRange(preset, customFrom, customTo),
@@ -175,7 +184,7 @@ export function StatsSidebar() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => onOpenChange(true)}
         className="fixed top-4 right-4 z-40 h-10 w-10 md:h-11 md:w-11 rounded-full border border-border bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/60 transition-colors touch-manipulation"
         aria-label="Open stats"
       >
@@ -185,7 +194,7 @@ export function StatsSidebar() {
 
 
       <div
-        onClick={() => setOpen(false)}
+        onClick={() => onOpenChange(false)}
         className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] transition-opacity ${
           open ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
@@ -209,7 +218,7 @@ export function StatsSidebar() {
               </h2>
             </div>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange(false)}
               className="h-10 w-10 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center touch-manipulation"
               aria-label="Close"
             >
@@ -223,7 +232,7 @@ export function StatsSidebar() {
           >
 
             {/* Activity calendar */}
-            <ActivityGraph />
+            <ActivityGraph view={activityView} onViewChange={onActivityViewChange} />
 
             {/* Today's goal progress */}
             <GoalProgress />
