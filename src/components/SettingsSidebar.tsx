@@ -128,6 +128,14 @@ function SettingsPanel() {
     setSettings({ soundsEnabled: !settings.soundsEnabled });
   }
 
+  function setDayStart(h: number) {
+    setSettings({ dayStartHour: Math.max(0, Math.min(4, h)) });
+  }
+
+  function setWeekStart(v: 0 | 1) {
+    setSettings({ weekStartsOn: v });
+  }
+
   function commitGoal() {
     const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
     setSettings({ defaultDailyGoal: n });
