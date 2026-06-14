@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Maximize2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 
 const MONTH_NAMES = [
