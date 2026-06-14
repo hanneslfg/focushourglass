@@ -3,6 +3,7 @@ import { RotateCcw, ChevronDown } from "lucide-react";
 import { ActivityGraph, type View as ActivityView } from "@/components/ActivityGraph";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
+import { weekColumnIndex } from "@/lib/settings";
 
 type TimePreset = "today" | "week" | "month" | "year" | "ytd" | "custom";
 
