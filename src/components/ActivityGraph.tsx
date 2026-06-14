@@ -264,16 +264,18 @@ export function ActivityGraph() {
 type RangeMode = "12m" | "all";
 
 function YearlyModal({
+  mode,
   onClose,
   totals,
   sessions,
 }: {
+  mode: RangeMode;
   onClose: () => void;
   totals: DayTotals;
   sessions: Session[];
 }) {
-  const [mode, setMode] = useState<RangeMode>("12m");
   const [hover, setHover] = useState<HoverState>(null);
+  const scopeLabel = mode === "12m" ? "Yearly Overview" : "All-Time Overview";
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
