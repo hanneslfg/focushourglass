@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 
-const WEEKS = 53;
 const MONTH_NAMES = [
   "Jan","Feb","Mar","Apr","May","Jun",
   "Jul","Aug","Sep","Oct","Nov","Dec",
@@ -31,8 +30,26 @@ function formatDate(d: Date) {
   });
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
+}
+
 export function ActivityGraph() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const isMobile = useIsMobile();
+  const WEEKS = isMobile ? 26 : 53;
+  const CELL = isMobile ? 10 : 7;
+  const GAP = 2;
+  const STEP = CELL + GAP;
+
   const [hover, setHover] = useState<{
     x: number;
     y: number;
@@ -53,7 +70,6 @@ export function ActivityGraph() {
   }, []);
 
   const { weeks, monthLabels } = useMemo(() => {
-    // Build totals per day
     const totals = new Map<string, { min: number; count: number }>();
     for (const s of sessions) {
       const k = s.completedAt.slice(0, 10);
@@ -63,50 +79,47 @@ export function ActivityGraph() {
       totals.set(k, cur);
     }
 
-    // Find Sunday at the end of current week (so today is included)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    // Week columns: Mon..Sun. Compute Monday of current week.
-    const dayIdx = (today.getDay() + 6) % 7; // 0 = Mon
+    const dayIdx = (today.getDay() + 6) % 7;
     const currentMonday = new Date(today);
     currentMonday.setDate(today.getDate() - dayIdx);
-
-    // First Monday = currentMonday - (WEEKS-1) * 7
     const firstMonday = new Date(currentMonday);
     firstMonday.setDate(currentMonday.getDate() - (WEEKS - 1) * 7);
 
-    const weeks: Array<Array<{ date: Date; min: number; count: number; future: boolean } | null>> = [];
+    const weeks: Array<Array<{ date: Date; min: number; count: number; future: boolean }>> = [];
     for (let w = 0; w < WEEKS; w++) {
-      const col: Array<{ date: Date; min: number; count: number; future: boolean } | null> = [];
+      const col: Array<{ date: Date; min: number; count: number; future: boolean }> = [];
       for (let d = 0; d < 7; d++) {
         const date = new Date(firstMonday);
         date.setDate(firstMonday.getDate() + w * 7 + d);
         const future = date.getTime() > today.getTime();
         const t = totals.get(dayKey(date));
-        col.push({
-          date,
-          min: t?.min ?? 0,
-          count: t?.count ?? 0,
-          future,
-        });
+        col.push({ date, min: t?.min ?? 0, count: t?.count ?? 0, future });
       }
       weeks.push(col);
     }
 
-    // Month labels: position above each week column where the month changes
     const monthLabels: Array<{ col: number; label: string }> = [];
     let lastMonth = -1;
     for (let w = 0; w < WEEKS; w++) {
-      const firstDay = weeks[w][0]!.date;
+      const firstDay = weeks[w][0].date;
       const m = firstDay.getMonth();
       if (m !== lastMonth) {
-        monthLabels.push({ col: w, label: MONTH_NAMES[m] });
+        // Skip if too close to previous label (avoid overlap)
+        const prev = monthLabels[monthLabels.length - 1];
+        if (!prev || w - prev.col >= 2) {
+          monthLabels.push({ col: w, label: MONTH_NAMES[m] });
+        }
         lastMonth = m;
       }
     }
 
     return { weeks, monthLabels };
-  }, [sessions]);
+  }, [sessions, WEEKS]);
+
+  const axisWidth = isMobile ? 22 : 20;
+  const gridWidth = WEEKS * STEP - GAP;
 
   return (
     <section>
@@ -114,74 +127,96 @@ export function ActivityGraph() {
         Activity
       </div>
       <div className="relative rounded-md border border-border bg-background/40 p-3">
-        <div className="overflow-x-auto">
-          <div className="inline-block min-w-full">
-            {/* Month labels row */}
-            <div className="flex pl-7">
-              <div className="relative h-4 flex-1" style={{ minWidth: WEEKS * 11 }}>
-                {monthLabels.map((m) => (
-                  <span
-                    key={`${m.col}-${m.label}`}
-                    className="absolute top-0 text-[9px] uppercase tracking-[0.16em] text-muted-foreground"
-                    style={{ left: m.col * 11 }}
-                  >
-                    {m.label}
-                  </span>
-                ))}
-              </div>
+        <div className="w-full">
+          {/* Month labels */}
+          <div className="flex" style={{ paddingLeft: axisWidth + 4 }}>
+            <div className="relative h-3.5 w-full" style={{ minWidth: gridWidth }}>
+              {monthLabels.map((m) => (
+                <span
+                  key={`${m.col}-${m.label}`}
+                  className="absolute top-0 text-[9px] uppercase tracking-[0.14em] text-muted-foreground"
+                  style={{ left: m.col * STEP }}
+                >
+                  {m.label}
+                </span>
+              ))}
             </div>
+          </div>
 
-            {/* Grid + day-of-week axis */}
-            <div className="flex mt-1">
-              <div className="flex flex-col mr-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70 w-6 select-none">
-                {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
-                  <div key={i} className="h-[11px] leading-[11px]">
-                    {d}
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-[2px]">
-                {weeks.map((col, wi) => (
-                  <div key={wi} className="flex flex-col gap-[2px]">
-                    {col.map((cell, di) => {
-                      if (!cell || cell.future) {
-                        return <div key={di} className="h-[9px] w-[9px]" />;
-                      }
-                      const lvl = intensity(cell.min);
+          {/* Grid + day axis */}
+          <div className="flex mt-1">
+            <div
+              className="flex flex-col mr-1 text-[8px] uppercase tracking-[0.14em] text-muted-foreground/70 select-none"
+              style={{ width: axisWidth }}
+            >
+              {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+                <div
+                  key={i}
+                  className="leading-none flex items-center"
+                  style={{ height: CELL, marginBottom: i < 6 ? GAP : 0 }}
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+            <div className="flex" style={{ gap: GAP }}>
+              {weeks.map((col, wi) => (
+                <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
+                  {col.map((cell, di) => {
+                    if (cell.future) {
                       return (
                         <div
                           key={di}
-                          className={`h-[9px] w-[9px] rounded-[2px] cursor-pointer transition-transform hover:scale-150 ${LEVEL_STYLES[lvl]}`}
-                          onMouseEnter={(e) => {
-                            const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                            setHover({
-                              x: r.left + r.width / 2,
-                              y: r.top,
-                              date: cell.date,
-                              minutes: cell.min,
-                              count: cell.count,
-                            });
-                          }}
-                          onMouseLeave={() => setHover(null)}
+                          style={{ height: CELL, width: CELL }}
                         />
                       );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="flex items-center justify-end gap-1.5 mt-3 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/70">
-              <span>Less</span>
-              {[0, 1, 2, 3, 4].map((l) => (
-                <span
-                  key={l}
-                  className={`h-[9px] w-[9px] rounded-[2px] ${LEVEL_STYLES[l as 0 | 1 | 2 | 3 | 4]}`}
-                />
+                    }
+                    const lvl = intensity(cell.min);
+                    return (
+                      <div
+                        key={di}
+                        className={`rounded-[2px] cursor-pointer transition-transform hover:scale-150 ${LEVEL_STYLES[lvl]}`}
+                        style={{ height: CELL, width: CELL }}
+                        onMouseEnter={(e) => {
+                          const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                          setHover({
+                            x: r.left + r.width / 2,
+                            y: r.top,
+                            date: cell.date,
+                            minutes: cell.min,
+                            count: cell.count,
+                          });
+                        }}
+                        onMouseLeave={() => setHover(null)}
+                        onTouchStart={(e) => {
+                          const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                          setHover({
+                            x: r.left + r.width / 2,
+                            y: r.top,
+                            date: cell.date,
+                            minutes: cell.min,
+                            count: cell.count,
+                          });
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               ))}
-              <span>More</span>
             </div>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center justify-end gap-1.5 mt-3 text-[9px] uppercase tracking-[0.14em] text-muted-foreground/70">
+            <span>Less</span>
+            {[0, 1, 2, 3, 4].map((l) => (
+              <span
+                key={l}
+                className={`rounded-[2px] ${LEVEL_STYLES[l as 0 | 1 | 2 | 3 | 4]}`}
+                style={{ height: CELL, width: CELL }}
+              />
+            ))}
+            <span>More</span>
           </div>
         </div>
 
