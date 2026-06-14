@@ -23,7 +23,7 @@ function endOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).getTime();
 }
 function startOfWeek(d: Date) {
-  const day = (d.getDay() + 6) % 7;
+  const day = weekColumnIndex(d);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - day).getTime();
 }
 function startOfMonth(d: Date) {
