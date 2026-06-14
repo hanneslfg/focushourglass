@@ -106,13 +106,13 @@ export function DailyLogSidebar() {
       />
 
       <aside
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[400px] bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[400px] bg-card border-l border-border shadow-2xl transition-transform duration-300 ease-out overflow-x-hidden ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
       >
         <div className="h-full flex flex-col">
-          <header className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <header className="flex items-center justify-between pl-5 pr-6 py-4 sm:px-5 border-b border-border">
             <div>
               <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                 Today
@@ -131,8 +131,11 @@ export function DailyLogSidebar() {
           </header>
 
           <div
-            className="flex-1 overflow-y-auto px-5 py-6 space-y-8"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)" }}
+            className="flex-1 overflow-y-auto pl-5 pr-6 py-6 sm:px-5 space-y-8"
+            style={{
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 1.5rem)",
+              paddingRight: "max(1.5rem, env(safe-area-inset-right))",
+            }}
           >
             {/* Top: Total today */}
             <section className="text-center">
