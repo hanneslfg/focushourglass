@@ -3,6 +3,7 @@ import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPicker } from "./ProjectPicker";
 import { addSession } from "@/lib/sessions";
+import { saveSessionRemote, getUserId } from "@/lib/supabase";
 import { playGong } from "@/lib/gong";
 import type { ProjectTag } from "@/lib/projects";
 
