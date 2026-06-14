@@ -107,6 +107,23 @@ function SettingsPanel() {
     return () => window.removeEventListener("hourglass:settings", sync);
   }, []);
 
+  const [todayGoal, setTodayGoal] = useState(180);
+  const [todayDone, setTodayDone] = useState(0);
+
+  useEffect(() => {
+    const sync = () => {
+      setTodayGoal(getTodayGoal());
+      setTodayDone(getTodayFocusedMinutes());
+    };
+    sync();
+    window.addEventListener("hourglass:settings", sync);
+    window.addEventListener("hourglass:sessions", sync);
+    return () => {
+      window.removeEventListener("hourglass:settings", sync);
+      window.removeEventListener("hourglass:sessions", sync);
+    };
+  }, []);
+
   function toggleSounds() {
     setSettings({ soundsEnabled: !settings.soundsEnabled });
   }
@@ -115,6 +132,12 @@ function SettingsPanel() {
     const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
     setSettings({ defaultDailyGoal: n });
     setGoalInput(String(n));
+  }
+
+  function adjustTodayGoal(delta: number) {
+    playClick();
+    const next = Math.max(15, Math.min(1440, todayGoal + delta));
+    setTodayOverride(next);
   }
 
   async function enableNotifications() {
