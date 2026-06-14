@@ -272,7 +272,10 @@ function FullScreenActivity({
   const [hover, setHover] = useState<HoverState>(null);
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [box, setBox] = useState(() => ({
+    w: typeof window !== "undefined" ? window.innerWidth - 64 : 1200,
+    h: typeof window !== "undefined" ? window.innerHeight - 180 : 700,
+  }));
 
   const scopeLabel = mode === "12m" ? "Yearly Overview" : "All-Time Overview";
 
