@@ -1,5 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Hourglass as HourglassIcon, CalendarDays } from "lucide-react";
+import { Hourglass as HourglassIcon, CalendarDays, Settings as SettingsIcon } from "lucide-react";
+
+function openSettings() {
+  window.dispatchEvent(new Event("hourglass:open-settings"));
+}
 
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -28,6 +32,15 @@ export function Sidebar() {
             </Link>
           );
         })}
+        <div className="mt-auto">
+          <button
+            onClick={openSettings}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+            aria-label="Settings"
+          >
+            <SettingsIcon className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+        </div>
       </aside>
 
       {/* Mobile bottom nav */}
@@ -54,6 +67,14 @@ export function Sidebar() {
               </Link>
             );
           })}
+          <button
+            onClick={openSettings}
+            className="flex flex-1 flex-col items-center justify-center gap-1 min-h-11 touch-manipulation transition-colors active:bg-accent/60 text-muted-foreground"
+            aria-label="Settings"
+          >
+            <SettingsIcon className="h-5 w-5" strokeWidth={1.5} />
+            <span className="text-[10px] leading-none tracking-wide">Settings</span>
+          </button>
         </div>
       </nav>
     </>
