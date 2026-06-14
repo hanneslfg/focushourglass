@@ -395,7 +395,7 @@ function FullScreenActivity({
 
   return (
     <>
-      <div className="fixed inset-0 z-[70] bg-background animate-in fade-in duration-200 flex flex-col">
+      <div className="fixed inset-0 z-[100] bg-background animate-in fade-in duration-200 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between px-8 py-5 border-b border-border/60 shrink-0">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
