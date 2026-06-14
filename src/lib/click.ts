@@ -2,8 +2,11 @@
  * Synthesizes a subtle mechanical click/tick with Web Audio API.
  * Short bandpass-filtered noise burst — quiet and satisfying.
  */
+import { getSettings } from "./settings";
+
 export function playClick() {
   if (typeof window === "undefined") return;
+  if (!getSettings().soundsEnabled) return;
   const AC: typeof AudioContext =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
