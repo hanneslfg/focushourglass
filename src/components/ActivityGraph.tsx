@@ -460,7 +460,7 @@ export function FullScreenActivity({
               className="absolute flex flex-col"
               style={{ left: 0, top: topLabelH, width: leftLabelW, height: gridHeight }}
             >
-              {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((d, i) => (
+              {dowFull.map((d, i) => (i % 2 === 0 ? d : "")).map((d, i) => (
                 <div
                   key={i}
                   className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/70"
