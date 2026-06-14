@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   Hourglass as HourglassIcon,
   FolderKanban,
+  BarChart3,
   Settings as SettingsIcon,
   LogOut,
   User as UserIcon,
