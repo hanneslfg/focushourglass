@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
-import { ActivityGraph } from "@/components/ActivityGraph";
+import { ActivityGraph, FullScreenActivity, type View as ActivityView } from "@/components/ActivityGraph";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
@@ -81,6 +81,7 @@ export function StatsSidebar() {
   const [preset, setPreset] = useState<TimePreset>("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [activityView, setActivityView] = useState<ActivityView>("month");
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [showProjectFilter, setShowProjectFilter] = useState(false);
   
@@ -171,6 +172,7 @@ export function StatsSidebar() {
       : PRESET_LABELS[preset];
 
   const selectedProjectsList = projects.filter((p) => selectedProjectIds.has(p.id));
+  const fullScreenMode = activityView === "year" ? "12m" : activityView === "all" ? "all" : null;
 
   return (
     <>
@@ -223,7 +225,7 @@ export function StatsSidebar() {
           >
 
             {/* Activity calendar */}
-            <ActivityGraph />
+            <ActivityGraph view={activityView} onViewChange={setActivityView} />
 
             {/* Today's goal progress */}
             <GoalProgress />
@@ -468,6 +470,14 @@ export function StatsSidebar() {
           </div>
         </div>
       </aside>
+
+      {fullScreenMode && (
+        <FullScreenActivity
+          mode={fullScreenMode}
+          sessions={sessions}
+          onClose={() => setActivityView("month")}
+        />
+      )}
     </>
   );
 }
