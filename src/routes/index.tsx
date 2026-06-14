@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/Sidebar";
 import { StatsSidebar } from "@/components/StatsSidebar";
+import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { TimerView } from "@/components/TimerView";
 
 export const Route = createFileRoute("/")({
@@ -25,6 +26,7 @@ function Index() {
       <Sidebar />
       <TimerView />
       <StatsSidebar />
+      <SettingsSidebar />
     </main>
   );
 }
