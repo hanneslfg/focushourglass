@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { StatsSidebar } from "@/components/StatsSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { ProjectsView } from "@/components/ProjectsView";
+import { getSessions, type Session } from "@/lib/sessions";
 
 export const Route = createFileRoute("/projects")({
   head: () => ({
@@ -28,10 +29,11 @@ export const Route = createFileRoute("/projects")({
 function ProjectsRoute() {
   const [statsOpen, setStatsOpen] = useState(false);
   const [activityView, setActivityView] = useState<ActivityView>("month");
+  const [sessions] = useState<Session[]>(() => getSessions());
   const fullScreenMode = activityView === "year" ? "12m" : activityView === "all" ? "all" : null;
 
   if (fullScreenMode) {
-    return <FullScreenActivity mode={fullScreenMode} sessions={[]} onClose={() => setActivityView("month")} />;
+    return <FullScreenActivity mode={fullScreenMode} sessions={sessions} onClose={() => setActivityView("month")} />;
   }
 
   return (
