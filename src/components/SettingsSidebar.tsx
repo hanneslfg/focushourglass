@@ -1,6 +1,22 @@
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, X, Volume2, VolumeX, Bell } from "lucide-react";
-import { getSettings, setSettings } from "@/lib/settings";
+import {
+  Settings as SettingsIcon,
+  X,
+  Volume2,
+  VolumeX,
+  Bell,
+  Minus,
+  Plus,
+  Target,
+} from "lucide-react";
+import {
+  getSettings,
+  setSettings,
+  getTodayGoal,
+  getTodayFocusedMinutes,
+  setTodayOverride,
+} from "@/lib/settings";
+import { playClick } from "@/lib/click";
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
