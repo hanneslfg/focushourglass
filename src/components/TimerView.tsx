@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
+import { Minus, Plus, Play, Pause, Check, X, Target } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPicker } from "./ProjectPicker";
 import { addSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
 import { playGong } from "@/lib/gong";
 import { playClick } from "@/lib/click";
+import {
+  getTodayGoal,
+  setTodayOverride,
+  maybeNotifyGoalReached,
+  getTodayFocusedMinutes,
+} from "@/lib/settings";
 import type { ProjectTag } from "@/lib/projects";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
