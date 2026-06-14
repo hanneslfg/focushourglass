@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Play, Pause, Check } from "lucide-react";
+import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPicker } from "./ProjectPicker";
 import { addSession } from "@/lib/sessions";
@@ -22,6 +22,7 @@ export function TimerView() {
   const [task, setTask] = useState("");
   const [project, setProject] = useState<ProjectTag | null>(null);
   const [minutes, setMinutes] = useState(90);
+  const [showAbortConfirm, setShowAbortConfirm] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   /** Remaining seconds */
   const [remaining, setRemaining] = useState(90 * 60);
@@ -149,6 +150,23 @@ export function TimerView() {
     setPhase("running");
   }
 
+  function abort() {
+    setShowAbortConfirm(false);
+    endAtRef.current = null;
+    if (tickRef.current) {
+      window.clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+    setPhase("idle");
+    setTask("");
+    setProject(null);
+    setMinutes(90);
+    setRemaining(90 * 60);
+    setTotal(90 * 60);
+    focusedRef.current = 0;
+    startedAtRef.current = null;
+  }
+
   return (
     <div className="flex-1 flex items-center justify-center px-4 md:px-6 py-6 md:py-10">
       <div className="w-full max-w-md flex flex-col items-center gap-6 md:gap-10">
@@ -240,6 +258,50 @@ export function TimerView() {
         {/* Controls */}
         {phase === "asking" ? (
           <AskingControls task={task} onDone={finalize} onAddExtra={addExtra} />
+        ) : showAbortConfirm ? (
+          <div className="flex flex-col items-center gap-4 w-full rounded-lg border border-border bg-card p-5">
+            <p className="text-sm text-center text-foreground">
+              Are you sure? This session will not be saved.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAbortConfirm(false)}
+                className="px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={abort}
+                className="px-5 min-h-10 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        ) : phase === "running" || phase === "paused" ? (
+          <div className="flex flex-col items-center gap-3 w-full">
+            <button
+              onClick={pause}
+              className="w-full inline-flex items-center justify-center gap-2 px-6 min-h-14 rounded-md bg-foreground text-background text-lg font-medium hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
+            >
+              <Pause className="h-5 w-5" strokeWidth={2} />
+              {phase === "paused" ? "Resume" : "Pause"}
+            </button>
+            <div className="flex items-center gap-2 w-full justify-center">
+              <button
+                onClick={finalize}
+                className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
+              >
+                <Check className="h-4 w-4" strokeWidth={1.75} /> Complete
+              </button>
+              <button
+                onClick={() => setShowAbortConfirm(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3 min-h-8 rounded-md border border-border/60 text-xs text-muted-foreground hover:border-foreground/40 active:bg-accent transition-colors touch-manipulation"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Abort
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center justify-center gap-2 w-full">
             <button
@@ -251,15 +313,15 @@ export function TimerView() {
             </button>
             <button
               onClick={pause}
-              disabled={phase !== "running" && phase !== "paused"}
+              disabled={true}
               className="inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md border border-border text-base md:text-sm disabled:opacity-30 hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
               <Pause className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} />
-              {phase === "paused" ? "Resume" : "Pause"}
+              Pause
             </button>
             <button
               onClick={finalize}
-              disabled={phase === "idle" || phase === "complete"}
+              disabled={true}
               className="inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md border border-border text-base md:text-sm disabled:opacity-30 hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
               <Check className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} /> Complete
