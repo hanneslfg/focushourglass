@@ -135,6 +135,7 @@ export function TimerView() {
       projectName: project?.name,
       projectColor: project?.color,
     });
+    maybeNotifyGoalReached();
     saveSessionRemote({
       user_id: getUserId(),
       task_name: task.trim(),
