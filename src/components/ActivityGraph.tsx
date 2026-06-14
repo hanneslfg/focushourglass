@@ -1,7 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { getSessions, type Session } from "@/lib/sessions";
+import {
+  effectiveDayKey,
+  effectiveToday,
+  getSettings,
+  orderedDowLabels,
+  weekColumnIndex,
+} from "@/lib/settings";
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -11,7 +18,6 @@ const MONTH_SHORT = [
   "Jan","Feb","Mar","Apr","May","Jun",
   "Jul","Aug","Sep","Oct","Nov","Dec",
 ];
-const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function intensity(min: number): 0 | 1 | 2 | 3 | 4 {
   if (min <= 0) return 0;
