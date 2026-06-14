@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
-import { ProjectPicker } from "./ProjectPicker";
+import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { addSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
 import { playGong } from "@/lib/gong";
@@ -219,11 +219,13 @@ export function TimerView() {
         </div>
 
         {/* Project tag */}
-        <ProjectPicker
-          selectedId={project?.id ?? null}
-          onSelect={setProject}
-          disabled={locked}
-        />
+        <div className="flex justify-center">
+          <ProjectPickerCompact
+            selectedId={project?.id ?? null}
+            onSelect={setProject}
+            disabled={locked}
+          />
+        </div>
 
 
 
