@@ -10,7 +10,6 @@ import {
   getTodayFocusedMinutes,
   getTodayOverride,
   clearTodayOverride,
-  requestNotificationPermission,
 } from "@/lib/settings";
 
 type TimePreset = "today" | "week" | "month" | "year" | "ytd" | "custom";
