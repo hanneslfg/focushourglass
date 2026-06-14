@@ -47,26 +47,11 @@ export function playClick() {
 
     const now = audio.currentTime;
     const master = audio.createGain();
-    master.gain.value = 0.7;
+    master.gain.value = 0.5;
     master.connect(audio.destination);
 
-    // 1) Wooden/mechanical body — low oscillator thump with sharp decay.
-    const osc = audio.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(320, now);
-    osc.frequency.exponentialRampToValueAtTime(160, now + 0.04);
-
-    const oscGain = audio.createGain();
-    oscGain.gain.setValueAtTime(0.0001, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.45, now + 0.001);
-    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-
-    osc.connect(oscGain).connect(master);
-    osc.start(now);
-    osc.stop(now + 0.08);
-
-    // 2) Mechanical impact — short lowpassed noise burst (the "tock").
-    const bufferLen = Math.max(1, Math.floor(audio.sampleRate * 0.006));
+    // Short metallic noise burst — bandpassed high to mimic a watch escapement tick.
+    const bufferLen = Math.max(1, Math.floor(audio.sampleRate * 0.012));
     const buffer = audio.createBuffer(1, bufferLen, audio.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferLen; i++) data[i] = Math.random() * 2 - 1;
@@ -74,19 +59,39 @@ export function playClick() {
     const noise = audio.createBufferSource();
     noise.buffer = buffer;
 
+    // High bandpass around 6kHz for the bright metallic "tick".
     const bp = audio.createBiquadFilter();
     bp.type = "bandpass";
-    bp.frequency.value = 900;
-    bp.Q.value = 1.2;
+    bp.frequency.value = 6000;
+    bp.Q.value = 8;
+
+    // High-pass to strip any low-end body so it stays crisp, not thuddy.
+    const hp = audio.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 3500;
 
     const noiseGain = audio.createGain();
     noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.3, now + 0.0008);
-    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    noiseGain.gain.exponentialRampToValueAtTime(0.5, now + 0.0005);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
 
-    noise.connect(bp).connect(noiseGain).connect(master);
+    noise.connect(bp).connect(hp).connect(noiseGain).connect(master);
     noise.start(now);
-    noise.stop(now + 0.06);
+    noise.stop(now + 0.03);
+
+    // Tiny high "ping" — very faint metallic resonance on top.
+    const osc = audio.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(5200, now);
+
+    const oscGain = audio.createGain();
+    oscGain.gain.setValueAtTime(0.0001, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.12, now + 0.0006);
+    oscGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+
+    osc.connect(oscGain).connect(master);
+    osc.start(now);
+    osc.stop(now + 0.025);
   } catch (error) {
     console.error("Audio Playback Error:", error);
   }
