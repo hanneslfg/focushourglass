@@ -367,27 +367,31 @@ function FullScreenActivity({
 
   const totalWeeks = weeks.length;
 
-  // Compute cell + gap to fit available box (no horizontal scroll, fills height)
-  const { cell, gap, leftLabelW, topLabelH } = useMemo(() => {
-    const leftLabelW = 36;
-    const topLabelH = 22;
+  // Compute cell + gap to fit available box exactly (no horizontal scroll)
+  const { cell, gap, leftLabelW, topLabelH, gridWidth, gridHeight } = useMemo(() => {
+    const leftLabelW = 40;
+    const topLabelH = 24;
     const w = Math.max(box.w - leftLabelW - 8, 100);
     const h = Math.max(box.h - topLabelH - 8, 100);
-    // gap is ~1/6 of cell, min 2
-    const cellW = w / totalWeeks;
-    const cellH = h / 7;
-    let cell = Math.floor(Math.min(cellW, cellH));
-    cell = Math.max(6, Math.min(cell, 40));
-    const gap = Math.max(2, Math.round(cell / 7));
-    // re-fit with gap
-    const fitW = (w - (totalWeeks - 1) * 2) / totalWeeks;
-    const fitH = (h - 6 * 2) / 7;
-    cell = Math.max(6, Math.min(40, Math.floor(Math.min(fitW, fitH))));
-    return { cell, gap: Math.max(2, Math.round(cell / 8)), leftLabelW, topLabelH };
+    // Try the largest cell that fits both dimensions, with gap = cell/8 (min 1)
+    let cell = 40;
+    let gap = 4;
+    for (let c = 56; c >= 3; c--) {
+      const g = Math.max(1, Math.round(c / 8));
+      const needW = totalWeeks * c + (totalWeeks - 1) * g;
+      const needH = 7 * c + 6 * g;
+      if (needW <= w && needH <= h) {
+        cell = c;
+        gap = g;
+        break;
+      }
+      cell = c;
+      gap = g;
+    }
+    const gridWidth = totalWeeks * cell + (totalWeeks - 1) * gap;
+    const gridHeight = 7 * cell + 6 * gap;
+    return { cell, gap, leftLabelW, topLabelH, gridWidth, gridHeight };
   }, [box, totalWeeks]);
-
-  const gridWidth = totalWeeks * cell + (totalWeeks - 1) * gap;
-  const gridHeight = 7 * cell + 6 * gap;
 
   return (
     <>
