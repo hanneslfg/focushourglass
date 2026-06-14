@@ -1,0 +1,204 @@
+import { useEffect, useState } from "react";
+import { Settings as SettingsIcon, X, Volume2, VolumeX, Bell } from "lucide-react";
+import { getSettings, setSettings } from "@/lib/settings";
+
+export function SettingsSidebar() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("hourglass:open-settings", onOpen);
+    return () => window.removeEventListener("hourglass:open-settings", onOpen);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <>
+      <div
+        onClick={() => setOpen(false)}
+        className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] transition-opacity ${
+          open ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        aria-hidden
+      />
+      <aside
+        className={`fixed top-0 left-0 z-50 h-full w-full sm:w-[420px] bg-card border-r border-border shadow-2xl transition-transform duration-300 ease-out ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-hidden={!open}
+      >
+        <div className="h-full flex flex-col">
+          <header className="flex items-center justify-between px-5 py-4 border-b border-border">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Preferences
+              </div>
+              <h2 className="font-display text-2xl tracking-tight mt-0.5 flex items-center gap-2">
+                <SettingsIcon className="h-5 w-5" strokeWidth={1.5} /> Settings
+              </h2>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              className="h-10 w-10 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center touch-manipulation"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </header>
+          <div
+            className="flex-1 overflow-y-auto px-5 py-5"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
+          >
+            <SettingsPanel />
+          </div>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+      {children}
+    </h3>
+  );
+}
+
+function SettingsPanel() {
+  const [settings, setLocal] = useState(() => getSettings());
+  const [goalInput, setGoalInput] = useState(String(getSettings().defaultDailyGoal));
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window
+      ? Notification.permission
+      : "unsupported",
+  );
+
+  useEffect(() => {
+    const sync = () => {
+      setLocal(getSettings());
+      setGoalInput(String(getSettings().defaultDailyGoal));
+    };
+    window.addEventListener("hourglass:settings", sync);
+    return () => window.removeEventListener("hourglass:settings", sync);
+  }, []);
+
+  function toggleSounds() {
+    setSettings({ soundsEnabled: !settings.soundsEnabled });
+  }
+
+  function commitGoal() {
+    const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
+    setSettings({ defaultDailyGoal: n });
+    setGoalInput(String(n));
+  }
+
+  async function enableNotifications() {
+    if (!("Notification" in window)) return;
+    const p = await Notification.requestPermission();
+    setNotifPerm(p);
+  }
+
+  return (
+    <div className="space-y-7">
+      <section>
+        <SectionTitle>Audio</SectionTitle>
+        <button
+          onClick={toggleSounds}
+          className="mt-3 w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors touch-manipulation"
+        >
+          <span className="flex items-center gap-2.5 text-sm">
+            {settings.soundsEnabled ? (
+              <Volume2 className="h-4 w-4" strokeWidth={1.5} />
+            ) : (
+              <VolumeX className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+            )}
+            UI sounds
+          </span>
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              settings.soundsEnabled ? "bg-primary" : "bg-border"
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${
+                settings.soundsEnabled ? "translate-x-[18px]" : "translate-x-1"
+              }`}
+            />
+          </span>
+        </button>
+        <p className="mt-2 text-[11px] text-muted-foreground/70">
+          Master switch for click ticks and the completion gong.
+        </p>
+      </section>
+
+      <section>
+        <SectionTitle>Default daily goal</SectionTitle>
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={15}
+            max={1440}
+            step={15}
+            value={goalInput}
+            onChange={(e) => setGoalInput(e.target.value)}
+            onBlur={commitGoal}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            }}
+            className="flex-1 bg-background border border-border rounded-md px-3 py-2 font-display text-xl tabular-nums text-foreground outline-none focus:border-foreground/60"
+          />
+          <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            min
+          </span>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground/70">
+          Saved locally. Defaults to 180 minutes (3h). Today&rsquo;s ad-hoc
+          adjustments live alongside it and reset at midnight.
+        </p>
+      </section>
+
+      <section>
+        <SectionTitle>Notifications</SectionTitle>
+        <div className="mt-3 rounded-md border border-border bg-background/40 px-4 py-3">
+          <div className="flex items-center gap-2.5 text-sm">
+            <Bell className="h-4 w-4" strokeWidth={1.5} />
+            Browser notifications
+          </div>
+          <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+            We&rsquo;ll ping you the moment a session pushes you past your
+            daily goal.
+          </p>
+          {notifPerm === "granted" && (
+            <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-primary">
+              Enabled
+            </p>
+          )}
+          {notifPerm === "denied" && (
+            <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Blocked in browser settings
+            </p>
+          )}
+          {(notifPerm === "default" || notifPerm === "unsupported") && (
+            <button
+              onClick={enableNotifications}
+              disabled={notifPerm === "unsupported"}
+              className="mt-3 inline-flex items-center gap-2 px-3 min-h-9 rounded-md border border-border text-xs hover:border-foreground/60 active:bg-accent transition-colors disabled:opacity-40 touch-manipulation"
+            >
+              Enable notifications
+            </button>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}

@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, X, RotateCcw, ChevronDown, Settings as SettingsIcon, Volume2, VolumeX, Bell } from "lucide-react";
+import { BarChart3, X, RotateCcw, ChevronDown } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { AuthButton } from "@/components/AuthButton";
 import {
-  getSettings,
-  setSettings,
   getTodayGoal,
   getTodayFocusedMinutes,
   getTodayOverride,
@@ -84,7 +82,7 @@ export function StatsSidebar() {
   const [customTo, setCustomTo] = useState("");
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
   const [showProjectFilter, setShowProjectFilter] = useState(false);
-  const [tab, setTab] = useState<"stats" | "settings">("stats");
+  
 
   useEffect(() => {
     const sync = () => setSessions(getSessions());
@@ -202,26 +200,15 @@ export function StatsSidebar() {
             </button>
           </header>
 
-          {/* Tabs */}
-          <div className="flex items-center gap-1 px-5 pt-3 border-b border-border">
-            <TabButton active={tab === "stats"} onClick={() => setTab("stats")}>
-              <BarChart3 className="h-3 w-3" strokeWidth={1.75} /> Stats
-            </TabButton>
-            <TabButton active={tab === "settings"} onClick={() => setTab("settings")}>
-              <SettingsIcon className="h-3 w-3" strokeWidth={1.75} /> Settings
-            </TabButton>
-          </div>
-
           <div
             className="flex-1 overflow-y-auto px-5 py-5 space-y-7"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
           >
-            {tab === "settings" ? (
-              <SettingsPanel />
-            ) : (
             <>
             {/* Today's goal progress */}
             <GoalProgress />
+
+
 
 
             {/* Active filter summary */}
@@ -459,7 +446,6 @@ export function StatsSidebar() {
       )}
     </section>
             </>
-            )}
           </div>
         </div>
       </aside>
@@ -628,28 +614,6 @@ function computeStats(sessions: Session[]) {
   };
 }
 
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 h-9 -mb-px border-b-2 text-xs uppercase tracking-[0.18em] transition-colors touch-manipulation ${
-        active
-          ? "border-foreground text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 function GoalProgress() {
   const [goal, setGoal] = useState(180);
@@ -713,133 +677,4 @@ function GoalProgress() {
   );
 }
 
-function SettingsPanel() {
-  const [settings, setLocal] = useState(() => getSettings());
-  const [goalInput, setGoalInput] = useState(String(getSettings().defaultDailyGoal));
-  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
-    typeof window !== "undefined" && "Notification" in window
-      ? Notification.permission
-      : "unsupported",
-  );
-
-  useEffect(() => {
-    const sync = () => {
-      setLocal(getSettings());
-      setGoalInput(String(getSettings().defaultDailyGoal));
-    };
-    window.addEventListener("hourglass:settings", sync);
-    return () => window.removeEventListener("hourglass:settings", sync);
-  }, []);
-
-  function toggleSounds() {
-    setSettings({ soundsEnabled: !settings.soundsEnabled });
-  }
-
-  function commitGoal() {
-    const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
-    setSettings({ defaultDailyGoal: n });
-    setGoalInput(String(n));
-  }
-
-  async function enableNotifications() {
-    if (!("Notification" in window)) return;
-    const p = await Notification.requestPermission();
-    setNotifPerm(p);
-  }
-
-  return (
-    <div className="space-y-7">
-      <section>
-        <SectionTitle>Audio</SectionTitle>
-        <button
-          onClick={toggleSounds}
-          className="mt-3 w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors touch-manipulation"
-        >
-          <span className="flex items-center gap-2.5 text-sm">
-            {settings.soundsEnabled ? (
-              <Volume2 className="h-4 w-4" strokeWidth={1.5} />
-            ) : (
-              <VolumeX className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            )}
-            UI sounds
-          </span>
-          <span
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              settings.soundsEnabled ? "bg-primary" : "bg-border"
-            }`}
-          >
-            <span
-              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${
-                settings.soundsEnabled ? "translate-x-[18px]" : "translate-x-1"
-              }`}
-            />
-          </span>
-        </button>
-        <p className="mt-2 text-[11px] text-muted-foreground/70">
-          Master switch for click ticks and the completion gong.
-        </p>
-      </section>
-
-      <section>
-        <SectionTitle>Default daily goal</SectionTitle>
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            min={15}
-            max={1440}
-            step={15}
-            value={goalInput}
-            onChange={(e) => setGoalInput(e.target.value)}
-            onBlur={commitGoal}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-            className="flex-1 bg-background border border-border rounded-md px-3 py-2 font-display text-xl tabular-nums text-foreground outline-none focus:border-foreground/60"
-          />
-          <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            min
-          </span>
-        </div>
-        <p className="mt-2 text-[11px] text-muted-foreground/70">
-          Saved locally. Defaults to 180 minutes (3h). Today&rsquo;s ad-hoc
-          adjustments live alongside it and reset at midnight.
-        </p>
-      </section>
-
-      <section>
-        <SectionTitle>Notifications</SectionTitle>
-        <div className="mt-3 rounded-md border border-border bg-background/40 px-4 py-3">
-          <div className="flex items-center gap-2.5 text-sm">
-            <Bell className="h-4 w-4" strokeWidth={1.5} />
-            Browser notifications
-          </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground/70">
-            We&rsquo;ll ping you the moment a session pushes you past your
-            daily goal.
-          </p>
-          {notifPerm === "granted" && (
-            <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-primary">
-              Enabled
-            </p>
-          )}
-          {notifPerm === "denied" && (
-            <p className="mt-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              Blocked in browser settings
-            </p>
-          )}
-          {(notifPerm === "default" || notifPerm === "unsupported") && (
-            <button
-              onClick={enableNotifications}
-              disabled={notifPerm === "unsupported"}
-              className="mt-3 inline-flex items-center gap-2 px-3 min-h-9 rounded-md border border-border text-xs hover:border-foreground/60 active:bg-accent transition-colors disabled:opacity-40 touch-manipulation"
-            >
-              Enable notifications
-            </button>
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
 
