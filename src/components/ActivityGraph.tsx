@@ -122,7 +122,7 @@ export function ActivityGraph({
 }) {
   const sessions = useSessions();
   const [hover, setHover] = useState<HoverState>(null);
-  const totals = useMemo(() => buildTotals(sessions), [sessions]);
+  // settingsTick is declared just below; include in deps so totals refresh on cutoff change.
 
   // Re-render this view when the user changes weekStartsOn / dayStartHour.
   const [settingsTick, setSettingsTick] = useState(0);
