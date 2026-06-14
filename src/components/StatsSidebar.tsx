@@ -155,6 +155,11 @@ export function StatsSidebar() {
         <BarChart3 className="h-4 w-4 md:h-[18px] md:w-[18px]" strokeWidth={1.5} />
       </button>
 
+      <div className="fixed top-16 md:top-[68px] right-4 z-40">
+        <AuthButton />
+      </div>
+
+
       <div
         onClick={() => setOpen(false)}
         className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-[1px] transition-opacity ${
@@ -428,9 +433,8 @@ export function StatsSidebar() {
     </section>
   </div>
 
-  <div className="shrink-0 px-5 py-4 border-t border-border">
-    <AuthButton />
-  </div>
+
+
 </div>
 </aside>
     </>
