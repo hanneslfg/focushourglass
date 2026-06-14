@@ -6,6 +6,7 @@ import {
   getTodayFocusedMinutes,
   getTodayOverride,
   clearTodayOverride,
+  effectiveDayKey,
 } from "@/lib/settings";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
 
