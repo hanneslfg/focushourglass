@@ -1,6 +1,22 @@
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, X, Volume2, VolumeX, Bell } from "lucide-react";
-import { getSettings, setSettings } from "@/lib/settings";
+import {
+  Settings as SettingsIcon,
+  X,
+  Volume2,
+  VolumeX,
+  Bell,
+  Minus,
+  Plus,
+  Target,
+} from "lucide-react";
+import {
+  getSettings,
+  setSettings,
+  getTodayGoal,
+  getTodayFocusedMinutes,
+  setTodayOverride,
+} from "@/lib/settings";
+import { playClick } from "@/lib/click";
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
@@ -91,6 +107,23 @@ function SettingsPanel() {
     return () => window.removeEventListener("hourglass:settings", sync);
   }, []);
 
+  const [todayGoal, setTodayGoal] = useState(180);
+  const [todayDone, setTodayDone] = useState(0);
+
+  useEffect(() => {
+    const sync = () => {
+      setTodayGoal(getTodayGoal());
+      setTodayDone(getTodayFocusedMinutes());
+    };
+    sync();
+    window.addEventListener("hourglass:settings", sync);
+    window.addEventListener("hourglass:sessions", sync);
+    return () => {
+      window.removeEventListener("hourglass:settings", sync);
+      window.removeEventListener("hourglass:sessions", sync);
+    };
+  }, []);
+
   function toggleSounds() {
     setSettings({ soundsEnabled: !settings.soundsEnabled });
   }
@@ -99,6 +132,12 @@ function SettingsPanel() {
     const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
     setSettings({ defaultDailyGoal: n });
     setGoalInput(String(n));
+  }
+
+  function adjustTodayGoal(delta: number) {
+    playClick();
+    const next = Math.max(15, Math.min(1440, todayGoal + delta));
+    setTodayOverride(next);
   }
 
   async function enableNotifications() {
@@ -164,6 +203,48 @@ function SettingsPanel() {
         <p className="mt-2 text-[11px] text-muted-foreground/70">
           Saved locally. Defaults to 180 minutes (3h). Today&rsquo;s ad-hoc
           adjustments live alongside it and reset at midnight.
+        </p>
+      </section>
+
+      <section>
+        <SectionTitle>Today&rsquo;s goal</SectionTitle>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={() => adjustTodayGoal(-15)}
+            className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center touch-manipulation"
+            aria-label="Lower today's goal"
+          >
+            <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <div className="flex-1 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
+              <Target className="h-3 w-3" strokeWidth={1.75} />
+              <span className="text-[10px] uppercase tracking-[0.22em]">Progress</span>
+            </div>
+            <div className="font-display text-xl tabular-nums tracking-tight mt-1">
+              {todayDone}
+              <span className="text-muted-foreground/60"> / {todayGoal}</span>
+              <span className="text-xs text-muted-foreground/60 ml-1">min</span>
+            </div>
+            <div className="w-full h-1 rounded-full bg-border/60 overflow-hidden mt-2">
+              <div
+                className="h-full bg-primary transition-all duration-500"
+                style={{
+                  width: `${todayGoal > 0 ? Math.min(100, Math.round((todayDone / todayGoal) * 100)) : 0}%`,
+                }}
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => adjustTodayGoal(15)}
+            className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 active:bg-accent flex items-center justify-center touch-manipulation"
+            aria-label="Raise today's goal"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground/70">
+          Ad-hoc override for today only. Resets to default at midnight.
         </p>
       </section>
 
