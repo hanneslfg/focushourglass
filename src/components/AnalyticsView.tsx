@@ -318,11 +318,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function EmptyHint({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mt-3 text-xs text-muted-foreground/70 italic">{children}</p>
-  );
-}
 
 
 function computeStats(sessions: Session[]) {
