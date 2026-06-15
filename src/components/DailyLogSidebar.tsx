@@ -135,6 +135,22 @@ export function DailyLogSidebar() {
               paddingRight: "max(1.5rem, env(safe-area-inset-right))",
             }}
           >
+            {/* Streaks */}
+            <section className="grid grid-cols-2 gap-2">
+              <StreakCard
+                icon="🔥"
+                value={streaks.dayStreak}
+                label={`day${streaks.dayStreak === 1 ? "" : "s"}`}
+                sub="streak"
+              />
+              <StreakCard
+                icon="⚡"
+                value={streaks.sessionStreak}
+                label={`session${streaks.sessionStreak === 1 ? "" : "s"}`}
+                sub="streak"
+              />
+            </section>
+
             {/* Top: Total today */}
             <section className="text-center">
               <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
