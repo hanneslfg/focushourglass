@@ -8,6 +8,7 @@ import {
   clearTodayOverride,
   effectiveDayKey,
 } from "@/lib/settings";
+import { refreshStreaks, getCachedStreaks, type Streaks } from "@/lib/streaks";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
 
 function fmtHM(mins: number) {
@@ -29,6 +30,7 @@ export function DailyLogSidebar() {
   const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
+  const [streaks, setStreaks] = useState<Streaks>(() => getCachedStreaks());
 
   useEffect(() => {
     const sync = () => {
@@ -36,6 +38,7 @@ export function DailyLogSidebar() {
       setGoal(getTodayGoal());
       setDone(getTodayFocusedMinutes());
       setOverride(getTodayOverride());
+      setStreaks(refreshStreaks());
     };
     sync();
     window.addEventListener("hourglass:sessions", sync);
@@ -132,6 +135,22 @@ export function DailyLogSidebar() {
               paddingRight: "max(1.5rem, env(safe-area-inset-right))",
             }}
           >
+            {/* Streaks */}
+            <section className="grid grid-cols-2 gap-2">
+              <StreakCard
+                icon="🔥"
+                value={streaks.dayStreak}
+                label={`day${streaks.dayStreak === 1 ? "" : "s"}`}
+                sub="streak"
+              />
+              <StreakCard
+                icon="⚡"
+                value={streaks.sessionStreak}
+                label={`session${streaks.sessionStreak === 1 ? "" : "s"}`}
+                sub="streak"
+              />
+            </section>
+
             {/* Top: Total today */}
             <section className="text-center">
               <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
@@ -226,5 +245,54 @@ export function DailyLogSidebar() {
         </div>
       </aside>
     </>
+  );
+}
+
+function StreakCard({
+  icon,
+  value,
+  label,
+  sub,
+}: {
+  icon: string;
+  value: number;
+  label: string;
+  sub: string;
+}) {
+  const active = value > 0;
+  return (
+    <div
+      className={`rounded-md border px-3 py-2.5 flex items-center gap-2.5 transition-colors ${
+        active
+          ? "border-amber-500/30 bg-amber-500/[0.06]"
+          : "border-border bg-background/40"
+      }`}
+    >
+      <span
+        className="text-base leading-none"
+        style={{ filter: active ? "drop-shadow(0 0 6px rgba(245,158,11,0.45))" : "grayscale(1) opacity(0.55)" }}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex flex-col leading-tight">
+        <div className="flex items-baseline gap-1">
+          <span
+            className={`font-display text-xl tabular-nums tracking-tight ${
+              active ? "text-amber-300" : "text-muted-foreground"
+            }`}
+            style={active ? { textShadow: "0 0 12px rgba(245,158,11,0.35)" } : undefined}
+          >
+            {value}
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            {label}
+          </span>
+        </div>
+        <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/70">
+          {sub}
+        </span>
+      </div>
+    </div>
   );
 }
