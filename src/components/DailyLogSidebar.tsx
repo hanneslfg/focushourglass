@@ -247,3 +247,52 @@ export function DailyLogSidebar() {
     </>
   );
 }
+
+function StreakCard({
+  icon,
+  value,
+  label,
+  sub,
+}: {
+  icon: string;
+  value: number;
+  label: string;
+  sub: string;
+}) {
+  const active = value > 0;
+  return (
+    <div
+      className={`rounded-md border px-3 py-2.5 flex items-center gap-2.5 transition-colors ${
+        active
+          ? "border-amber-500/30 bg-amber-500/[0.06]"
+          : "border-border bg-background/40"
+      }`}
+    >
+      <span
+        className="text-base leading-none"
+        style={{ filter: active ? "drop-shadow(0 0 6px rgba(245,158,11,0.45))" : "grayscale(1) opacity(0.55)" }}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <div className="min-w-0 flex flex-col leading-tight">
+        <div className="flex items-baseline gap-1">
+          <span
+            className={`font-display text-xl tabular-nums tracking-tight ${
+              active ? "text-amber-300" : "text-muted-foreground"
+            }`}
+            style={active ? { textShadow: "0 0 12px rgba(245,158,11,0.35)" } : undefined}
+          >
+            {value}
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            {label}
+          </span>
+        </div>
+        <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/70">
+          {sub}
+        </span>
+      </div>
+    </div>
+  );
+}
