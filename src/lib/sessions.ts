@@ -39,6 +39,29 @@ export function addSession(s: Session) {
   write([...read(), s]);
 }
 
+export function removeSession(id: string) {
+  write(read().filter((s) => s.id !== id));
+}
+
+function remoteKey(task: string, startedAt: string, completedAt: string): string {
+  return `${task}|${startedAt.slice(0, 19)}|${completedAt.slice(0, 19)}`;
+}
+
+/**
+ * Insert a session from a remote realtime/sync event. Idempotent: skips if a
+ * local session already matches by id or by (task, startedAt, completedAt).
+ */
+export function upsertRemoteSession(s: Session): boolean {
+  const list = read();
+  const key = remoteKey(s.task, s.startedAt, s.completedAt);
+  const exists = list.some(
+    (x) => x.id === s.id || remoteKey(x.task, x.startedAt, x.completedAt) === key,
+  );
+  if (exists) return false;
+  write([...list, s]);
+  return true;
+}
+
 export function sessionsByDay(): Map<string, Session[]> {
   const map = new Map<string, Session[]>();
   for (const s of read()) {
