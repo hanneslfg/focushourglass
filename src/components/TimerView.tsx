@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
-import { addSession } from "@/lib/sessions";
+import { addSession, removeSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
 import { playGong } from "@/lib/gong";
 import { playClick } from "@/lib/click";
 import { maybeNotifyGoalReached } from "@/lib/settings";
+import { toast } from "sonner";
 import type { ProjectTag } from "@/lib/projects";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
@@ -119,8 +120,10 @@ export function TimerView() {
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.round(focusedRef.current / 60);
+    const localId = crypto.randomUUID();
+    // Optimistic insert — sidebars/grids update instantly.
     addSession({
-      id: crypto.randomUUID(),
+      id: localId,
       task: task.trim(),
       plannedMinutes,
       focusedMinutes,
@@ -140,6 +143,15 @@ export function TimerView() {
       started_at: startedAt,
       completed_at: completedAt,
       was_aborted: false,
+    }).then((res) => {
+      if (res && !res.ok && !res.queued) {
+        removeSession(localId);
+        toast.error("Couldn't save session", { description: "We'll retry when you're back online." });
+      } else if (res && res.queued) {
+        toast("Saved locally", { description: "Will sync when you sign in or reconnect." });
+      }
+    }).catch((e) => {
+      console.error("saveSessionRemote threw:", e);
     });
     setPhase("complete");
     endAtRef.current = null;
@@ -176,16 +188,40 @@ export function TimerView() {
       tickRef.current = null;
     }
     if (startedAtRef.current && task.trim()) {
+      const startedAt = startedAtRef.current;
+      const completedAt = new Date().toISOString();
+      const plannedMinutes = Math.round(total / 60);
+      const focusedMinutes = Math.round(focusedRef.current / 60);
+      const localId = crypto.randomUUID();
+      // Optimistic: surface the aborted block in the daily log/grid immediately.
+      addSession({
+        id: localId,
+        task: task.trim(),
+        plannedMinutes,
+        focusedMinutes,
+        startedAt,
+        completedAt,
+        projectId: project?.id,
+        projectName: project?.name,
+        projectColor: project?.color,
+      });
       saveSessionRemote({
         user_id: getUserId(),
         task_name: task.trim(),
         project_tag: project?.name ?? null,
-        planned_duration: Math.round(total / 60),
-        actual_duration: Math.round(focusedRef.current / 60),
-        started_at: startedAtRef.current,
-        completed_at: new Date().toISOString(),
+        planned_duration: plannedMinutes,
+        actual_duration: focusedMinutes,
+        started_at: startedAt,
+        completed_at: completedAt,
         was_aborted: true,
-      });
+      }).then((res) => {
+        if (res && !res.ok && !res.queued) {
+          removeSession(localId);
+          toast.error("Couldn't save session", { description: "We'll retry when you're back online." });
+        } else if (res && res.queued) {
+          toast("Saved locally", { description: "Will sync when you sign in or reconnect." });
+        }
+      }).catch((e) => console.error("saveSessionRemote threw:", e));
     }
     setPhase("idle");
     setTask("");

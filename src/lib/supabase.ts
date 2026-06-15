@@ -137,7 +137,7 @@ export async function saveSessionRemote(s: RemoteSession) {
       "[supabase] saveSession: user not authenticated → saving to localStorage queue",
     );
     queuePending(s);
-    return;
+    return { ok: false, queued: true } as const;
   }
 
   const payload = buildPayload(s, authUserId);
@@ -158,12 +158,14 @@ export async function saveSessionRemote(s: RemoteSession) {
         );
       }
       queuePending(s);
-    } else {
-      console.log("[supabase] saveSession OK", data);
+      return { ok: false, queued: true, error: error.message } as const;
     }
+    console.log("[supabase] saveSession OK", data);
+    return { ok: true, queued: false } as const;
   } catch (e) {
     console.error("[supabase] saveSession threw:", e);
     queuePending(s);
+    return { ok: false, queued: true, error: String(e) } as const;
   }
 }
 
