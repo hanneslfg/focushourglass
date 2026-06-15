@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
+import { MilestoneOverlay } from "@/components/MilestoneOverlay";
+import { checkMilestones } from "@/lib/milestones";
 
 function NotFoundComponent() {
   return (
