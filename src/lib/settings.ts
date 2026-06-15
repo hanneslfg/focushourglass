@@ -2,7 +2,7 @@ import { getSessions } from "./sessions";
 
 const KEY = "hourglass.settings.v1";
 const OVERRIDE_KEY = "hourglass.dailyOverride.v1";
-const NOTIFIED_KEY = "hourglass.goalNotified.v1";
+
 
 export type WeekStart = 0 | 1; // 0 = Sunday, 1 = Monday
 
