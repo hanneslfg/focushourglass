@@ -120,8 +120,10 @@ export function TimerView() {
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.round(focusedRef.current / 60);
+    const localId = crypto.randomUUID();
+    // Optimistic insert — sidebars/grids update instantly.
     addSession({
-      id: crypto.randomUUID(),
+      id: localId,
       task: task.trim(),
       plannedMinutes,
       focusedMinutes,
@@ -141,6 +143,15 @@ export function TimerView() {
       started_at: startedAt,
       completed_at: completedAt,
       was_aborted: false,
+    }).then((res) => {
+      if (res && !res.ok && !res.queued) {
+        removeSession(localId);
+        toast.error("Couldn't save session", { description: "We'll retry when you're back online." });
+      } else if (res && res.queued) {
+        toast("Saved locally", { description: "Will sync when you sign in or reconnect." });
+      }
+    }).catch((e) => {
+      console.error("saveSessionRemote threw:", e);
     });
     setPhase("complete");
     endAtRef.current = null;
