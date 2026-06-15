@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
 import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
+import { MilestoneOverlay } from "@/components/MilestoneOverlay";
+import { checkMilestones } from "@/lib/milestones";
 
 function NotFoundComponent() {
   return (
@@ -129,11 +131,23 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useRealtimeSessions();
 
+  useEffect(() => {
+    const run = () => checkMilestones();
+    run();
+    window.addEventListener("hourglass:sessions", run);
+    window.addEventListener("hourglass:settings", run);
+    return () => {
+      window.removeEventListener("hourglass:sessions", run);
+      window.removeEventListener("hourglass:settings", run);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <Toaster />
+      <Toaster position="bottom-center" />
+      <MilestoneOverlay />
     </QueryClientProvider>
   );
 }

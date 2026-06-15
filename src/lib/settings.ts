@@ -2,7 +2,7 @@ import { getSessions } from "./sessions";
 
 const KEY = "hourglass.settings.v1";
 const OVERRIDE_KEY = "hourglass.dailyOverride.v1";
-const NOTIFIED_KEY = "hourglass.goalNotified.v1";
+
 
 export type WeekStart = 0 | 1; // 0 = Sunday, 1 = Monday
 
@@ -139,46 +139,15 @@ export function getTodayFocusedMinutes(): number {
     .reduce((sum, s) => sum + s.focusedMinutes, 0);
 }
 
-/** Returns true if a notification was actually fired for today's goal. */
+/**
+ * Kept for backwards compatibility. Milestone celebrations are now fully
+ * in-app (see `src/lib/milestones.ts` + `MilestoneOverlay`); we never request
+ * or fire browser push notifications.
+ */
 export function maybeNotifyGoalReached(): boolean {
-  if (typeof window === "undefined") return false;
-  const goal = getTodayGoal();
-  const total = getTodayFocusedMinutes();
-  if (total < goal) return false;
-
-  const alreadyNotified = window.localStorage.getItem(NOTIFIED_KEY) === todayKey();
-  if (alreadyNotified) return false;
-
-  window.localStorage.setItem(NOTIFIED_KEY, todayKey());
-
-  const hours = Math.floor(goal / 60);
-  const mins = goal % 60;
-  const label = mins === 0 ? `${hours} hour${hours === 1 ? "" : "s"}` : `${hours}h ${mins}m`;
-  const body = `You've unlocked ${label} of deep focus today.`;
-
-  if (!("Notification" in window)) return false;
-  const send = () => {
-    try {
-      new Notification("Daily Goal Reached!", { body });
-    } catch {
-      // ignore
-    }
-  };
-  if (Notification.permission === "granted") {
-    send();
-    return true;
-  }
-  if (Notification.permission !== "denied") {
-    Notification.requestPermission().then((p) => {
-      if (p === "granted") send();
-    });
-  }
-  return true;
+  return false;
 }
 
 export function requestNotificationPermission() {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
-  if (Notification.permission === "default") {
-    Notification.requestPermission().catch(() => {});
-  }
+  // no-op: in-app milestones only.
 }
