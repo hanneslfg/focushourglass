@@ -131,11 +131,23 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useRealtimeSessions();
 
+  useEffect(() => {
+    const run = () => checkMilestones();
+    run();
+    window.addEventListener("hourglass:sessions", run);
+    window.addEventListener("hourglass:settings", run);
+    return () => {
+      window.removeEventListener("hourglass:sessions", run);
+      window.removeEventListener("hourglass:settings", run);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
-      <Toaster />
+      <Toaster position="bottom-center" />
+      <MilestoneOverlay />
     </QueryClientProvider>
   );
 }
