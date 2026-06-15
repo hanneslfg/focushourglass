@@ -52,9 +52,16 @@ export function DailyLogSidebar() {
   }, []);
 
   useEffect(() => {
+    // Force a fresh remote pull on mount so PC reflects mobile inserts.
+    hydrateFromRemote()
+      .then((ok) => { if (ok) window.dispatchEvent(new Event("hourglass:sessions")); })
+      .catch(() => {});
     syncPendingSessions().catch(() => {});
     const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+        hydrateFromRemote()
+          .then((ok) => { if (ok) window.dispatchEvent(new Event("hourglass:sessions")); })
+          .catch(() => {});
         syncPendingSessions()
           .then((r) => {
             if (r.synced > 0) window.dispatchEvent(new Event("hourglass:sessions"));
