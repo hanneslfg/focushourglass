@@ -8,6 +8,7 @@ import {
   clearTodayOverride,
   effectiveDayKey,
 } from "@/lib/settings";
+import { refreshStreaks, getCachedStreaks, type Streaks } from "@/lib/streaks";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
 
 function fmtHM(mins: number) {
