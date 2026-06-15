@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { getSessions, type Session } from "@/lib/sessions";
+import { getSessions, hydrateFromRemote, type Session } from "@/lib/sessions";
 import {
   getTodayGoal,
   getTodayFocusedMinutes,
