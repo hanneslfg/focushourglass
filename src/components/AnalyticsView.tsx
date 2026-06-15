@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
+import { supabase } from "@/lib/supabase";
 import {
   effectiveDayKey,
   effectiveToday,
@@ -78,11 +79,20 @@ function useSessions(): Session[] {
   useEffect(() => {
     const sync = () => setSessions(getSessions());
     sync();
+    // Force a fresh remote pull every mount when authenticated — this is
+    // what makes mobile-inserted rows appear on PC without a hard reload.
+    hydrateFromRemote().then((ok) => { if (ok) sync(); }).catch(() => {});
     window.addEventListener("hourglass:sessions", sync);
     window.addEventListener("storage", sync);
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+        hydrateFromRemote().then((ok) => { if (ok) sync(); }).catch(() => {});
+      }
+    });
     return () => {
       window.removeEventListener("hourglass:sessions", sync);
       window.removeEventListener("storage", sync);
+      authSub.subscription.unsubscribe();
     };
   }, []);
   return sessions;
