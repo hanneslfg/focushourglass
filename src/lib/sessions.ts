@@ -62,6 +62,63 @@ export function upsertRemoteSession(s: Session): boolean {
   return true;
 }
 
+interface RemoteRow {
+  id?: string;
+  user_id: string;
+  task_name: string;
+  project_tag: string | null;
+  planned_duration: number;
+  actual_duration: number;
+  started_at: string;
+  completed_at: string;
+  was_aborted: boolean;
+}
+
+function remoteRowToSession(r: RemoteRow): Session {
+  return {
+    id: r.id ?? crypto.randomUUID(),
+    task: r.task_name,
+    plannedMinutes: r.planned_duration,
+    focusedMinutes: r.actual_duration,
+    startedAt: r.started_at,
+    completedAt: r.completed_at,
+    projectName: r.project_tag ?? undefined,
+  };
+}
+
+/**
+ * Hydrate the local sessions cache from Supabase when authenticated.
+ * When a user is signed in we trust the server completely and OVERWRITE
+ * the local cache so cross-device updates (mobile → PC) propagate
+ * immediately on mount. When no user is signed in this is a no-op and
+ * the local cache continues to be the source of truth.
+ */
+export async function hydrateFromRemote(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const { supabase } = await import("./supabase");
+  const { data: userData } = await supabase.auth.getUser();
+  const uid = userData.user?.id;
+  if (!uid) return false;
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("user_id", uid)
+    .order("completed_at", { ascending: false });
+  if (error) {
+    console.error("[sessions] hydrateFromRemote failed:", error.message);
+    return false;
+  }
+
+  const rows = (data ?? []) as RemoteRow[];
+  // Only count completed sessions (skip aborted) for the local cache the UI reads.
+  const merged = rows
+    .filter((r) => !r.was_aborted)
+    .map(remoteRowToSession);
+  write(merged);
+  return true;
+}
+
 export function sessionsByDay(): Map<string, Session[]> {
   const map = new Map<string, Session[]>();
   for (const s of read()) {
