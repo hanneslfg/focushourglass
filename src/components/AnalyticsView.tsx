@@ -547,7 +547,7 @@ export function AnalyticsView({
       <section>
         <div className="flex items-baseline justify-between mb-5">
           <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
-            {isToday ? "Heimat des Tages · today's blocks" : "Blocks"}
+            {isToday ? "today's blocks" : "Blocks"}
           </h2>
           <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
             {dayBlocks.length} block{dayBlocks.length === 1 ? "" : "s"}
