@@ -30,6 +30,7 @@ export function DailyLogSidebar() {
   const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
+  const [streaks, setStreaks] = useState<Streaks>(() => getCachedStreaks());
 
   useEffect(() => {
     const sync = () => {
@@ -37,6 +38,7 @@ export function DailyLogSidebar() {
       setGoal(getTodayGoal());
       setDone(getTodayFocusedMinutes());
       setOverride(getTodayOverride());
+      setStreaks(refreshStreaks());
     };
     sync();
     window.addEventListener("hourglass:sessions", sync);
