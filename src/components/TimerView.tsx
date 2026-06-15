@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
-import { addSession } from "@/lib/sessions";
+import { addSession, removeSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
 import { playGong } from "@/lib/gong";
 import { playClick } from "@/lib/click";
 import { maybeNotifyGoalReached } from "@/lib/settings";
+import { toast } from "sonner";
 import type { ProjectTag } from "@/lib/projects";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
