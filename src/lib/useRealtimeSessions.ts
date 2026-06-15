@@ -44,7 +44,7 @@ export function useRealtimeSessions() {
       channel = supabase
         .channel(`public:sessions:${uid}`)
         .on(
-          // @ts-expect-error - postgres_changes payload typing is loose
+          // postgres_changes event name is a string literal at runtime
           "postgres_changes",
           {
             event: "INSERT",
