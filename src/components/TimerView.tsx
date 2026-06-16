@@ -9,6 +9,11 @@ import { playClick } from "@/lib/click";
 import { maybeNotifyGoalReached } from "@/lib/settings";
 import { toast } from "sonner";
 import type { ProjectTag } from "@/lib/projects";
+import {
+  saveActive,
+  clearActive,
+  recoverActiveAsCompleted,
+} from "@/lib/activeTimer";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
