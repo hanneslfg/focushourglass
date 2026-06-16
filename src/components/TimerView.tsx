@@ -269,6 +269,7 @@ export function TimerView() {
         }
       }).catch((e) => console.error("saveSessionRemote threw:", e));
     }
+    clearActive();
     setPhase("idle");
     setTask("");
     setProject(null);
