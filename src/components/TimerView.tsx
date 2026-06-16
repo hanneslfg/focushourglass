@@ -394,28 +394,26 @@ export function TimerView() {
             </div>
           </div>
         ) : phase === "running" || phase === "paused" ? (
-          <div className="flex flex-col items-center gap-3 w-full">
+          <div className="flex items-center gap-2 w-full justify-center flex-wrap">
             <button
               onClick={pause}
-              className="w-full inline-flex items-center justify-center gap-2 px-5 min-h-9 rounded-md bg-foreground/80 text-background text-sm font-medium hover:bg-foreground active:opacity-80 transition-all touch-manipulation"
+              className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md bg-foreground/80 text-background text-sm font-medium hover:bg-foreground active:opacity-80 transition-all touch-manipulation"
             >
               <Pause className="h-3.5 w-3.5" strokeWidth={2} />
               {phase === "paused" ? "Resume" : "Pause"}
             </button>
-            <div className="flex items-center gap-2 w-full justify-center">
-              <button
-                onClick={finalize}
-                className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
-              >
-                <Check className="h-4 w-4" strokeWidth={1.75} /> Complete
-              </button>
-              <button
-                onClick={() => setShowAbortConfirm(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-3 min-h-8 rounded-md border border-border/60 text-xs text-muted-foreground hover:border-foreground/40 active:bg-accent transition-colors touch-manipulation"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Abort
-              </button>
-            </div>
+            <button
+              onClick={finalize}
+              className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
+            >
+              <Check className="h-4 w-4" strokeWidth={1.75} /> Complete
+            </button>
+            <button
+              onClick={() => setShowAbortConfirm(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 min-h-10 rounded-md border border-border/60 text-xs text-muted-foreground hover:border-foreground/40 active:bg-accent transition-colors touch-manipulation"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Abort
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center justify-center gap-2 w-full">
