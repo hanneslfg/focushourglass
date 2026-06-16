@@ -1,3 +1,5 @@
+import { projectIdFromName, colorForProjectName } from "./projects";
+
 export interface Session {
   id: string;
   task: string;
@@ -75,6 +77,10 @@ interface RemoteRow {
 }
 
 function remoteRowToSession(r: RemoteRow): Session {
+  const name = r.project_tag?.trim() || undefined;
+  const projectId = name ? projectIdFromName(name) : undefined;
+  const projectColor = name ? colorForProjectName(name) : undefined;
+
   return {
     id: r.id ?? crypto.randomUUID(),
     task: r.task_name,
@@ -82,7 +88,9 @@ function remoteRowToSession(r: RemoteRow): Session {
     focusedMinutes: r.actual_duration,
     startedAt: r.started_at,
     completedAt: r.completed_at,
-    projectName: r.project_tag ?? undefined,
+    projectId,
+    projectName: name,
+    projectColor,
   };
 }
 
