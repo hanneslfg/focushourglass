@@ -54,6 +54,44 @@ export function TimerView() {
     }
   }, [minutes, phase]);
 
+  // Recover any orphaned active session from a previous refresh/close.
+  useEffect(() => {
+    recoverActiveAsCompleted().catch((e) =>
+      console.error("[timer] recover failed:", e),
+    );
+  }, []);
+
+  // Persist active timer state on every tick + save on tab hide/unload so a
+  // refresh in the middle of a session can be recovered as a completed one.
+  function persistActive(running: boolean) {
+    if (!startedAtRef.current) return;
+    saveActive({
+      task: task.trim(),
+      projectId: project?.id,
+      projectName: project?.name,
+      projectColor: project?.color,
+      plannedMinutes: Math.round(total / 60),
+      startedAt: startedAtRef.current,
+      focusedSeconds: focusedRef.current,
+      lastTickAt: Date.now(),
+      running,
+    });
+  }
+
+  useEffect(() => {
+    if (phase !== "running" && phase !== "paused") return;
+    const onHide = () => persistActive(phase === "running");
+    window.addEventListener("beforeunload", onHide);
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("beforeunload", onHide);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, task, project, total]);
+
   // Tick loop — uses Date.now() so it catches up after background tabs
   useEffect(() => {
     if (phase !== "running") return;
@@ -65,6 +103,7 @@ export function TimerView() {
 
       const r = Math.max(0, Math.ceil((endAtRef.current! - now) / 1000));
       setRemaining(r);
+      persistActive(true);
       if (r <= 0) {
         endAtRef.current = null;
         playGong();
@@ -73,6 +112,7 @@ export function TimerView() {
     }, 1000);
     tickRef.current = id;
     return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   const canStart = task.trim().length > 0 && phase === "idle";
