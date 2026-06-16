@@ -9,6 +9,11 @@ import { playClick } from "@/lib/click";
 import { maybeNotifyGoalReached } from "@/lib/settings";
 import { toast } from "sonner";
 import type { ProjectTag } from "@/lib/projects";
+import {
+  saveActive,
+  clearActive,
+  recoverActiveAsCompleted,
+} from "@/lib/activeTimer";
 
 type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
@@ -49,6 +54,44 @@ export function TimerView() {
     }
   }, [minutes, phase]);
 
+  // Recover any orphaned active session from a previous refresh/close.
+  useEffect(() => {
+    recoverActiveAsCompleted().catch((e) =>
+      console.error("[timer] recover failed:", e),
+    );
+  }, []);
+
+  // Persist active timer state on every tick + save on tab hide/unload so a
+  // refresh in the middle of a session can be recovered as a completed one.
+  function persistActive(running: boolean) {
+    if (!startedAtRef.current) return;
+    saveActive({
+      task: task.trim(),
+      projectId: project?.id,
+      projectName: project?.name,
+      projectColor: project?.color,
+      plannedMinutes: Math.round(total / 60),
+      startedAt: startedAtRef.current,
+      focusedSeconds: focusedRef.current,
+      lastTickAt: Date.now(),
+      running,
+    });
+  }
+
+  useEffect(() => {
+    if (phase !== "running" && phase !== "paused") return;
+    const onHide = () => persistActive(phase === "running");
+    window.addEventListener("beforeunload", onHide);
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      window.removeEventListener("beforeunload", onHide);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, task, project, total]);
+
   // Tick loop — uses Date.now() so it catches up after background tabs
   useEffect(() => {
     if (phase !== "running") return;
@@ -60,6 +103,7 @@ export function TimerView() {
 
       const r = Math.max(0, Math.ceil((endAtRef.current! - now) / 1000));
       setRemaining(r);
+      persistActive(true);
       if (r <= 0) {
         endAtRef.current = null;
         playGong();
@@ -68,6 +112,7 @@ export function TimerView() {
     }, 1000);
     tickRef.current = id;
     return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   const canStart = task.trim().length > 0 && phase === "idle";
@@ -155,6 +200,7 @@ export function TimerView() {
     });
     setPhase("complete");
     endAtRef.current = null;
+    clearActive();
     window.setTimeout(() => {
       setPhase("idle");
       setTask("");
@@ -223,6 +269,7 @@ export function TimerView() {
         }
       }).catch((e) => console.error("saveSessionRemote threw:", e));
     }
+    clearActive();
     setPhase("idle");
     setTask("");
     setProject(null);
@@ -347,28 +394,26 @@ export function TimerView() {
             </div>
           </div>
         ) : phase === "running" || phase === "paused" ? (
-          <div className="flex flex-col items-center gap-3 w-full">
+          <div className="flex items-center gap-2 w-full justify-center flex-wrap">
             <button
               onClick={pause}
-              className="w-full inline-flex items-center justify-center gap-2 px-5 min-h-9 rounded-md bg-foreground/80 text-background text-sm font-medium hover:bg-foreground active:opacity-80 transition-all touch-manipulation"
+              className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md bg-foreground/80 text-background text-sm font-medium hover:bg-foreground active:opacity-80 transition-all touch-manipulation"
             >
               <Pause className="h-3.5 w-3.5" strokeWidth={2} />
               {phase === "paused" ? "Resume" : "Pause"}
             </button>
-            <div className="flex items-center gap-2 w-full justify-center">
-              <button
-                onClick={finalize}
-                className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
-              >
-                <Check className="h-4 w-4" strokeWidth={1.75} /> Complete
-              </button>
-              <button
-                onClick={() => setShowAbortConfirm(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-3 min-h-8 rounded-md border border-border/60 text-xs text-muted-foreground hover:border-foreground/40 active:bg-accent transition-colors touch-manipulation"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Abort
-              </button>
-            </div>
+            <button
+              onClick={finalize}
+              className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
+            >
+              <Check className="h-4 w-4" strokeWidth={1.75} /> Complete
+            </button>
+            <button
+              onClick={() => setShowAbortConfirm(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 min-h-10 rounded-md border border-border/60 text-xs text-muted-foreground hover:border-foreground/40 active:bg-accent transition-colors touch-manipulation"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Abort
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center justify-center gap-2 w-full">
