@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { supabase } from "./supabase";
 import { upsertRemoteSession } from "./sessions";
+import { projectIdFromName, colorForProjectName } from "./projects";
 
 interface RemoteRow {
   id?: string;
@@ -15,6 +16,7 @@ interface RemoteRow {
 }
 
 function toLocal(row: RemoteRow) {
+  const name = row.project_tag?.trim() || undefined;
   return {
     id: row.id ?? crypto.randomUUID(),
     task: row.task_name,
@@ -22,7 +24,9 @@ function toLocal(row: RemoteRow) {
     focusedMinutes: row.actual_duration,
     startedAt: row.started_at,
     completedAt: row.completed_at,
-    projectName: row.project_tag ?? undefined,
+    projectId: name ? projectIdFromName(name) : undefined,
+    projectName: name,
+    projectColor: name ? colorForProjectName(name) : undefined,
   };
 }
 
