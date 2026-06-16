@@ -75,6 +75,15 @@ interface RemoteRow {
 }
 
 function remoteRowToSession(r: RemoteRow): Session {
+  const name = r.project_tag?.trim() || undefined;
+  let projectId: string | undefined;
+  let projectColor: string | undefined;
+  if (name) {
+    // Lazy require to avoid circular import at module init.
+    const { projectIdFromName, colorForProjectName } = require("./projects") as typeof import("./projects");
+    projectId = projectIdFromName(name);
+    projectColor = colorForProjectName(name);
+  }
   return {
     id: r.id ?? crypto.randomUUID(),
     task: r.task_name,
@@ -82,7 +91,9 @@ function remoteRowToSession(r: RemoteRow): Session {
     focusedMinutes: r.actual_duration,
     startedAt: r.started_at,
     completedAt: r.completed_at,
-    projectName: r.project_tag ?? undefined,
+    projectId,
+    projectName: name,
+    projectColor,
   };
 }
 
