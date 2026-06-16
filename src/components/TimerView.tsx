@@ -200,6 +200,7 @@ export function TimerView() {
     });
     setPhase("complete");
     endAtRef.current = null;
+    clearActive();
     window.setTimeout(() => {
       setPhase("idle");
       setTask("");
