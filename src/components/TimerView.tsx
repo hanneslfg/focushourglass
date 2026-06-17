@@ -306,7 +306,6 @@ export function TimerView() {
           <ProjectPickerCompact
             selectedId={project?.id ?? null}
             onSelect={setProject}
-            disabled={locked}
           />
         </div>
 
