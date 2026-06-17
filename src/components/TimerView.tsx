@@ -31,6 +31,7 @@ export function TimerView() {
   const [task, setTask] = useState("");
   const [project, setProject] = useState<ProjectTag | null>(null);
   const [minutes, setMinutes] = useState(90);
+  const [minuteInput, setMinuteInput] = useState("90");
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   /** Remaining seconds */
