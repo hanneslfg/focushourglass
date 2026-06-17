@@ -345,10 +345,28 @@ export function TimerView() {
                 inputMode="numeric"
                 min={1}
                 max={600}
-                value={minutes}
-                onChange={(e) =>
-                  setMinutes(Math.max(1, Math.min(600, Number(e.target.value) || 1)))
-                }
+                value={minuteInput}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setMinuteInput("");
+                    return;
+                  }
+                  const num = Number(val);
+                  if (!isNaN(num)) {
+                    setMinuteInput(val);
+                    setMinutes(Math.max(1, Math.min(600, num)));
+                  }
+                }}
+                onBlur={(e) => {
+                  if (e.target.value === "") {
+                    setMinutes(90);
+                  } else {
+                    const num = Math.max(1, Math.min(600, Number(e.target.value) || 90));
+                    setMinutes(num);
+                  }
+                }}
                 className="w-16 bg-transparent text-center text-base md:text-sm tabular-nums outline-none border-b border-border focus:border-foreground/60 py-1"
               />
               <span className="text-xs uppercase tracking-[0.18em]">min</span>
