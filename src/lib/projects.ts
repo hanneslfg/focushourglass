@@ -8,6 +8,7 @@ export interface ProjectTag {
 }
 
 const KEY = "hourglass.projects.v1";
+const DELETED_KEY = "hourglass.projects.deleted.v1";
 
 export const TAG_COLORS = [
   "#d4a373", // sand
@@ -69,17 +70,35 @@ function writeLocal(list: ProjectTag[]) {
   window.dispatchEvent(new Event("hourglass:projects"));
 }
 
+function readDeleted(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(DELETED_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDeleted(ids: Set<string>) {
+  window.localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+  window.dispatchEvent(new Event("hourglass:projects"));
+}
+
 /**
  * Returns the union of (a) projects derived from the synced sessions table and
- * (b) locally-created projects that haven't been used yet. Sessions are the
- * source of truth for color/id when both exist — keeps PC and mobile aligned.
+ * (b) locally-created projects that haven't been used yet, minus any tags the
+ * user has explicitly deleted (tombstones persist so deletions survive refresh
+ * and re-derivation from historical sessions).
  */
 export function getProjects(): ProjectTag[] {
+  const deleted = readDeleted();
   const fromSessions = new Map<string, ProjectTag>();
   for (const s of getSessions()) {
     const name = s.projectName?.trim();
     if (!name) continue;
     const id = projectIdFromName(name);
+    if (deleted.has(id)) continue;
     if (fromSessions.has(id)) continue;
     fromSessions.set(id, {
       id,
@@ -90,6 +109,7 @@ export function getProjects(): ProjectTag[] {
   // Merge in any local-only projects (not yet used in a session).
   for (const p of readLocal()) {
     const id = projectIdFromName(p.name);
+    if (deleted.has(id)) continue;
     if (!fromSessions.has(id)) {
       fromSessions.set(id, { ...p, id });
     }
@@ -100,6 +120,12 @@ export function getProjects(): ProjectTag[] {
 export function addProject(name: string, color?: string): ProjectTag {
   const trimmed = name.trim().slice(0, 30);
   const id = projectIdFromName(trimmed);
+  // Re-adding a previously-deleted tag should resurrect it.
+  const deleted = readDeleted();
+  if (deleted.has(id)) {
+    deleted.delete(id);
+    writeDeleted(deleted);
+  }
   const existing = getProjects().find((p) => p.id === id);
   if (existing) return existing;
   const tag: ProjectTag = {
@@ -116,7 +142,13 @@ export function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>
 }
 
 export function deleteProject(id: string) {
+  // 1. Remove from the local-only list so it disappears immediately.
   writeLocal(readLocal().filter((p) => p.id !== id));
+  // 2. Tombstone the id so it doesn't get re-derived from historical
+  //    sessions on the next render / refresh / sync.
+  const deleted = readDeleted();
+  deleted.add(id);
+  writeDeleted(deleted);
 }
 
 // Re-broadcast a projects event whenever sessions change so any component
