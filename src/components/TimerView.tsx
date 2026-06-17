@@ -55,6 +55,11 @@ export function TimerView() {
     }
   }, [minutes, phase]);
 
+  // Sync raw minute input whenever minutes changes via +/- buttons or resets
+  useEffect(() => {
+    setMinuteInput(String(minutes));
+  }, [minutes]);
+
   // Recover any orphaned active session from a previous refresh/close.
   useEffect(() => {
     recoverActiveAsCompleted().catch((e) =>
