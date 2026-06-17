@@ -4,30 +4,52 @@ import { getSessions } from "./sessions";
 import { computeStreaks } from "./streaks";
 
 const KEY = "hourglass.milestones.v1";
+const RECORD_KEY = "hourglass.dailyRecord.v1";
 
 interface MilestoneState {
   date: string;
   firedFirst: boolean;
   firedHalf: boolean;
   firedDaily: boolean;
+  firedRecord: boolean;
   firedStreaks: number[];
+}
+
+interface DailyRecord {
+  /** Highest single-day focused minutes ever recorded (excluding today). */
+  minutes: number;
+  /** YYYY-MM-DD of the day that set the record. */
+  date: string;
 }
 
 const STREAK_MILESTONES = [5, 10, 25, 50, 100, 200, 500];
 
 function read(): MilestoneState {
-  if (typeof window === "undefined")
-    return { date: todayKey(), firedFirst: false, firedHalf: false, firedDaily: false, firedStreaks: [] };
+  const empty: MilestoneState = {
+    date: todayKey(),
+    firedFirst: false,
+    firedHalf: false,
+    firedDaily: false,
+    firedRecord: false,
+    firedStreaks: [],
+  };
+  if (typeof window === "undefined") return empty;
   try {
     const raw = window.localStorage.getItem(KEY);
     if (raw) {
-      const s = JSON.parse(raw) as MilestoneState;
-      if (s.date === todayKey()) return s;
+      const s = JSON.parse(raw) as Partial<MilestoneState>;
+      if (s.date === todayKey()) {
+        return {
+          ...empty,
+          ...s,
+          firedStreaks: Array.isArray(s.firedStreaks) ? s.firedStreaks : [],
+        };
+      }
     }
   } catch {
     // ignore
   }
-  return { date: todayKey(), firedFirst: false, firedHalf: false, firedDaily: false, firedStreaks: [] };
+  return empty;
 }
 
 function write(s: MilestoneState) {
@@ -38,9 +60,53 @@ function write(s: MilestoneState) {
   }
 }
 
+function readRecord(): DailyRecord {
+  if (typeof window === "undefined") return { minutes: 0, date: "" };
+  try {
+    const raw = window.localStorage.getItem(RECORD_KEY);
+    if (raw) return JSON.parse(raw) as DailyRecord;
+  } catch {
+    // ignore
+  }
+  return { minutes: 0, date: "" };
+}
+
+function writeRecord(r: DailyRecord) {
+  try {
+    window.localStorage.setItem(RECORD_KEY, JSON.stringify(r));
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Highest cumulative focus time recorded in a single day, EXCLUDING today.
+ * Recomputes from full session history so it stays correct after sync.
+ */
+function computePreviousBest(): DailyRecord {
+  const today = todayKey();
+  const totals = new Map<string, number>();
+  for (const s of getSessions()) {
+    const key = effectiveDayKey(s.completedAt);
+    if (key === today) continue;
+    totals.set(key, (totals.get(key) ?? 0) + s.focusedMinutes);
+  }
+  let best: DailyRecord = { minutes: 0, date: "" };
+  for (const [date, minutes] of totals) {
+    if (minutes > best.minutes) best = { minutes, date };
+  }
+  const stored = readRecord();
+  if (stored.minutes > best.minutes) return stored;
+  if (best.minutes !== stored.minutes || best.date !== stored.date) {
+    writeRecord(best);
+  }
+  return best;
+}
+
 /**
  * Inspect current session state and fire any unfired milestones.
  * - Daily goal → big celebratory overlay (custom event)
+ * - New daily record → big celebratory overlay (custom event)
  * - First session of day, halfway, streak {5,10,25,50,…} → bottom toasts
  */
 export function checkMilestones() {
@@ -75,6 +141,22 @@ export function checkMilestones() {
     state.firedDaily = true;
     state.firedHalf = true;
     window.dispatchEvent(new CustomEvent("hourglass:milestone:daily"));
+  }
+
+  // New all-time daily record → overlay
+  const previous = computePreviousBest();
+  if (
+    !state.firedRecord &&
+    previous.minutes > 0 &&
+    done > previous.minutes
+  ) {
+    state.firedRecord = true;
+    writeRecord({ minutes: done, date: today });
+    window.dispatchEvent(
+      new CustomEvent("hourglass:milestone:record", {
+        detail: { minutes: done, previous: previous.minutes },
+      }),
+    );
   }
 
   // Session streak milestones
