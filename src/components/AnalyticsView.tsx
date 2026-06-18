@@ -761,7 +761,7 @@ export function AnalyticsView({
         <DialogContent className="max-w-2xl border-amber-500/20 bg-[#0e0e0e]/95 backdrop-blur">
           <DialogHeader>
             <DialogTitle className="font-display text-2xl tracking-tight text-amber-100">
-              Heimat des Tages
+              Daily Focus Blocks
             </DialogTitle>
             {openDay && (
               <div className="text-[10px] uppercase tracking-[0.28em] text-amber-400/60 mt-1">
