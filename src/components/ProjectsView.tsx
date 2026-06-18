@@ -299,13 +299,12 @@ function ProjectDetailFull({
     if (m < 150) return 3;
     return 4;
   }
-  const LEVEL: Record<number, string> = {
-    0: "bg-foreground/[0.06]",
-    1: "bg-amber-500/25",
-    2: "bg-amber-500/45",
-    3: "bg-amber-500/70",
-    4: "bg-amber-400",
-  };
+  const accent = project.color || "#f4a261";
+  const LEVEL_ALPHA: Record<number, number> = { 0: 0, 1: 0.25, 2: 0.45, 3: 0.7, 4: 1 };
+  function cellStyle(lvl: number): React.CSSProperties {
+    if (lvl === 0) return {};
+    return { backgroundColor: accent, opacity: LEVEL_ALPHA[lvl] };
+  }
 
   const byDay = useMemo(() => {
     const map = new Map<string, Session[]>();
@@ -382,8 +381,9 @@ function ProjectDetailFull({
                         : `${cell.min} min · ${formatDate(cell.date)}`
                     }
                     className={`h-3.5 w-3.5 md:h-4 md:w-4 rounded-[3px] ${
-                      cell.future ? "" : LEVEL[intensity(cell.min)]
+                      cell.future || intensity(cell.min) === 0 ? "bg-foreground/[0.06]" : ""
                     }`}
+                    style={cell.future ? undefined : cellStyle(intensity(cell.min))}
                   />
                 ))}
               </div>
