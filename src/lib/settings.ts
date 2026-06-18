@@ -1,3 +1,4 @@
+import { safeStorage } from "./safeStorage";
 import { getSessions } from "./sessions";
 
 const KEY = "hourglass.settings.v1";
@@ -25,7 +26,7 @@ const DEFAULTS: Settings = {
 export function getSettings(): Settings {
   if (typeof window === "undefined") return DEFAULTS;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = safeStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
     const parsed = JSON.parse(raw) as Partial<Settings>;
     const merged: Settings = { ...DEFAULTS, ...parsed };
@@ -40,7 +41,7 @@ export function getSettings(): Settings {
 
 export function setSettings(patch: Partial<Settings>) {
   const next = { ...getSettings(), ...patch };
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+  safeStorage.setItem(KEY, JSON.stringify(next));
   window.dispatchEvent(new Event("hourglass:settings"));
 }
 
@@ -105,7 +106,7 @@ interface DailyOverride {
 export function getTodayOverride(): number | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(OVERRIDE_KEY);
+    const raw = safeStorage.getItem(OVERRIDE_KEY);
     if (!raw) return null;
     const o = JSON.parse(raw) as DailyOverride;
     if (o.date !== todayKey()) return null;
@@ -117,12 +118,12 @@ export function getTodayOverride(): number | null {
 
 export function setTodayOverride(minutes: number) {
   const o: DailyOverride = { date: todayKey(), minutes };
-  window.localStorage.setItem(OVERRIDE_KEY, JSON.stringify(o));
+  safeStorage.setItem(OVERRIDE_KEY, JSON.stringify(o));
   window.dispatchEvent(new Event("hourglass:settings"));
 }
 
 export function clearTodayOverride() {
-  window.localStorage.removeItem(OVERRIDE_KEY);
+  safeStorage.removeItem(OVERRIDE_KEY);
   window.dispatchEvent(new Event("hourglass:settings"));
 }
 

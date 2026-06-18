@@ -1,3 +1,4 @@
+import { safeStorage } from "./safeStorage";
 import { projectIdFromName, colorForProjectName } from "./projects";
 
 export interface Session {
@@ -21,7 +22,7 @@ const KEY = "hourglass.sessions.v1";
 function read(): Session[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = safeStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as Session[]) : [];
   } catch {
     return [];
@@ -29,7 +30,7 @@ function read(): Session[] {
 }
 
 function write(list: Session[]) {
-  window.localStorage.setItem(KEY, JSON.stringify(list));
+  safeStorage.setItem(KEY, JSON.stringify(list));
   window.dispatchEvent(new Event("hourglass:sessions"));
 }
 
