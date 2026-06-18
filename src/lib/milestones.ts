@@ -1,3 +1,4 @@
+import { safeStorage } from "./safeStorage";
 import { toast } from "sonner";
 import { effectiveDayKey, getTodayFocusedMinutes, getTodayGoal, todayKey } from "./settings";
 import { getSessions } from "./sessions";
@@ -35,7 +36,7 @@ function read(): MilestoneState {
   };
   if (typeof window === "undefined") return empty;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = safeStorage.getItem(KEY);
     if (raw) {
       const s = JSON.parse(raw) as Partial<MilestoneState>;
       if (s.date === todayKey()) {
@@ -54,7 +55,7 @@ function read(): MilestoneState {
 
 function write(s: MilestoneState) {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(s));
+    safeStorage.setItem(KEY, JSON.stringify(s));
   } catch {
     // ignore
   }
@@ -63,7 +64,7 @@ function write(s: MilestoneState) {
 function readRecord(): DailyRecord {
   if (typeof window === "undefined") return { minutes: 0, date: "" };
   try {
-    const raw = window.localStorage.getItem(RECORD_KEY);
+    const raw = safeStorage.getItem(RECORD_KEY);
     if (raw) return JSON.parse(raw) as DailyRecord;
   } catch {
     // ignore
@@ -73,7 +74,7 @@ function readRecord(): DailyRecord {
 
 function writeRecord(r: DailyRecord) {
   try {
-    window.localStorage.setItem(RECORD_KEY, JSON.stringify(r));
+    safeStorage.setItem(RECORD_KEY, JSON.stringify(r));
   } catch {
     // ignore
   }

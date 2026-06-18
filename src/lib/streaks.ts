@@ -1,3 +1,4 @@
+import { safeStorage } from "./safeStorage";
 import { getSessions, type Session } from "./sessions";
 import { effectiveDayKey } from "./settings";
 
@@ -69,7 +70,7 @@ export function computeStreaks(sessions: Session[] = getSessions()): Streaks {
 export function getCachedStreaks(): Streaks {
   if (typeof window === "undefined") return emptyStreaks();
   try {
-    const raw = window.localStorage.getItem(CACHE_KEY);
+    const raw = safeStorage.getItem(CACHE_KEY);
     if (!raw) return emptyStreaks();
     return JSON.parse(raw) as Streaks;
   } catch {
@@ -80,7 +81,7 @@ export function getCachedStreaks(): Streaks {
 export function refreshStreaks(): Streaks {
   const s = computeStreaks();
   try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify(s));
+    safeStorage.setItem(CACHE_KEY, JSON.stringify(s));
   } catch {
     // ignore
   }

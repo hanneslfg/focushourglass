@@ -1,12 +1,35 @@
 import { createClient } from "@supabase/supabase-js";
+import { safeStorage } from "./safeStorage";
 
 const SUPABASE_URL = "https://ujksluqzycmbflqdhczo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sf6MyvFRTIcSYOtGhh21mw_IAjx2cPl";
 
+// Probe whether the host browser actually allows persistent storage. In some
+// in-app browsers (WhatsApp / Instagram / restricted iOS WebViews) accessing
+// `window.localStorage` throws synchronously, which would otherwise crash the
+// Supabase client at construction time and take the whole React tree down.
+function storageAvailable(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    const k = "__hg_ls_probe__";
+    window.localStorage.setItem(k, "1");
+    window.localStorage.removeItem(k);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const canPersist = storageAvailable();
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+    // Use our wrapped storage so any future setItem/getItem failure can't bubble.
+    storage: safeStorage as unknown as Storage,
+    // Disable persistence entirely when the browser blocks storage — the
+    // client otherwise tries to write tokens and throws.
+    persistSession: canPersist,
+    autoRefreshToken: canPersist,
     detectSessionInUrl: true,
   },
 });
@@ -15,18 +38,27 @@ const USER_KEY = "hourglass.user_id.v1";
 
 export function getUserId(): string {
   if (typeof window === "undefined") return "";
-  let id = window.localStorage.getItem(USER_KEY);
-  if (!id) {
-    id = crypto.randomUUID();
-    window.localStorage.setItem(USER_KEY, id);
+  try {
+    let id = safeStorage.getItem(USER_KEY);
+    if (!id) {
+      id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `anon_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+      safeStorage.setItem(USER_KEY, id);
+    }
+    return id;
+  } catch (e) {
+    console.warn("[supabase] getUserId fell back to ephemeral anon id:", e);
+    return `anon_${Math.random().toString(36).slice(2)}`;
   }
-  return id;
 }
 
 export function setUserId(id: string) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(USER_KEY, id);
+  safeStorage.setItem(USER_KEY, id);
 }
+
 
 /** Reassign all rows owned by `fromId` to `toId`. Safe to call repeatedly. */
 export async function migrateSessions(fromId: string, toId: string) {
@@ -52,10 +84,14 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  try {
+    await supabase.auth.signOut();
+  } catch (e) {
+    console.warn("[supabase] signOut threw:", e);
+  }
   // Generate a fresh anon id so the next session isn't attributed to the
   // previous user.
-  window.localStorage.removeItem(USER_KEY);
+  safeStorage.removeItem(USER_KEY);
   getUserId();
 }
 
@@ -75,7 +111,7 @@ const PENDING_KEY = "hourglass.pending_sessions.v1";
 function readPending(): RemoteSession[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(PENDING_KEY);
+    const raw = safeStorage.getItem(PENDING_KEY);
     return raw ? (JSON.parse(raw) as RemoteSession[]) : [];
   } catch {
     return [];
@@ -84,8 +120,13 @@ function readPending(): RemoteSession[] {
 
 function writePending(list: RemoteSession[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  try {
+    safeStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn("[supabase] writePending failed:", e);
+  }
 }
+
 
 function queuePending(s: RemoteSession) {
   const list = readPending();

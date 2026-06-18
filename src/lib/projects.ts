@@ -1,3 +1,4 @@
+import { safeStorage } from "./safeStorage";
 import { getSessions } from "./sessions";
 
 export interface ProjectTag {
@@ -58,7 +59,7 @@ export function colorForProjectName(name: string): string {
 function readLocal(): ProjectTag[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = safeStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as ProjectTag[]) : [];
   } catch {
     return [];
@@ -66,14 +67,14 @@ function readLocal(): ProjectTag[] {
 }
 
 function writeLocal(list: ProjectTag[]) {
-  window.localStorage.setItem(KEY, JSON.stringify(list));
+  safeStorage.setItem(KEY, JSON.stringify(list));
   window.dispatchEvent(new Event("hourglass:projects"));
 }
 
 function readDeleted(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = window.localStorage.getItem(DELETED_KEY);
+    const raw = safeStorage.getItem(DELETED_KEY);
     return new Set(raw ? (JSON.parse(raw) as string[]) : []);
   } catch {
     return new Set();
@@ -81,7 +82,7 @@ function readDeleted(): Set<string> {
 }
 
 function writeDeleted(ids: Set<string>) {
-  window.localStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+  safeStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
   window.dispatchEvent(new Event("hourglass:projects"));
 }
 

@@ -1,3 +1,4 @@
+import { safeStorage } from "./safeStorage";
 import { addSession } from "./sessions";
 import { saveSessionRemote, getUserId } from "./supabase";
 
@@ -21,7 +22,7 @@ export interface ActiveTimerState {
 export function saveActive(state: ActiveTimerState) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
+    safeStorage.setItem(KEY, JSON.stringify(state));
   } catch {
     /* ignore quota errors */
   }
@@ -30,7 +31,7 @@ export function saveActive(state: ActiveTimerState) {
 export function loadActive(): ActiveTimerState | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = safeStorage.getItem(KEY);
     return raw ? (JSON.parse(raw) as ActiveTimerState) : null;
   } catch {
     return null;
@@ -39,7 +40,7 @@ export function loadActive(): ActiveTimerState | null {
 
 export function clearActive() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(KEY);
+  safeStorage.removeItem(KEY);
 }
 
 /**
