@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { ArrowLeft, Plus, Trash2, Check, X, FolderKanban } from "lucide-react";
 import {
   addProject,
