@@ -145,6 +145,7 @@ export function TimerView() {
     if (!canStart) return;
     const now = Date.now();
     focusedRef.current = 0;
+    savedRef.current = false;
     startedAtRef.current = new Date().toISOString();
     endAtRef.current = now + minutes * 60 * 1000;
     lastCheckRef.current = now;
