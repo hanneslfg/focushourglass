@@ -46,6 +46,10 @@ export function TimerView() {
   const endAtRef = useRef<number | null>(null);
   /** Timestamp (ms) of the last tick — used to catch up background time */
   const lastCheckRef = useRef<number>(0);
+  /** Hardens against double-save: once a run is committed (or in-flight),
+   * this ref is set so a second click on Complete/Abort can't insert a
+   * duplicate row. Reset on start(). */
+  const savedRef = useRef(false);
 
   // Keep remaining synced when idle and minutes change
   useEffect(() => {
