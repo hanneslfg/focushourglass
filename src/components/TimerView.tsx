@@ -172,6 +172,11 @@ export function TimerView() {
   }
 
   function finalize() {
+    // Strict submission lock — Complete may be clicked twice (or fire from
+    // both the asking-controls and the completion screen). Bail on any
+    // re-entry so we never insert a duplicate row.
+    if (savedRef.current) return;
+    savedRef.current = true;
     const startedAt = startedAtRef.current ?? new Date().toISOString();
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
