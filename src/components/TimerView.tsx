@@ -46,6 +46,10 @@ export function TimerView() {
   const endAtRef = useRef<number | null>(null);
   /** Timestamp (ms) of the last tick — used to catch up background time */
   const lastCheckRef = useRef<number>(0);
+  /** Hardens against double-save: once a run is committed (or in-flight),
+   * this ref is set so a second click on Complete/Abort can't insert a
+   * duplicate row. Reset on start(). */
+  const savedRef = useRef(false);
 
   // Keep remaining synced when idle and minutes change
   useEffect(() => {
@@ -141,6 +145,7 @@ export function TimerView() {
     if (!canStart) return;
     const now = Date.now();
     focusedRef.current = 0;
+    savedRef.current = false;
     startedAtRef.current = new Date().toISOString();
     endAtRef.current = now + minutes * 60 * 1000;
     lastCheckRef.current = now;
@@ -167,6 +172,11 @@ export function TimerView() {
   }
 
   function finalize() {
+    // Strict submission lock — Complete may be clicked twice (or fire from
+    // both the asking-controls and the completion screen). Bail on any
+    // re-entry so we never insert a duplicate row.
+    if (savedRef.current) return;
+    savedRef.current = true;
     const startedAt = startedAtRef.current ?? new Date().toISOString();
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
@@ -239,7 +249,8 @@ export function TimerView() {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-    if (startedAtRef.current && task.trim()) {
+    if (startedAtRef.current && task.trim() && !savedRef.current) {
+      savedRef.current = true;
       const startedAt = startedAtRef.current;
       const completedAt = new Date().toISOString();
       const plannedMinutes = Math.round(total / 60);

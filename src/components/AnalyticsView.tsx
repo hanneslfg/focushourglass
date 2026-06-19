@@ -42,6 +42,14 @@ function fmtClock(iso: string) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** End-of-block clock derived from start + focused minutes (NOT completedAt),
+ * so a session left on the "Complete" screen overnight still shows the real
+ * focus window instead of the moment the user pressed Done. */
+function fmtClockFromStart(startedAtIso: string, focusedMinutes: number) {
+  const end = new Date(new Date(startedAtIso).getTime() + focusedMinutes * 60_000);
+  return `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`;
+}
+
 function formatLongDate(d: Date) {
   return d.toLocaleDateString(undefined, {
     weekday: "long",
@@ -497,7 +505,7 @@ function TimerBlockCard({ s }: { s: Session }) {
           className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 tabular-nums"
           style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
         >
-          {fmtClock(s.startedAt)} — {fmtClock(s.completedAt)}
+          {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
         </div>
       </div>
     </article>
