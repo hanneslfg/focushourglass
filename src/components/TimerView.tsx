@@ -249,7 +249,8 @@ export function TimerView() {
       window.clearInterval(tickRef.current);
       tickRef.current = null;
     }
-    if (startedAtRef.current && task.trim()) {
+    if (startedAtRef.current && task.trim() && !savedRef.current) {
+      savedRef.current = true;
       const startedAt = startedAtRef.current;
       const completedAt = new Date().toISOString();
       const plannedMinutes = Math.round(total / 60);
