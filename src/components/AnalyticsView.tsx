@@ -505,7 +505,7 @@ function TimerBlockCard({ s }: { s: Session }) {
           className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 tabular-nums"
           style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
         >
-          {fmtClock(s.startedAt)} — {fmtClock(s.completedAt)}
+          {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
         </div>
       </div>
     </article>
