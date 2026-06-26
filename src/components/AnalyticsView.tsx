@@ -572,6 +572,7 @@ export function AnalyticsView({
 }) {
   const sessions = useSessions();
   const [mode, setMode] = useState<RangeMode>("month");
+  const [weekOffset, setWeekOffset] = useState(0);
   const today = useMemo(() => effectiveToday(), []);
   const [customStart, setCustomStart] = useState<string>(isoDate(addDays(today, -29)));
   const [customEnd, setCustomEnd] = useState<string>(isoDate(today));
@@ -580,7 +581,10 @@ export function AnalyticsView({
     () => ({ start: fromIsoDate(customStart), end: fromIsoDate(customEnd) }),
     [customStart, customEnd],
   );
-  const range = useMemo(() => computeRange(mode, sessions, customRange), [mode, sessions, customRange]);
+  const range = useMemo(
+    () => computeRange(mode, sessions, customRange, weekOffset),
+    [mode, sessions, customRange, weekOffset],
+  );
 
   // Sessions filtered to range
   const inRange = useMemo(() => {
