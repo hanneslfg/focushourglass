@@ -342,15 +342,8 @@ function ProjectDetailFull({
         </button>
       </div>
 
-      <header className="flex items-center gap-4 mb-10">
-        <span
-          className="h-5 w-5 rounded-full shrink-0"
-          style={{ background: project.color }}
-        />
-        <h1 className="font-display text-4xl md:text-5xl tracking-tight truncate">
-          {project.name}
-        </h1>
-      </header>
+      <ProjectHeaderEditable project={project} />
+
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
         <BigStat label="Total focused" value={fmtHours(totalMin)} />
