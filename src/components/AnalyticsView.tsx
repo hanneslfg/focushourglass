@@ -141,15 +141,33 @@ function useSessions(): Session[] {
 
 /* =================== Date range =================== */
 
-type RangeMode = "month" | "year" | "all" | "custom";
+type RangeMode = "week" | "month" | "year" | "all" | "custom";
 
 interface Range {
   start: Date;
   end: Date;
 }
 
-function computeRange(mode: RangeMode, sessions: Session[], custom: Range): Range {
+/** Start-of-week (00:00) for the week containing `d`, honoring weekStartsOn. */
+function startOfWeek(d: Date): Date {
+  const offset = weekColumnIndex(d); // 0 = configured first day
+  const s = startOfDay(d);
+  return addDays(s, -offset);
+}
+
+function computeRange(
+  mode: RangeMode,
+  sessions: Session[],
+  custom: Range,
+  weekOffset: number,
+): Range {
   const today = effectiveToday();
+  if (mode === "week") {
+    const thisWeekStart = startOfWeek(today);
+    const start = addDays(thisWeekStart, weekOffset * 7);
+    const end = endOfDay(addDays(start, 6));
+    return { start, end };
+  }
   if (mode === "month") {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     const end = endOfDay(today);
@@ -554,6 +572,7 @@ export function AnalyticsView({
 }) {
   const sessions = useSessions();
   const [mode, setMode] = useState<RangeMode>("month");
+  const [weekOffset, setWeekOffset] = useState(0);
   const today = useMemo(() => effectiveToday(), []);
   const [customStart, setCustomStart] = useState<string>(isoDate(addDays(today, -29)));
   const [customEnd, setCustomEnd] = useState<string>(isoDate(today));
@@ -562,7 +581,10 @@ export function AnalyticsView({
     () => ({ start: fromIsoDate(customStart), end: fromIsoDate(customEnd) }),
     [customStart, customEnd],
   );
-  const range = useMemo(() => computeRange(mode, sessions, customRange), [mode, sessions, customRange]);
+  const range = useMemo(
+    () => computeRange(mode, sessions, customRange, weekOffset),
+    [mode, sessions, customRange, weekOffset],
+  );
 
   // Sessions filtered to range
   const inRange = useMemo(() => {
@@ -646,7 +668,25 @@ export function AnalyticsView({
 
   const dayMinutes = openDayBlocks.reduce((a, s) => a + (s.focusedMinutes || 0), 0);
 
+  const weekLabel = useMemo(() => {
+    if (mode !== "week") return "";
+    const s = range.start;
+    const e = range.end;
+    const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+    const fmt = (d: Date, withMonth: boolean) =>
+      withMonth
+        ? `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}`
+        : `${d.getDate()}`;
+    if (weekOffset === 0) return "this week";
+    if (weekOffset === -1) return "last week";
+    if (weekOffset === 1) return "next week";
+    return sameMonth
+      ? `${fmt(s, true)}–${fmt(e, false)}, ${s.getFullYear()}`
+      : `${fmt(s, true)} – ${fmt(e, true)}, ${e.getFullYear()}`;
+  }, [mode, range.start, range.end, weekOffset]);
+
   const rangeLabel =
+    mode === "week" ? weekLabel :
     mode === "month" ? "this month" :
     mode === "year" ? "this year" :
     mode === "all" ? "all-time" :
@@ -667,26 +707,62 @@ export function AnalyticsView({
 
       {/* Range selector */}
       <section>
-        <div className="inline-flex items-center rounded-full p-1 gap-1"
-          style={{ background: "rgba(26,26,26,0.9)", border: "1px solid rgba(245,158,11,0.18)" }}>
-          {(["month", "year", "all", "custom"] as RangeMode[]).map((m) => {
-            const active = mode === m;
-            const label = m === "month" ? "Month" : m === "year" ? "Year" : m === "all" ? "All-Time" : "Custom";
-            return (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex items-center rounded-full p-1 gap-1"
+            style={{ background: "rgba(26,26,26,0.9)", border: "1px solid rgba(245,158,11,0.18)" }}>
+            {(["week", "month", "year", "all", "custom"] as RangeMode[]).map((m) => {
+              const active = mode === m;
+              const label =
+                m === "week" ? "Week" :
+                m === "month" ? "Month" :
+                m === "year" ? "Year" :
+                m === "all" ? "All-Time" : "Custom";
+              return (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); if (m === "week") setWeekOffset(0); }}
+                  className="px-4 py-1.5 rounded-full text-[11px] uppercase tracking-[0.22em] transition-all"
+                  style={{
+                    background: active ? "rgba(245,158,11,0.18)" : "transparent",
+                    color: active ? "rgb(251,191,36)" : "rgba(255,255,255,0.55)",
+                    boxShadow: active ? "0 0 12px rgba(245,158,11,0.25)" : "none",
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {mode === "week" && (
+            <div className="inline-flex items-center gap-1 rounded-full p-1"
+              style={{ background: "rgba(26,26,26,0.9)", border: "1px solid rgba(245,158,11,0.18)" }}>
               <button
-                key={m}
-                onClick={() => setMode(m)}
-                className="px-4 py-1.5 rounded-full text-[11px] uppercase tracking-[0.22em] transition-all"
-                style={{
-                  background: active ? "rgba(245,158,11,0.18)" : "transparent",
-                  color: active ? "rgb(251,191,36)" : "rgba(255,255,255,0.55)",
-                  boxShadow: active ? "0 0 12px rgba(245,158,11,0.25)" : "none",
-                }}
+                type="button"
+                onClick={() => setWeekOffset((w) => w - 1)}
+                className="h-7 w-7 rounded-full text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10 transition-all flex items-center justify-center text-base leading-none"
+                aria-label="Previous week"
               >
-                {label}
+                ‹
               </button>
-            );
-          })}
+              <button
+                type="button"
+                onClick={() => setWeekOffset(0)}
+                className="px-3 h-7 rounded-full text-[10px] uppercase tracking-[0.22em] text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10 transition-all tabular-nums whitespace-nowrap"
+              >
+                {weekLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekOffset((w) => w + 1)}
+                disabled={weekOffset >= 0}
+                className="h-7 w-7 rounded-full text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10 transition-all flex items-center justify-center text-base leading-none disabled:opacity-30 disabled:hover:bg-transparent"
+                aria-label="Next week"
+              >
+                ›
+              </button>
+            </div>
+          )}
         </div>
         {mode === "custom" && (
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -696,6 +772,7 @@ export function AnalyticsView({
           </div>
         )}
       </section>
+
 
       {/* Activity grid */}
       <section>
