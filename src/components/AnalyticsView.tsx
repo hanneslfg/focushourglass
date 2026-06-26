@@ -141,15 +141,33 @@ function useSessions(): Session[] {
 
 /* =================== Date range =================== */
 
-type RangeMode = "month" | "year" | "all" | "custom";
+type RangeMode = "week" | "month" | "year" | "all" | "custom";
 
 interface Range {
   start: Date;
   end: Date;
 }
 
-function computeRange(mode: RangeMode, sessions: Session[], custom: Range): Range {
+/** Start-of-week (00:00) for the week containing `d`, honoring weekStartsOn. */
+function startOfWeek(d: Date): Date {
+  const offset = weekColumnIndex(d); // 0 = configured first day
+  const s = startOfDay(d);
+  return addDays(s, -offset);
+}
+
+function computeRange(
+  mode: RangeMode,
+  sessions: Session[],
+  custom: Range,
+  weekOffset: number,
+): Range {
   const today = effectiveToday();
+  if (mode === "week") {
+    const thisWeekStart = startOfWeek(today);
+    const start = addDays(thisWeekStart, weekOffset * 7);
+    const end = endOfDay(addDays(start, 6));
+    return { start, end };
+  }
   if (mode === "month") {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     const end = endOfDay(today);
