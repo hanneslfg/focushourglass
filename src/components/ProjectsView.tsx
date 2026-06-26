@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { ArrowLeft, Plus, Trash2, Check, X, FolderKanban } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Check, X, FolderKanban, Pencil } from "lucide-react";
 import {
   addProject,
   deleteProject,
   getProjects,
+  updateProject,
   TAG_COLORS,
   type ProjectTag,
 } from "@/lib/projects";
