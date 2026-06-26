@@ -12,15 +12,17 @@ const KEY = "hourglass.projects.v1";
 const DELETED_KEY = "hourglass.projects.deleted.v1";
 
 export const TAG_COLORS = [
-  "#d4a373", // sand
   "#e9c46a", // amber
   "#f4a261", // orange
   "#e76f51", // terracotta
-  "#9c6644", // umber
+  "#d4a373", // sand
+  "#2dd4bf", // turquoise
+  "#5eead4", // mint
   "#a3b18a", // sage
   "#8ecae6", // sky
   "#bc8cff", // lilac
   "#e5989b", // rose
+  "#f472b6", // pink
   "#94a3b8", // slate
 ];
 
