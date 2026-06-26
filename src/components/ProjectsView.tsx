@@ -450,3 +450,102 @@ function BigStat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(project.name);
+  const [color, setColor] = useState(project.color);
+
+  useEffect(() => {
+    setName(project.name);
+    setColor(project.color);
+  }, [project.id, project.name, project.color]);
+
+  function save() {
+    const trimmed = name.trim().slice(0, 30);
+    if (!trimmed) {
+      setName(project.name);
+      setEditing(false);
+      return;
+    }
+    updateProject(project.id, { name: trimmed, color });
+    setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <header className="flex items-center gap-4 mb-10 group">
+        <span
+          className="h-5 w-5 rounded-full shrink-0"
+          style={{ background: project.color }}
+        />
+        <h1 className="font-display text-4xl md:text-5xl tracking-tight truncate">
+          {project.name}
+        </h1>
+        <button
+          onClick={() => setEditing(true)}
+          className="ml-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+          aria-label="Edit project"
+        >
+          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} /> Edit
+        </button>
+      </header>
+    );
+  }
+
+  return (
+    <header className="mb-10 rounded-xl bg-card/40 p-5">
+      <div className="flex items-center gap-3">
+        <span
+          className="h-4 w-4 rounded-full shrink-0"
+          style={{ background: color }}
+        />
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value.slice(0, 30))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") {
+              setName(project.name);
+              setColor(project.color);
+              setEditing(false);
+            }
+          }}
+          className="flex-1 bg-transparent border-b border-border focus:border-foreground/60 outline-none font-display text-2xl md:text-3xl tracking-tight py-1"
+        />
+        <button
+          onClick={save}
+          className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
+          aria-label="Save"
+        >
+          <Check className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+        <button
+          onClick={() => {
+            setName(project.name);
+            setColor(project.color);
+            setEditing(false);
+          }}
+          className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
+          aria-label="Cancel"
+        >
+          <X className="h-4 w-4" strokeWidth={1.75} />
+        </button>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {TAG_COLORS.map((c) => (
+          <button
+            key={c}
+            onClick={() => setColor(c)}
+            className={`h-6 w-6 rounded-full transition-transform ${
+              color === c ? "ring-2 ring-foreground/70 scale-110" : ""
+            }`}
+            style={{ background: c }}
+            aria-label={`Pick color ${c}`}
+          />
+        ))}
+      </div>
+    </header>
+  );
+}
