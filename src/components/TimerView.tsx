@@ -34,6 +34,8 @@ export function TimerView() {
   const [minuteInput, setMinuteInput] = useState("90");
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  /** Bumped whenever a new run begins so the hourglass replays its flip. */
+  const [flipNonce, setFlipNonce] = useState(0);
   /** Remaining seconds */
   const [remaining, setRemaining] = useState(90 * 60);
   /** Total seconds for current session (grows if extra time added) */
