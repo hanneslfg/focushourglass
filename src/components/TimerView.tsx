@@ -335,13 +335,23 @@ export function TimerView() {
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
           <div key={flipNonce} className="w-full h-full animate-hg-flip">
-            <Hourglass
-              progress={progress}
-              flowing={phase === "running"}
-              complete={phase === "complete"}
-            />
+            <div
+              className="w-full h-full"
+              style={{
+                transform: phase === "paused" ? "rotate(90deg)" : "rotate(0deg)",
+                transition: "transform 0.45s ease-in-out",
+                transformOrigin: "50% 50%",
+              }}
+            >
+              <Hourglass
+                progress={progress}
+                flowing={phase === "running"}
+                complete={phase === "complete"}
+              />
+            </div>
           </div>
         </div>
+
 
         {/* Time + duration */}
         <div className="flex flex-col items-center gap-3">
