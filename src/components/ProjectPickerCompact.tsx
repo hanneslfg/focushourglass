@@ -120,12 +120,23 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
           </div>
           <div className="border-t border-border">
             {!adding ? (
-              <button
-                onClick={() => setAdding(true)}
-                className="w-full px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-              >
-                <Plus className="h-3 w-3" strokeWidth={1.75} /> New project
-              </button>
+              <>
+                <button
+                  onClick={() => setAdding(true)}
+                  className="w-full px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                >
+                  <Plus className="h-3 w-3" strokeWidth={1.75} /> New project
+                </button>
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    setManageOpen(true);
+                  }}
+                  className="w-full px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 border-t border-border"
+                >
+                  <Settings2 className="h-3 w-3" strokeWidth={1.75} /> Manage projects
+                </button>
+              </>
             ) : (
               <div className="px-3 py-2.5 space-y-2">
                 <div className="flex items-center gap-1.5">
