@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Plus, Check, X } from "lucide-react";
+import { ChevronDown, Plus, Check, Settings2 } from "lucide-react";
 import {
   addProject,
   getProjects,
   TAG_COLORS,
   type ProjectTag,
 } from "@/lib/projects";
+import { ProjectManagerModal } from "./ProjectManagerModal";
 
 interface Props {
   selectedId: string | null;
