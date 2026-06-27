@@ -34,6 +34,8 @@ export function TimerView() {
   const [minuteInput, setMinuteInput] = useState("90");
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  /** Bumped whenever a new run begins so the hourglass replays its flip. */
+  const [flipNonce, setFlipNonce] = useState(0);
   /** Remaining seconds */
   const [remaining, setRemaining] = useState(90 * 60);
   /** Total seconds for current session (grows if extra time added) */
@@ -152,7 +154,9 @@ export function TimerView() {
     setTotal(minutes * 60);
     setRemaining(minutes * 60);
     setPhase("running");
+    setFlipNonce((n) => n + 1);
   }
+
 
   function pause() {
     if (phase === "running") {
@@ -330,11 +334,13 @@ export function TimerView() {
 
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
-          <Hourglass
-            progress={progress}
-            flowing={phase === "running"}
-            complete={phase === "complete"}
-          />
+          <div key={flipNonce} className="w-full h-full animate-hg-flip">
+            <Hourglass
+              progress={progress}
+              flowing={phase === "running"}
+              complete={phase === "complete"}
+            />
+          </div>
         </div>
 
         {/* Time + duration */}
