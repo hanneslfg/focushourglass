@@ -334,11 +334,13 @@ export function TimerView() {
 
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
-          <Hourglass
-            progress={progress}
-            flowing={phase === "running"}
-            complete={phase === "complete"}
-          />
+          <div key={flipNonce} className="w-full h-full animate-hg-flip">
+            <Hourglass
+              progress={progress}
+              flowing={phase === "running"}
+              complete={phase === "complete"}
+            />
+          </div>
         </div>
 
         {/* Time + duration */}
