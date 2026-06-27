@@ -182,6 +182,11 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
           </div>
         </div>
       )}
+      <ProjectManagerModal
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        onSelect={(tag) => onSelect(tag)}
+      />
     </div>
   );
 }
