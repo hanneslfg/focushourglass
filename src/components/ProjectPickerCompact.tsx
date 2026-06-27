@@ -18,6 +18,7 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
   const [tags, setTags] = useState<ProjectTag[]>([]);
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(TAG_COLORS[0]);
   const wrapRef = useRef<HTMLDivElement>(null);
