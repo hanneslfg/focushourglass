@@ -154,7 +154,9 @@ export function TimerView() {
     setTotal(minutes * 60);
     setRemaining(minutes * 60);
     setPhase("running");
+    setFlipNonce((n) => n + 1);
   }
+
 
   function pause() {
     if (phase === "running") {
