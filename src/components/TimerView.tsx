@@ -182,8 +182,15 @@ export function TimerView() {
         </div>
 
         {/* Controls */}
-        {phase === "asking" ? (
+        {phase === "review" ? (
+          <AdjustFocusTime
+            trackedMinutes={pendingMinutes}
+            taskName={task}
+            onConfirm={commitReview}
+          />
+        ) : phase === "asking" ? (
           <AskingControls task={task} onDone={finalize} onAddExtra={addExtra} />
+
         ) : showAbortConfirm ? (
           <div className="flex flex-col items-center gap-4 w-full rounded-lg border border-border bg-card p-5">
             <p className="text-sm text-center text-foreground">
