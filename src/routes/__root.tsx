@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
+import { TimerProvider } from "@/lib/TimerContext";
 
 function NotFoundComponent() {
   return (
@@ -144,10 +145,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster position="bottom-center" />
-      <MilestoneOverlay />
+      <TimerProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster position="bottom-center" />
+        <MilestoneOverlay />
+      </TimerProvider>
     </QueryClientProvider>
   );
 }
