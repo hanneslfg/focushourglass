@@ -1,21 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
-import { addSession, removeSession } from "@/lib/sessions";
-import { saveSessionRemote, getUserId } from "@/lib/supabase";
-import { playGong } from "@/lib/gong";
 import { playClick } from "@/lib/click";
-import { maybeNotifyGoalReached } from "@/lib/settings";
-import { toast } from "sonner";
-import type { ProjectTag } from "@/lib/projects";
-import {
-  saveActive,
-  clearActive,
-  recoverActiveAsCompleted,
-} from "@/lib/activeTimer";
-
-type Phase = "idle" | "running" | "paused" | "asking" | "complete";
+import { useTimer } from "@/lib/TimerContext";
 
 function fmt(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
@@ -28,104 +16,32 @@ function fmt(seconds: number) {
 }
 
 export function TimerView() {
-  const [task, setTask] = useState("");
-  const [project, setProject] = useState<ProjectTag | null>(null);
-  const [minutes, setMinutes] = useState(90);
-  const [minuteInput, setMinuteInput] = useState("90");
+  const {
+    task,
+    setTask,
+    project,
+    setProject,
+    minutes,
+    setMinutes,
+    phase,
+    remaining,
+    total,
+    flipNonce,
+    endAtMs,
+    start,
+    pause,
+    finalize,
+    abort,
+    addExtra,
+  } = useTimer();
+
+  const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
-  const [phase, setPhase] = useState<Phase>("idle");
-  /** Bumped whenever a new run begins so the hourglass replays its flip. */
-  const [flipNonce, setFlipNonce] = useState(0);
-  /** Remaining seconds */
-  const [remaining, setRemaining] = useState(90 * 60);
-  /** Total seconds for current session (grows if extra time added) */
-  const [total, setTotal] = useState(90 * 60);
-  /** Seconds actually focused (running time only) */
-  const focusedRef = useRef(0);
-  const startedAtRef = useRef<string | null>(null);
-  const tickRef = useRef<number | null>(null);
-  /** Timestamp (ms) when the timer should hit zero */
-  const endAtRef = useRef<number | null>(null);
-  /** Timestamp (ms) of the last tick — used to catch up background time */
-  const lastCheckRef = useRef<number>(0);
-  /** Hardens against double-save: once a run is committed (or in-flight),
-   * this ref is set so a second click on Complete/Abort can't insert a
-   * duplicate row. Reset on start(). */
-  const savedRef = useRef(false);
 
-  // Keep remaining synced when idle and minutes change
-  useEffect(() => {
-    if (phase === "idle") {
-      setRemaining(minutes * 60);
-      setTotal(minutes * 60);
-    }
-  }, [minutes, phase]);
-
-  // Sync raw minute input whenever minutes changes via +/- buttons or resets
+  // Keep the visible minute field synced with context state.
   useEffect(() => {
     setMinuteInput(String(minutes));
   }, [minutes]);
-
-  // Recover any orphaned active session from a previous refresh/close.
-  useEffect(() => {
-    recoverActiveAsCompleted().catch((e) =>
-      console.error("[timer] recover failed:", e),
-    );
-  }, []);
-
-  // Persist active timer state on every tick + save on tab hide/unload so a
-  // refresh in the middle of a session can be recovered as a completed one.
-  function persistActive(running: boolean) {
-    if (!startedAtRef.current) return;
-    saveActive({
-      task: task.trim(),
-      projectId: project?.id,
-      projectName: project?.name,
-      projectColor: project?.color,
-      plannedMinutes: Math.round(total / 60),
-      startedAt: startedAtRef.current,
-      focusedSeconds: focusedRef.current,
-      lastTickAt: Date.now(),
-      running,
-    });
-  }
-
-  useEffect(() => {
-    if (phase !== "running" && phase !== "paused") return;
-    const onHide = () => persistActive(phase === "running");
-    window.addEventListener("beforeunload", onHide);
-    window.addEventListener("pagehide", onHide);
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      window.removeEventListener("beforeunload", onHide);
-      window.removeEventListener("pagehide", onHide);
-      document.removeEventListener("visibilitychange", onHide);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, task, project, total]);
-
-  // Tick loop — uses Date.now() so it catches up after background tabs
-  useEffect(() => {
-    if (phase !== "running") return;
-    const id = window.setInterval(() => {
-      const now = Date.now();
-      const delta = Math.max(0, Math.round((now - lastCheckRef.current) / 1000));
-      focusedRef.current += delta;
-      lastCheckRef.current = now;
-
-      const r = Math.max(0, Math.ceil((endAtRef.current! - now) / 1000));
-      setRemaining(r);
-      persistActive(true);
-      if (r <= 0) {
-        endAtRef.current = null;
-        playGong();
-        setPhase("asking");
-      }
-    }, 1000);
-    tickRef.current = id;
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
   const canStart = task.trim().length > 0 && phase === "idle";
   const locked = phase !== "idle";
@@ -136,170 +52,12 @@ export function TimerView() {
   }
   const endTimeLabel = (() => {
     if (phase === "idle") return computeEndTime(minutes * 60);
-    if (phase === "running" && endAtRef.current)
-      return computeEndTime(Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000)));
+    if (phase === "running" && endAtMs)
+      return computeEndTime(Math.max(0, Math.ceil((endAtMs - Date.now()) / 1000)));
     if (phase === "paused") return computeEndTime(remaining);
     return null;
   })();
   const progress = total > 0 ? 1 - remaining / total : 1;
-
-  function start() {
-    if (!canStart) return;
-    const now = Date.now();
-    focusedRef.current = 0;
-    savedRef.current = false;
-    startedAtRef.current = new Date().toISOString();
-    endAtRef.current = now + minutes * 60 * 1000;
-    lastCheckRef.current = now;
-    setTotal(minutes * 60);
-    setRemaining(minutes * 60);
-    setPhase("running");
-    setFlipNonce((n) => n + 1);
-  }
-
-
-  function pause() {
-    if (phase === "running") {
-      const r = Math.max(
-        0,
-        Math.ceil((endAtRef.current! - Date.now()) / 1000)
-      );
-      setRemaining(r);
-      endAtRef.current = null;
-      setPhase("paused");
-    } else if (phase === "paused") {
-      const now = Date.now();
-      endAtRef.current = now + remaining * 1000;
-      lastCheckRef.current = now;
-      setPhase("running");
-    }
-  }
-
-  function finalize() {
-    // Strict submission lock — Complete may be clicked twice (or fire from
-    // both the asking-controls and the completion screen). Bail on any
-    // re-entry so we never insert a duplicate row.
-    if (savedRef.current) return;
-    savedRef.current = true;
-    const startedAt = startedAtRef.current ?? new Date().toISOString();
-    const completedAt = new Date().toISOString();
-    const plannedMinutes = Math.round(total / 60);
-    const focusedMinutes = Math.round(focusedRef.current / 60);
-    const localId = crypto.randomUUID();
-    // Optimistic insert — sidebars/grids update instantly.
-    addSession({
-      id: localId,
-      task: task.trim(),
-      plannedMinutes,
-      focusedMinutes,
-      startedAt,
-      completedAt,
-      projectId: project?.id,
-      projectName: project?.name,
-      projectColor: project?.color,
-    });
-    maybeNotifyGoalReached();
-    saveSessionRemote({
-      user_id: getUserId(),
-      task_name: task.trim(),
-      project_tag: project?.name ?? null,
-      planned_duration: plannedMinutes,
-      actual_duration: focusedMinutes,
-      started_at: startedAt,
-      completed_at: completedAt,
-      was_aborted: false,
-    }).then((res) => {
-      if (res && !res.ok && !res.queued) {
-        removeSession(localId);
-        toast.error("Couldn't save session", { description: "We'll retry when you're back online." });
-      } else if (res && res.queued) {
-        toast("Saved locally", { description: "Will sync when you sign in or reconnect." });
-      }
-    }).catch((e) => {
-      console.error("saveSessionRemote threw:", e);
-    });
-    setPhase("complete");
-    endAtRef.current = null;
-    clearActive();
-    window.setTimeout(() => {
-      setPhase("idle");
-      setTask("");
-      setProject(null);
-      setMinutes(90);
-      setRemaining(90 * 60);
-      setTotal(90 * 60);
-      focusedRef.current = 0;
-      startedAtRef.current = null;
-    }, 1800);
-  }
-
-  function addExtra(mins: number) {
-    const now = Date.now();
-    if (endAtRef.current && endAtRef.current > now) {
-      endAtRef.current += mins * 60 * 1000;
-    } else {
-      endAtRef.current = now + (remaining + mins * 60) * 1000;
-    }
-    lastCheckRef.current = now;
-    setTotal((t) => t + mins * 60);
-    setRemaining((r) => r + mins * 60);
-    setPhase("running");
-  }
-
-  function abort() {
-    setShowAbortConfirm(false);
-    endAtRef.current = null;
-    if (tickRef.current) {
-      window.clearInterval(tickRef.current);
-      tickRef.current = null;
-    }
-    if (startedAtRef.current && task.trim() && !savedRef.current) {
-      savedRef.current = true;
-      const startedAt = startedAtRef.current;
-      const completedAt = new Date().toISOString();
-      const plannedMinutes = Math.round(total / 60);
-      const focusedMinutes = Math.round(focusedRef.current / 60);
-      const localId = crypto.randomUUID();
-      // Optimistic: surface the aborted block in the daily log/grid immediately.
-      addSession({
-        id: localId,
-        task: task.trim(),
-        plannedMinutes,
-        focusedMinutes,
-        startedAt,
-        completedAt,
-        projectId: project?.id,
-        projectName: project?.name,
-        projectColor: project?.color,
-      });
-      saveSessionRemote({
-        user_id: getUserId(),
-        task_name: task.trim(),
-        project_tag: project?.name ?? null,
-        planned_duration: plannedMinutes,
-        actual_duration: focusedMinutes,
-        started_at: startedAt,
-        completed_at: completedAt,
-        was_aborted: true,
-      }).then((res) => {
-        if (res && !res.ok && !res.queued) {
-          removeSession(localId);
-          toast.error("Couldn't save session", { description: "We'll retry when you're back online." });
-        } else if (res && res.queued) {
-          toast("Saved locally", { description: "Will sync when you sign in or reconnect." });
-        }
-      }).catch((e) => console.error("saveSessionRemote threw:", e));
-    }
-    clearActive();
-    setPhase("idle");
-    setTask("");
-    setProject(null);
-    setMinutes(90);
-    setRemaining(90 * 60);
-    setTotal(90 * 60);
-    focusedRef.current = 0;
-    startedAtRef.current = null;
-  }
 
   return (
     <div className="flex-1 flex items-start md:items-center justify-center px-4 md:px-6 pt-28 pb-6 md:py-10">
@@ -330,8 +88,6 @@ export function TimerView() {
           />
         </div>
 
-
-
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
           <div key={flipNonce} className="w-full h-full animate-hg-flip">
@@ -352,7 +108,6 @@ export function TimerView() {
           </div>
         </div>
 
-
         {/* Time + duration */}
         <div className="flex flex-col items-center gap-3">
           <div className="font-display text-4xl md:text-5xl tabular-nums tracking-tight">
@@ -361,7 +116,7 @@ export function TimerView() {
           {phase === "idle" ? (
             <div className="flex items-center gap-3 text-muted-foreground">
               <button
-                onClick={() => { playClick(); setMinutes((m) => Math.max(1, m - 5)); }}
+                onClick={() => { playClick(); setMinutes(Math.max(1, minutes - 5)); }}
                 className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
                 aria-label="Decrease minutes"
               >
@@ -398,7 +153,7 @@ export function TimerView() {
               />
               <span className="text-xs uppercase tracking-[0.18em]">min</span>
               <button
-                onClick={() => { playClick(); setMinutes((m) => Math.min(600, m + 5)); }}
+                onClick={() => { playClick(); setMinutes(Math.min(600, minutes + 5)); }}
                 className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
                 aria-label="Increase minutes"
               >
@@ -436,7 +191,7 @@ export function TimerView() {
                 Cancel
               </button>
               <button
-                onClick={abort}
+                onClick={() => { setShowAbortConfirm(false); abort(); }}
                 className="px-5 min-h-10 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
               >
                 Confirm
@@ -475,16 +230,14 @@ export function TimerView() {
               <Play className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={2} /> Start
             </button>
             <button
-              onClick={pause}
-              disabled={true}
+              disabled
               className="inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md border border-border text-base md:text-sm disabled:opacity-30 hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
               <Pause className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} />
               Pause
             </button>
             <button
-              onClick={finalize}
-              disabled={true}
+              disabled
               className="inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md border border-border text-base md:text-sm disabled:opacity-30 hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
               <Check className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} /> Complete
@@ -497,13 +250,10 @@ export function TimerView() {
             Name your one thing to begin.
           </p>
         )}
-
-        
       </div>
     </div>
   );
 }
-
 
 function AskingControls({
   task,
