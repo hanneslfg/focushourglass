@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
+import { TimerProvider } from "@/lib/TimerContext";
 
 function NotFoundComponent() {
   return (
