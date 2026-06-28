@@ -169,8 +169,10 @@ export function TimerView() {
               {phase === "running" && "Focusing"}
               {phase === "paused" && "Paused"}
               {phase === "asking" && "Time up"}
+              {phase === "review" && "Review"}
               {phase === "complete" && "Done"}
             </div>
+
           )}
           {endTimeLabel && (
             <div className="text-[11px] text-muted-foreground/50 tracking-wide tabular-nums">
