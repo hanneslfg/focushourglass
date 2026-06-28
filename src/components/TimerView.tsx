@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
+import { AdjustFocusTime } from "./AdjustFocusTime";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 
@@ -28,12 +29,15 @@ export function TimerView() {
     total,
     flipNonce,
     endAtMs,
+    pendingMinutes,
     start,
     pause,
     finalize,
+    commitReview,
     abort,
     addExtra,
   } = useTimer();
+
 
   const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
