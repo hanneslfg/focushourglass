@@ -31,7 +31,7 @@ import { saveSessionRemote, getUserId } from "./supabase";
 import { playGong } from "./gong";
 import { maybeNotifyGoalReached } from "./settings";
 
-export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
+export type Phase = "idle" | "running" | "paused" | "asking" | "review" | "complete";
 
 interface TimerCtx {
   // form / draft state (used when idle)
@@ -48,14 +48,20 @@ interface TimerCtx {
   total: number;
   flipNonce: number;
   endAtMs: number | null;
+  /** Proposed minutes during the post-session review/adjust step. */
+  pendingMinutes: number;
 
   // actions
   start: () => void;
   pause: () => void;
+  /** Open the post-session review screen with the tracked focused time. */
   finalize: () => void;
+  /** Commit the (possibly adjusted) focused minutes and save the session. */
+  commitReview: (adjustedMinutes: number) => void;
   abort: () => void;
   addExtra: (mins: number) => void;
 }
+
 
 const Ctx = createContext<TimerCtx | null>(null);
 
@@ -75,6 +81,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [total, setTotal] = useState(90 * 60);
   const [flipNonce, setFlipNonce] = useState(0);
   const [endAtMs, setEndAtMs] = useState<number | null>(null);
+  const [pendingMinutes, setPendingMinutes] = useState(0);
+
 
   const focusedRef = useRef(0);
   const startedAtRef = useRef<string | null>(null);
@@ -239,54 +247,82 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setEndAt(null);
   }, [setEndAt]);
 
+  /**
+   * Step 1 — Show the post-session review screen.
+   *
+   * We DO NOT save yet. The user is offered an "Adjust focus time" slider so
+   * they can subtract distracted minutes (e.g. they forgot to pause). The
+   * actual save happens in commitReview() with the adjusted number.
+   */
   const finalize = useCallback(() => {
-    if (savedRef.current) return;
-    savedRef.current = true;
-    const startedAt = startedAtRef.current ?? new Date().toISOString();
-    const completedAt = new Date().toISOString();
-    const plannedMinutes = Math.round(total / 60);
-    const focusedMinutes = Math.round(focusedRef.current / 60);
-    const localId = crypto.randomUUID();
-    addSession({
-      id: localId,
-      task: task.trim(),
-      plannedMinutes,
-      focusedMinutes,
-      startedAt,
-      completedAt,
-      projectId: project?.id,
-      projectName: project?.name,
-      projectColor: project?.color,
-    });
-    maybeNotifyGoalReached();
-    saveSessionRemote({
-      user_id: getUserId(),
-      task_name: task.trim(),
-      project_tag: project?.name ?? null,
-      planned_duration: plannedMinutes,
-      actual_duration: focusedMinutes,
-      started_at: startedAt,
-      completed_at: completedAt,
-      was_aborted: false,
-    })
-      .then((res) => {
-        if (res && !res.ok && !res.queued) {
-          removeSession(localId);
-          toast.error("Couldn't save session", {
-            description: "We'll retry when you're back online.",
-          });
-        } else if (res && res.queued) {
-          toast("Saved locally", {
-            description: "Will sync when you sign in or reconnect.",
-          });
-        }
-      })
-      .catch((e) => console.error("saveSessionRemote threw:", e));
-    setPhase("complete");
+    if (savedRef.current || phase === "review" || phase === "complete") return;
+    // Capture any ticking time the running interval hasn't credited yet.
+    if (phase === "running" && endAtRef.current) {
+      const now = Date.now();
+      const delta = Math.max(0, Math.round((now - lastCheckRef.current) / 1000));
+      focusedRef.current += delta;
+      lastCheckRef.current = now;
+    }
+    const focusedMinutes = Math.max(1, Math.round(focusedRef.current / 60));
+    setPendingMinutes(focusedMinutes);
     setEndAt(null);
-    clearActive();
-    window.setTimeout(resetIdle, 1800);
-  }, [task, project, total, resetIdle, setEndAt]);
+    setPhase("review");
+  }, [phase, setEndAt]);
+
+  /** Step 2 — Persist the (possibly adjusted) session to local + remote. */
+  const commitReview = useCallback(
+    (adjustedMinutes: number) => {
+      if (savedRef.current) return;
+      savedRef.current = true;
+      const startedAt = startedAtRef.current ?? new Date().toISOString();
+      const completedAt = new Date().toISOString();
+      const plannedMinutes = Math.round(total / 60);
+      const focusedMinutes = Math.max(1, Math.min(plannedMinutes || adjustedMinutes, Math.round(adjustedMinutes)));
+      const localId = crypto.randomUUID();
+      addSession({
+        id: localId,
+        task: task.trim(),
+        plannedMinutes,
+        focusedMinutes,
+        startedAt,
+        completedAt,
+        projectId: project?.id,
+        projectName: project?.name,
+        projectColor: project?.color,
+      });
+      maybeNotifyGoalReached();
+      saveSessionRemote({
+        user_id: getUserId(),
+        task_name: task.trim(),
+        project_tag: project?.name ?? null,
+        planned_duration: plannedMinutes,
+        actual_duration: focusedMinutes,
+        started_at: startedAt,
+        completed_at: completedAt,
+        was_aborted: false,
+      })
+        .then((res) => {
+          if (res && !res.ok && !res.queued) {
+            removeSession(localId);
+            toast.error("Couldn't save session", {
+              description: "We'll retry when you're back online.",
+            });
+          } else if (res && res.queued) {
+            toast("Saved locally", {
+              description: "Will sync when you sign in or reconnect.",
+            });
+          }
+        })
+        .catch((e) => console.error("saveSessionRemote threw:", e));
+      setPhase("complete");
+      setEndAt(null);
+      clearActive();
+      window.setTimeout(resetIdle, 1800);
+    },
+    [task, project, total, resetIdle, setEndAt],
+  );
+
+
 
   const abort = useCallback(() => {
     setEndAt(null);
@@ -397,11 +433,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         total,
         flipNonce,
         endAtMs,
+        pendingMinutes,
         start,
         pause,
         finalize,
+        commitReview,
         abort,
         addExtra,
+
       }}
     >
       {children}
