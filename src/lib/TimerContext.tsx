@@ -31,7 +31,7 @@ import { saveSessionRemote, getUserId } from "./supabase";
 import { playGong } from "./gong";
 import { maybeNotifyGoalReached } from "./settings";
 
-export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
+export type Phase = "idle" | "running" | "paused" | "asking" | "review" | "complete";
 
 interface TimerCtx {
   // form / draft state (used when idle)
@@ -48,14 +48,20 @@ interface TimerCtx {
   total: number;
   flipNonce: number;
   endAtMs: number | null;
+  /** Proposed minutes during the post-session review/adjust step. */
+  pendingMinutes: number;
 
   // actions
   start: () => void;
   pause: () => void;
+  /** Open the post-session review screen with the tracked focused time. */
   finalize: () => void;
+  /** Commit the (possibly adjusted) focused minutes and save the session. */
+  commitReview: (adjustedMinutes: number) => void;
   abort: () => void;
   addExtra: (mins: number) => void;
 }
+
 
 const Ctx = createContext<TimerCtx | null>(null);
 
