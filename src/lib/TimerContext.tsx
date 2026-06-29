@@ -39,6 +39,8 @@ interface TimerCtx {
   setTask: (s: string) => void;
   project: ProjectTag | null;
   setProject: (p: ProjectTag | null) => void;
+  tags: string[];
+  setTags: (t: string[]) => void;
   minutes: number;
   setMinutes: (m: number) => void;
 
@@ -74,6 +76,7 @@ export function useTimer(): TimerCtx {
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
+  const [tags, setTagsState] = useState<string[]>([]);
   const [minutes, setMinutesState] = useState(90);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -112,6 +115,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
+        tags: tags.length > 0 ? tags : undefined,
         plannedMinutes: Math.round(total / 60),
         startedAt: startedAtRef.current,
         focusedSeconds: focusedRef.current,
@@ -120,7 +124,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       };
       saveActive(state);
     },
-    [task, project, total],
+    [task, project, tags, total],
   );
 
   // ---- Tick loop ----------------------------------------------------------
@@ -180,6 +184,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         color: a.projectColor ?? "#f4a261",
       });
     }
+    if (Array.isArray(a.tags)) setTagsState(a.tags);
     setMinutesState(planned);
     setTotal(plannedSec);
     setRemaining(remainingSec);
@@ -239,6 +244,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setPhase("idle");
     setTaskState("");
     setProjectState(null);
+    setTagsState([]);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
@@ -289,6 +295,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
+        tags: tags.length > 0 ? tags : undefined,
       });
       maybeNotifyGoalReached();
       saveSessionRemote({
@@ -300,6 +307,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: false,
+        tags: tags.length > 0 ? tags : undefined,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -319,7 +327,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       clearActive();
       window.setTimeout(resetIdle, 1800);
     },
-    [task, project, total, resetIdle, setEndAt],
+    [task, project, tags, total, resetIdle, setEndAt],
   );
 
 
@@ -343,6 +351,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
+        tags: tags.length > 0 ? tags : undefined,
       });
       saveSessionRemote({
         user_id: getUserId(),
@@ -353,6 +362,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: true,
+        tags: tags.length > 0 ? tags : undefined,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -364,7 +374,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     resetIdle();
-  }, [task, project, total, resetIdle, setEndAt]);
+  }, [task, project, tags, total, resetIdle, setEndAt]);
 
   const addExtra = useCallback(
     (mins: number) => {
@@ -426,6 +436,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setTask,
         project,
         setProject,
+        tags,
+        setTags: setTagsState,
         minutes,
         setMinutes,
         phase,
@@ -440,7 +452,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         commitReview,
         abort,
         addExtra,
-
       }}
     >
       {children}

@@ -15,6 +15,8 @@ export interface Session {
   projectId?: string;
   projectName?: string;
   projectColor?: string;
+  /** Free-form multi-tags chosen by the user for this session. */
+  tags?: string[];
 }
 
 const KEY = "hourglass.sessions.v1";
@@ -75,6 +77,7 @@ interface RemoteRow {
   started_at: string;
   completed_at: string;
   was_aborted: boolean;
+  tags?: string[] | null;
 }
 
 function remoteRowToSession(r: RemoteRow): Session {
@@ -92,6 +95,7 @@ function remoteRowToSession(r: RemoteRow): Session {
     projectId,
     projectName: name,
     projectColor,
+    tags: Array.isArray(r.tags) ? r.tags.filter(Boolean) : undefined,
   };
 }
 

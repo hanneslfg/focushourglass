@@ -104,6 +104,8 @@ export interface RemoteSession {
   started_at: string; // ISO
   completed_at: string; // ISO
   was_aborted: boolean;
+  /** Free-form multi-tags for this session. Stored as text[] in Supabase. */
+  tags?: string[];
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
@@ -147,6 +149,7 @@ function buildPayload(s: RemoteSession, userId: string) {
     started_at: s.started_at,
     completed_at: s.completed_at,
     was_aborted: Boolean(s.was_aborted),
+    tags: Array.isArray(s.tags) && s.tags.length > 0 ? s.tags : null,
   };
 }
 
