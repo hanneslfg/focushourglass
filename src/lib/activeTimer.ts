@@ -9,6 +9,8 @@ export interface ActiveTimerState {
   projectId?: string;
   projectName?: string;
   projectColor?: string;
+  /** Free-form multi-tags chosen for this session. */
+  tags?: string[];
   plannedMinutes: number;
   startedAt: string; // ISO
   /** Seconds actually focused so far (running time). */

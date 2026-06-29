@@ -13,6 +13,7 @@ interface RemoteRow {
   started_at: string;
   completed_at: string;
   was_aborted: boolean;
+  tags?: string[] | null;
 }
 
 function toLocal(row: RemoteRow) {
@@ -27,6 +28,7 @@ function toLocal(row: RemoteRow) {
     projectId: name ? projectIdFromName(name) : undefined,
     projectName: name,
     projectColor: name ? colorForProjectName(name) : undefined,
+    tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : undefined,
   };
 }
 
