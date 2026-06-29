@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SessionDetailModal } from "./SessionDetailModal";
 
 /* =================== Helpers =================== */
 
@@ -472,10 +473,14 @@ function Sparkline({
 
 /* =================== Timer block card =================== */
 
-function TimerBlockCard({ s }: { s: Session }) {
+function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => void }) {
   return (
     <article
-      className="group relative w-full rounded-lg px-5 py-4 md:px-6 md:py-5 flex items-center justify-between gap-6 transition-all duration-300"
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick ? () => onClick(s) : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(s); } } : undefined}
+      className={`group relative w-full rounded-lg px-5 py-4 md:px-6 md:py-5 flex items-center justify-between gap-6 transition-all duration-300 ${onClick ? "cursor-pointer" : ""}`}
       style={{
         background: "rgba(26,26,26,0.95)",
         border: "1px solid rgba(245,158,11,0.20)",
@@ -659,6 +664,7 @@ export function AnalyticsView({
 
   // Day detail modal
   const [openDay, setOpenDay] = useState<{ key: string; date: Date } | null>(null);
+  const [openSession, setOpenSession] = useState<Session | null>(null);
   const openDayBlocks = useMemo(() => {
     if (!openDay) return [];
     return sessions
@@ -836,7 +842,7 @@ export function AnalyticsView({
           </div>
         ) : (
           <div className="space-y-3">
-            {inRange.map((s) => <TimerBlockCard key={s.id} s={s} />)}
+            {inRange.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)}
           </div>
         )}
       </section>
@@ -860,11 +866,17 @@ export function AnalyticsView({
                 No focus blocks recorded yet. Time to start the hourglass.
               </p>
             ) : (
-              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} />)
+              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      <SessionDetailModal
+        session={openSession}
+        open={!!openSession}
+        onOpenChange={(o) => !o && setOpenSession(null)}
+      />
     </div>
   );
 }

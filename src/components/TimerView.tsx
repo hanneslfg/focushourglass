@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
-import { AdjustFocusTime } from "./AdjustFocusTime";
+
 import { TagInput } from "./TagInput";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
@@ -32,11 +32,9 @@ export function TimerView() {
     total,
     flipNonce,
     endAtMs,
-    pendingMinutes,
     start,
     pause,
     finalize,
-    commitReview,
     abort,
     addExtra,
   } = useTimer();
@@ -181,7 +179,7 @@ export function TimerView() {
               {phase === "running" && "Focusing"}
               {phase === "paused" && "Paused"}
               {phase === "asking" && "Time up"}
-              {phase === "review" && "Review"}
+              
               {phase === "complete" && "Done"}
             </div>
 
@@ -194,14 +192,9 @@ export function TimerView() {
         </div>
 
         {/* Controls */}
-        {phase === "review" ? (
-          <AdjustFocusTime
-            trackedMinutes={pendingMinutes}
-            taskName={task}
-            onConfirm={commitReview}
-          />
-        ) : phase === "asking" ? (
+        {phase === "asking" ? (
           <AskingControls task={task} onDone={finalize} onAddExtra={addExtra} />
+
 
         ) : showAbortConfirm ? (
           <div className="flex flex-col items-center gap-4 w-full rounded-lg border border-border bg-card p-5">

@@ -48,6 +48,11 @@ export function removeSession(id: string) {
   write(read().filter((s) => s.id !== id));
 }
 
+/** Patch a stored session in place (optimistic local update). */
+export function updateSession(id: string, patch: Partial<Session>) {
+  write(read().map((s) => (s.id === id ? { ...s, ...patch } : s)));
+}
+
 function remoteKey(task: string, startedAt: string, completedAt: string): string {
   return `${task}|${startedAt.slice(0, 19)}|${completedAt.slice(0, 19)}`;
 }

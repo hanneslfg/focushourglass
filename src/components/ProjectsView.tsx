@@ -9,6 +9,7 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { SessionDetailModal } from "./SessionDetailModal";
 
 function fmtHours(mins: number) {
   if (mins < 60) return `${mins}m`;
@@ -252,6 +253,7 @@ function ProjectDetailFull({
   onBack: () => void;
   onDelete: () => void;
 }) {
+  const [openSession, setOpenSession] = useState<Session | null>(null);
   const totalMin = sessions.reduce((s, x) => s + (x.focusedMinutes || 0), 0);
   const firstAt = sessions.reduce(
     (m, x) => Math.min(m, new Date(x.startedAt || x.completedAt).getTime()),
@@ -412,7 +414,8 @@ function ProjectDetailFull({
                     {list.map((s) => (
                       <li
                         key={s.id}
-                        className="px-4 py-3 flex items-center gap-3 bg-card/40"
+                        onClick={() => setOpenSession(s)}
+                        className="px-4 py-3 flex items-center gap-3 bg-card/40 cursor-pointer hover:bg-card/70 transition-colors"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-sm truncate">
@@ -434,6 +437,12 @@ function ProjectDetailFull({
           </ol>
         )}
       </section>
+
+      <SessionDetailModal
+        session={openSession}
+        open={!!openSession}
+        onOpenChange={(o) => !o && setOpenSession(null)}
+      />
     </div>
   );
 }
