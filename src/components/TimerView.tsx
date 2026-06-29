@@ -32,11 +32,9 @@ export function TimerView() {
     total,
     flipNonce,
     endAtMs,
-    pendingMinutes,
     start,
     pause,
     finalize,
-    commitReview,
     abort,
     addExtra,
   } = useTimer();
