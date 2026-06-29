@@ -214,6 +214,55 @@ export async function saveSessionRemote(s: RemoteSession) {
 }
 
 /**
+ * Update a previously saved session's `actual_duration`. Matches by row id
+ * first; falls back to (user_id, started_at, task_name) when the local id
+ * predates a Supabase round-trip (newly added sessions hold a local UUID
+ * until the next hydrate).
+ */
+export async function updateSessionMinutesRemote(opts: {
+  id?: string;
+  startedAt: string;
+  taskName: string;
+  actualMinutes: number;
+}): Promise<{ ok: boolean }> {
+  let authUserId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
+  } catch (e) {
+    console.error("[supabase] updateSessionMinutes: auth threw:", e);
+  }
+  if (!authUserId) return { ok: false };
+
+  const patch = { actual_duration: Math.max(1, Math.round(opts.actualMinutes)) };
+  try {
+    if (opts.id) {
+      const { data, error } = await supabase
+        .from("sessions")
+        .update(patch)
+        .eq("id", opts.id)
+        .eq("user_id", authUserId)
+        .select();
+      if (!error && data && data.length > 0) return { ok: true };
+    }
+    const { error: err2 } = await supabase
+      .from("sessions")
+      .update(patch)
+      .eq("user_id", authUserId)
+      .eq("started_at", opts.startedAt)
+      .eq("task_name", opts.taskName);
+    if (err2) {
+      console.error("[supabase] updateSessionMinutes fallback failed:", err2.message);
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[supabase] updateSessionMinutes threw:", e);
+    return { ok: false };
+  }
+}
+
+/**
  * Push any sessions queued in localStorage to Supabase. Safe to call on
  * component mount or after sign-in. No-op when the user isn't authenticated.
  */
