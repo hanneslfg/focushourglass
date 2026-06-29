@@ -412,7 +412,8 @@ function ProjectDetailFull({
                     {list.map((s) => (
                       <li
                         key={s.id}
-                        className="px-4 py-3 flex items-center gap-3 bg-card/40"
+                        onClick={() => setOpenSession(s)}
+                        className="px-4 py-3 flex items-center gap-3 bg-card/40 cursor-pointer hover:bg-card/70 transition-colors"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-sm truncate">
