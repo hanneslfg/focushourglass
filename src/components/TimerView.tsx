@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
@@ -44,6 +44,11 @@ export function TimerView() {
 
   const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
+
+  // Only animate the flip when the user actively clicks Start during this
+  // mount. On remount with an already-running timer, skip the intro animation.
+  const initialFlipRef = useRef(flipNonce);
+  const shouldAnimateFlip = flipNonce !== initialFlipRef.current;
 
   // Keep the visible minute field synced with context state.
   useEffect(() => {
@@ -101,7 +106,7 @@ export function TimerView() {
 
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
-          <div key={flipNonce} className="w-full h-full animate-hg-flip">
+          <div key={flipNonce} className={`w-full h-full ${shouldAnimateFlip ? "animate-hg-flip" : ""}`}>
             <div
               className="w-full h-full"
               style={{
