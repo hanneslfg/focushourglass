@@ -115,6 +115,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
+        tags: tags.length > 0 ? tags : undefined,
         plannedMinutes: Math.round(total / 60),
         startedAt: startedAtRef.current,
         focusedSeconds: focusedRef.current,
@@ -123,7 +124,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       };
       saveActive(state);
     },
-    [task, project, total],
+    [task, project, tags, total],
   );
 
   // ---- Tick loop ----------------------------------------------------------
@@ -183,6 +184,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         color: a.projectColor ?? "#f4a261",
       });
     }
+    if (Array.isArray(a.tags)) setTagsState(a.tags);
     setMinutesState(planned);
     setTotal(plannedSec);
     setRemaining(remainingSec);
