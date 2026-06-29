@@ -250,14 +250,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   }, [setEndAt]);
 
   /**
-   * Step 1 — Show the post-session review screen.
-   *
-   * We DO NOT save yet. The user is offered an "Adjust focus time" slider so
-   * they can subtract distracted minutes (e.g. they forgot to pause). The
-   * actual save happens in commitReview() with the adjusted number.
+   * Finalize the session: persist immediately to local + remote and show the
+   * success/dopamine screen. Post-hoc adjustments happen later from the
+   * history lists, not here.
    */
   const finalize = useCallback(() => {
-    if (savedRef.current || phase === "review" || phase === "complete") return;
+    if (savedRef.current || phase === "complete") return;
     // Capture any ticking time the running interval hasn't credited yet.
     if (phase === "running" && endAtRef.current) {
       const now = Date.now();
@@ -265,66 +263,54 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       focusedRef.current += delta;
       lastCheckRef.current = now;
     }
+    savedRef.current = true;
+    const startedAt = startedAtRef.current ?? new Date().toISOString();
+    const completedAt = new Date().toISOString();
+    const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.max(1, Math.round(focusedRef.current / 60));
-    setPendingMinutes(focusedMinutes);
-    setEndAt(null);
-    setPhase("review");
-  }, [phase, setEndAt]);
-
-  /** Step 2 — Persist the (possibly adjusted) session to local + remote. */
-  const commitReview = useCallback(
-    (adjustedMinutes: number) => {
-      if (savedRef.current) return;
-      savedRef.current = true;
-      const startedAt = startedAtRef.current ?? new Date().toISOString();
-      const completedAt = new Date().toISOString();
-      const plannedMinutes = Math.round(total / 60);
-      const focusedMinutes = Math.max(1, Math.min(plannedMinutes || adjustedMinutes, Math.round(adjustedMinutes)));
-      const localId = crypto.randomUUID();
-      addSession({
-        id: localId,
-        task: task.trim(),
-        plannedMinutes,
-        focusedMinutes,
-        startedAt,
-        completedAt,
-        projectId: project?.id,
-        projectName: project?.name,
-        projectColor: project?.color,
-        tags: tags.length > 0 ? tags : undefined,
-      });
-      maybeNotifyGoalReached();
-      saveSessionRemote({
-        user_id: getUserId(),
-        task_name: task.trim(),
-        project_tag: project?.name ?? null,
-        planned_duration: plannedMinutes,
-        actual_duration: focusedMinutes,
-        started_at: startedAt,
-        completed_at: completedAt,
-        was_aborted: false,
-        tags: tags.length > 0 ? tags : undefined,
+    const localId = crypto.randomUUID();
+    addSession({
+      id: localId,
+      task: task.trim(),
+      plannedMinutes,
+      focusedMinutes,
+      startedAt,
+      completedAt,
+      projectId: project?.id,
+      projectName: project?.name,
+      projectColor: project?.color,
+      tags: tags.length > 0 ? tags : undefined,
+    });
+    maybeNotifyGoalReached();
+    saveSessionRemote({
+      user_id: getUserId(),
+      task_name: task.trim(),
+      project_tag: project?.name ?? null,
+      planned_duration: plannedMinutes,
+      actual_duration: focusedMinutes,
+      started_at: startedAt,
+      completed_at: completedAt,
+      was_aborted: false,
+      tags: tags.length > 0 ? tags : undefined,
+    })
+      .then((res) => {
+        if (res && !res.ok && !res.queued) {
+          removeSession(localId);
+          toast.error("Couldn't save session", {
+            description: "We'll retry when you're back online.",
+          });
+        } else if (res && res.queued) {
+          toast("Saved locally", {
+            description: "Will sync when you sign in or reconnect.",
+          });
+        }
       })
-        .then((res) => {
-          if (res && !res.ok && !res.queued) {
-            removeSession(localId);
-            toast.error("Couldn't save session", {
-              description: "We'll retry when you're back online.",
-            });
-          } else if (res && res.queued) {
-            toast("Saved locally", {
-              description: "Will sync when you sign in or reconnect.",
-            });
-          }
-        })
-        .catch((e) => console.error("saveSessionRemote threw:", e));
-      setPhase("complete");
-      setEndAt(null);
-      clearActive();
-      window.setTimeout(resetIdle, 1800);
-    },
-    [task, project, tags, total, resetIdle, setEndAt],
-  );
+      .catch((e) => console.error("saveSessionRemote threw:", e));
+    setPhase("complete");
+    setEndAt(null);
+    clearActive();
+    window.setTimeout(resetIdle, 1800);
+  }, [phase, task, project, tags, total, resetIdle, setEndAt]);
 
 
 
