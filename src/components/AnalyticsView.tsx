@@ -664,6 +664,7 @@ export function AnalyticsView({
 
   // Day detail modal
   const [openDay, setOpenDay] = useState<{ key: string; date: Date } | null>(null);
+  const [openSession, setOpenSession] = useState<Session | null>(null);
   const openDayBlocks = useMemo(() => {
     if (!openDay) return [];
     return sessions
@@ -841,7 +842,7 @@ export function AnalyticsView({
           </div>
         ) : (
           <div className="space-y-3">
-            {inRange.map((s) => <TimerBlockCard key={s.id} s={s} />)}
+            {inRange.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)}
           </div>
         )}
       </section>
@@ -865,11 +866,17 @@ export function AnalyticsView({
                 No focus blocks recorded yet. Time to start the hourglass.
               </p>
             ) : (
-              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} />)
+              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)
             )}
           </div>
         </DialogContent>
       </Dialog>
+
+      <SessionDetailModal
+        session={openSession}
+        open={!!openSession}
+        onOpenChange={(o) => !o && setOpenSession(null)}
+      />
     </div>
   );
 }
