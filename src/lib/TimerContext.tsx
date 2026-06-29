@@ -39,6 +39,8 @@ interface TimerCtx {
   setTask: (s: string) => void;
   project: ProjectTag | null;
   setProject: (p: ProjectTag | null) => void;
+  tags: string[];
+  setTags: (t: string[]) => void;
   minutes: number;
   setMinutes: (m: number) => void;
 
@@ -74,6 +76,7 @@ export function useTimer(): TimerCtx {
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
+  const [tags, setTagsState] = useState<string[]>([]);
   const [minutes, setMinutesState] = useState(90);
 
   const [phase, setPhase] = useState<Phase>("idle");
