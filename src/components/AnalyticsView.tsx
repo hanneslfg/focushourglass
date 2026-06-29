@@ -472,10 +472,14 @@ function Sparkline({
 
 /* =================== Timer block card =================== */
 
-function TimerBlockCard({ s }: { s: Session }) {
+function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => void }) {
   return (
     <article
-      className="group relative w-full rounded-lg px-5 py-4 md:px-6 md:py-5 flex items-center justify-between gap-6 transition-all duration-300"
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick ? () => onClick(s) : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(s); } } : undefined}
+      className={`group relative w-full rounded-lg px-5 py-4 md:px-6 md:py-5 flex items-center justify-between gap-6 transition-all duration-300 ${onClick ? "cursor-pointer" : ""}`}
       style={{
         background: "rgba(26,26,26,0.95)",
         border: "1px solid rgba(245,158,11,0.20)",
