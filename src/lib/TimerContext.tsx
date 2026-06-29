@@ -427,11 +427,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         total,
         flipNonce,
         endAtMs,
-        pendingMinutes,
         start,
         pause,
         finalize,
-        commitReview,
         abort,
         addExtra,
       }}
