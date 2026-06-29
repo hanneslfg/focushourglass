@@ -9,6 +9,7 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { SessionDetailModal } from "./SessionDetailModal";
 
 function fmtHours(mins: number) {
   if (mins < 60) return `${mins}m`;
@@ -436,6 +437,12 @@ function ProjectDetailFull({
           </ol>
         )}
       </section>
+
+      <SessionDetailModal
+        session={openSession}
+        open={!!openSession}
+        onOpenChange={(o) => !o && setOpenSession(null)}
+      />
     </div>
   );
 }
