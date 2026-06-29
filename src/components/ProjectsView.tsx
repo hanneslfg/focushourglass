@@ -252,6 +252,7 @@ function ProjectDetailFull({
   onBack: () => void;
   onDelete: () => void;
 }) {
+  const [openSession, setOpenSession] = useState<Session | null>(null);
   const totalMin = sessions.reduce((s, x) => s + (x.focusedMinutes || 0), 0);
   const firstAt = sessions.reduce(
     (m, x) => Math.min(m, new Date(x.startedAt || x.completedAt).getTime()),
