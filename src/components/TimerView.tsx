@@ -3,6 +3,7 @@ import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AdjustFocusTime } from "./AdjustFocusTime";
+import { TagInput } from "./TagInput";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 
@@ -22,6 +23,8 @@ export function TimerView() {
     setTask,
     project,
     setProject,
+    tags,
+    setTags,
     minutes,
     setMinutes,
     phase,
@@ -91,6 +94,10 @@ export function TimerView() {
             onSelect={setProject}
           />
         </div>
+
+        {/* Multi-tags */}
+        <TagInput tags={tags} onChange={setTags} />
+
 
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
