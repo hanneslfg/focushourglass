@@ -3,7 +3,7 @@ import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 
-import { TagInput } from "./TagInput";
+import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 
