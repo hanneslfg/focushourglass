@@ -101,6 +101,24 @@ export function SessionDetailModal({ session, open, onOpenChange }: Props) {
           </div>
         )}
 
+        {session.tags && session.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {session.tags.map((t) => (
+              <span
+                key={t}
+                className="inline-block px-1.5 py-px rounded text-[10px] tracking-wide uppercase"
+                style={{
+                  background: "rgba(245,158,11,0.10)",
+                  color: "rgba(252,211,77,0.95)",
+                  border: "1px solid rgba(245,158,11,0.28)",
+                }}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="mt-4">
           <AdjustFocusTime
             trackedMinutes={session.focusedMinutes}

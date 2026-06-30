@@ -10,6 +10,7 @@ import {
 } from "@/lib/projects";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 import { SessionDetailModal } from "./SessionDetailModal";
+import { ProjectTagsManager } from "./ProjectTagsManager";
 
 function fmtHours(mins: number) {
   if (mins < 60) return `${mins}m`;
@@ -346,6 +347,10 @@ function ProjectDetailFull({
 
       <ProjectHeaderEditable project={project} />
 
+      <ProjectTagsManager projectId={project.id} accent={project.color} />
+
+
+
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
         <BigStat label="Total focused" value={fmtHours(totalMin)} />
@@ -424,6 +429,23 @@ function ProjectDetailFull({
                           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
                             {formatTime(new Date(s.startedAt || s.completedAt))}
                           </div>
+                          {s.tags && s.tags.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {s.tags.map((t) => (
+                                <span
+                                  key={t}
+                                  className="inline-block px-1.5 py-px rounded text-[9px] tracking-wide uppercase"
+                                  style={{
+                                    background: "rgba(245,158,11,0.10)",
+                                    color: "rgba(252,211,77,0.95)",
+                                    border: "1px solid rgba(245,158,11,0.28)",
+                                  }}
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="text-sm tabular-nums text-muted-foreground shrink-0">
                           {s.focusedMinutes}m
