@@ -512,6 +512,23 @@ function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => 
             {s.projectName}
           </div>
         )}
+        {s.tags && s.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {s.tags.map((t) => (
+              <span
+                key={t}
+                className="inline-block px-1.5 py-px rounded text-[9px] tracking-wide uppercase"
+                style={{
+                  background: "rgba(245,158,11,0.10)",
+                  color: "rgba(252,211,77,0.95)",
+                  border: "1px solid rgba(245,158,11,0.28)",
+                }}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/55 tabular-nums">
           {effectiveDayKey(s.completedAt)}
         </div>
