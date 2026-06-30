@@ -98,8 +98,8 @@ export function TimerView() {
           />
         </div>
 
-        {/* Multi-tags */}
-        <TagInput tags={tags} onChange={setTags} />
+        {/* Project tag toggles */}
+        <SessionTagBar project={project} active={tags} onChange={setTags} disabled={locked} />
 
 
         {/* Hourglass */}
