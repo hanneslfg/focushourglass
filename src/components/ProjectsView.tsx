@@ -347,6 +347,10 @@ function ProjectDetailFull({
 
       <ProjectHeaderEditable project={project} />
 
+      <ProjectTagsManager projectId={project.id} accent={project.color} />
+
+
+
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
         <BigStat label="Total focused" value={fmtHours(totalMin)} />
