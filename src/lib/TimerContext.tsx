@@ -392,7 +392,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   const setProject = useCallback(
     (p: ProjectTag | null) => {
-      if (phase === "running" && (p?.id ?? null) !== (project?.id ?? null)) {
+      const changed = (p?.id ?? null) !== (project?.id ?? null);
+      if (phase === "running" && changed) {
         const now = Date.now();
         const delta = Math.max(0, Math.round((now - lastCheckRef.current) / 1000));
         focusedRef.current += delta;
@@ -403,6 +404,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         toast("Auto-paused", { description: "Project changed mid-session." });
       }
       setProjectState(p);
+      // Active session tags are scoped to a project; clear them on switch.
+      if (changed) setTagsState([]);
     },
     [phase, project, setEndAt],
   );
