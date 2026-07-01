@@ -93,7 +93,7 @@ export function useRealtimeSessions() {
       channel = supabase
         .channel(`public:sessions:${uid}`)
         .on(
-          "postgres_changes",
+          "postgres_changes" as never,
           {
             event: "INSERT",
             schema: "public",
@@ -110,7 +110,7 @@ export function useRealtimeSessions() {
           },
         )
         .on(
-          "postgres_changes",
+          "postgres_changes" as never,
           {
             event: "UPDATE",
             schema: "public",
@@ -133,7 +133,7 @@ export function useRealtimeSessions() {
           },
         )
         .on(
-          "postgres_changes",
+          "postgres_changes" as never,
           {
             event: "DELETE",
             schema: "public",
