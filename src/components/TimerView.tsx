@@ -102,6 +102,10 @@ export function TimerView() {
         {/* Project tag toggles */}
         <SessionTagBar project={project} active={tags} onChange={setTags} disabled={locked} />
 
+        {/* Ambient sound selector */}
+        <AmbientSound running={phase === "running"} />
+
+
 
         {/* Hourglass */}
         <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
