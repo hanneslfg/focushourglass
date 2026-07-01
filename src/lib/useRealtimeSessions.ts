@@ -1,6 +1,11 @@
-import { useEffect } from "react";
-import { supabase } from "./supabase";
-import { upsertRemoteSession } from "./sessions";
+import { useEffect, useState } from "react";
+import { supabase, syncPendingSessions } from "./supabase";
+import {
+  upsertRemoteSession,
+  updateSession,
+  removeSession,
+  hydrateFromRemote,
+} from "./sessions";
 import { projectIdFromName, colorForProjectName } from "./projects";
 
 interface RemoteRow {
@@ -32,10 +37,48 @@ function toLocal(row: RemoteRow) {
   };
 }
 
+export type SyncState = "idle" | "syncing" | "offline" | "error";
+
+let listeners = new Set<(s: SyncState) => void>();
+let currentState: SyncState = "idle";
+function setState(s: SyncState) {
+  currentState = s;
+  listeners.forEach((l) => l(s));
+}
+
+export function useSyncState(): SyncState {
+  const [s, setS] = useState<SyncState>(currentState);
+  useEffect(() => {
+    listeners.add(setS);
+    return () => {
+      listeners.delete(setS);
+    };
+  }, []);
+  return s;
+}
+
+async function refresh() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    setState("offline");
+    return;
+  }
+  setState("syncing");
+  try {
+    await syncPendingSessions().catch(() => {});
+    await hydrateFromRemote();
+    setState("idle");
+  } catch (e) {
+    console.error("[realtime] refresh failed:", e);
+    setState("error");
+  }
+}
+
 /**
- * Subscribes to realtime INSERTs on the `sessions` table for the signed-in
- * user and merges new rows into local state. Idempotent against optimistic
- * inserts via `upsertRemoteSession`'s dedup. Resubscribes on auth changes.
+ * On mount: force a fresh Supabase fetch (overrides stale local cache) and
+ * flushes any locally-queued sessions. Then subscribes to realtime INSERT /
+ * UPDATE / DELETE on `sessions` for the signed-in user so changes from any
+ * device propagate immediately. Reconnect-triggers a full re-hydrate so the
+ * cloud always wins as the source of truth.
  */
 export function useRealtimeSessions() {
   useEffect(() => {
@@ -50,8 +93,7 @@ export function useRealtimeSessions() {
       channel = supabase
         .channel(`public:sessions:${uid}`)
         .on(
-          // postgres_changes event name is a string literal at runtime
-          "postgres_changes",
+          "postgres_changes" as never,
           {
             event: "INSERT",
             schema: "public",
@@ -60,17 +102,67 @@ export function useRealtimeSessions() {
           },
           (payload: { new: RemoteRow }) => {
             try {
-              const added = upsertRemoteSession(toLocal(payload.new));
-              if (added) console.log("[realtime] merged remote session");
+              if (payload.new.was_aborted) return;
+              upsertRemoteSession(toLocal(payload.new));
             } catch (e) {
-              console.error("[realtime] merge failed:", e);
+              console.error("[realtime] INSERT merge failed:", e);
             }
           },
         )
-        .subscribe();
+        .on(
+          "postgres_changes" as never,
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "sessions",
+            filter: `user_id=eq.${uid}`,
+          },
+          (payload: { new: RemoteRow }) => {
+            try {
+              const local = toLocal(payload.new);
+              if (payload.new.was_aborted) {
+                if (local.id) removeSession(local.id);
+                return;
+              }
+              // Try id-based patch; if row wasn't in the cache, insert.
+              updateSession(local.id, local);
+              upsertRemoteSession(local);
+            } catch (e) {
+              console.error("[realtime] UPDATE merge failed:", e);
+            }
+          },
+        )
+        .on(
+          "postgres_changes" as never,
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "sessions",
+            filter: `user_id=eq.${uid}`,
+          },
+          (payload: { old: RemoteRow }) => {
+            try {
+              const id = payload.old?.id;
+              if (id) removeSession(id);
+            } catch (e) {
+              console.error("[realtime] DELETE merge failed:", e);
+            }
+          },
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            refresh();
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            setState("error");
+          }
+        });
     }
 
+    // Kick off an immediate refresh so we don't wait for the channel to
+    // subscribe before the UI shows fresh cloud data.
+    refresh();
     subscribe();
+
     const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
         if (channel) {
@@ -81,10 +173,22 @@ export function useRealtimeSessions() {
       }
     });
 
+    const onOnline = () => {
+      refresh();
+    };
+    const onOffline = () => setState("offline");
+    const onFocus = () => refresh();
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("focus", onFocus);
+
     return () => {
       cancelled = true;
       authSub.subscription.unsubscribe();
       if (channel) supabase.removeChannel(channel);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("focus", onFocus);
     };
   }, []);
 }

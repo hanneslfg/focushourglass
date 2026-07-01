@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { getSessions, hydrateFromRemote, type Session } from "@/lib/sessions";
+import { getSessions, type Session } from "@/lib/sessions";
 import {
   getTodayGoal,
   getTodayFocusedMinutes,
@@ -9,7 +9,7 @@ import {
   effectiveDayKey,
 } from "@/lib/settings";
 import { refreshStreaks, getCachedStreaks, type Streaks } from "@/lib/streaks";
-import { syncPendingSessions, supabase } from "@/lib/supabase";
+import { useSyncState } from "@/lib/useRealtimeSessions";
 
 function fmtHM(mins: number) {
   if (mins <= 0) return "0m";
@@ -31,6 +31,7 @@ export function DailyLogSidebar() {
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
   const [streaks, setStreaks] = useState<Streaks>(() => getCachedStreaks());
+  const syncState = useSyncState();
 
   useEffect(() => {
     const sync = () => {
@@ -51,26 +52,9 @@ export function DailyLogSidebar() {
     };
   }, []);
 
-  useEffect(() => {
-    // Force a fresh remote pull on mount so PC reflects mobile inserts.
-    hydrateFromRemote()
-      .then((ok) => { if (ok) window.dispatchEvent(new Event("hourglass:sessions")); })
-      .catch(() => {});
-    syncPendingSessions().catch(() => {});
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
-        hydrateFromRemote()
-          .then((ok) => { if (ok) window.dispatchEvent(new Event("hourglass:sessions")); })
-          .catch(() => {});
-        syncPendingSessions()
-          .then((r) => {
-            if (r.synced > 0) window.dispatchEvent(new Event("hourglass:sessions"));
-          })
-          .catch(() => {});
-      }
-    });
-    return () => data.subscription.unsubscribe();
-  }, []);
+  // Realtime sync + hydrate on mount is centralized in useRealtimeSessions
+  // (wired once at the root). This component just reflects the local cache
+  // whenever the "hourglass:sessions" event fires.
 
   useEffect(() => {
     if (!open) return;
@@ -119,8 +103,11 @@ export function DailyLogSidebar() {
         <div className="h-full flex flex-col">
           <header className="flex items-center justify-between pl-5 pr-6 py-4 sm:px-5 border-b border-border">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Today
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Today
+                </div>
+                <SyncDot state={syncState} />
               </div>
               <h2 className="font-display text-2xl tracking-tight mt-0.5">
                 Focus log
@@ -301,5 +288,33 @@ function StreakCard({
         </span>
       </div>
     </div>
+  );
+}
+
+function SyncDot({ state }: { state: ReturnType<typeof useSyncState> }) {
+  const label =
+    state === "syncing"
+      ? "Syncing…"
+      : state === "offline"
+        ? "Offline"
+        : state === "error"
+          ? "Sync error"
+          : "Synced";
+  const color =
+    state === "syncing"
+      ? "bg-amber-400 animate-pulse"
+      : state === "offline"
+        ? "bg-muted-foreground/50"
+        : state === "error"
+          ? "bg-red-400"
+          : "bg-emerald-400/70";
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/70"
+      title={label}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+      {state !== "idle" && <span>{label}</span>}
+    </span>
   );
 }
