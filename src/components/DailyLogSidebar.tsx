@@ -103,8 +103,11 @@ export function DailyLogSidebar() {
         <div className="h-full flex flex-col">
           <header className="flex items-center justify-between pl-5 pr-6 py-4 sm:px-5 border-b border-border">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Today
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Today
+                </div>
+                <SyncDot state={syncState} />
               </div>
               <h2 className="font-display text-2xl tracking-tight mt-0.5">
                 Focus log
