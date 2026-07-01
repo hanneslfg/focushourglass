@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
+import { AmbientSound } from "./AmbientSound";
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
@@ -100,6 +101,10 @@ export function TimerView() {
 
         {/* Project tag toggles */}
         <SessionTagBar project={project} active={tags} onChange={setTags} disabled={locked} />
+
+        {/* Ambient sound selector */}
+        <AmbientSound running={phase === "running"} />
+
 
 
         {/* Hourglass */}
