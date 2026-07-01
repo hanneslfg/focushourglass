@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
+import { AmbientSound } from "./AmbientSound";
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
