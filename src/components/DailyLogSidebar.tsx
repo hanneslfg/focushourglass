@@ -290,3 +290,31 @@ function StreakCard({
     </div>
   );
 }
+
+function SyncDot({ state }: { state: ReturnType<typeof useSyncState> }) {
+  const label =
+    state === "syncing"
+      ? "Syncing…"
+      : state === "offline"
+        ? "Offline"
+        : state === "error"
+          ? "Sync error"
+          : "Synced";
+  const color =
+    state === "syncing"
+      ? "bg-amber-400 animate-pulse"
+      : state === "offline"
+        ? "bg-muted-foreground/50"
+        : state === "error"
+          ? "bg-red-400"
+          : "bg-emerald-400/70";
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.22em] text-muted-foreground/70"
+      title={label}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+      {state !== "idle" && <span>{label}</span>}
+    </span>
+  );
+}
