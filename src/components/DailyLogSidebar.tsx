@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { getSessions, hydrateFromRemote, type Session } from "@/lib/sessions";
+import { getSessions, type Session } from "@/lib/sessions";
 import {
   getTodayGoal,
   getTodayFocusedMinutes,
@@ -9,7 +9,7 @@ import {
   effectiveDayKey,
 } from "@/lib/settings";
 import { refreshStreaks, getCachedStreaks, type Streaks } from "@/lib/streaks";
-import { syncPendingSessions, supabase } from "@/lib/supabase";
+import { useSyncState } from "@/lib/useRealtimeSessions";
 
 function fmtHM(mins: number) {
   if (mins <= 0) return "0m";
@@ -51,26 +51,9 @@ export function DailyLogSidebar() {
     };
   }, []);
 
-  useEffect(() => {
-    // Force a fresh remote pull on mount so PC reflects mobile inserts.
-    hydrateFromRemote()
-      .then((ok) => { if (ok) window.dispatchEvent(new Event("hourglass:sessions")); })
-      .catch(() => {});
-    syncPendingSessions().catch(() => {});
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
-        hydrateFromRemote()
-          .then((ok) => { if (ok) window.dispatchEvent(new Event("hourglass:sessions")); })
-          .catch(() => {});
-        syncPendingSessions()
-          .then((r) => {
-            if (r.synced > 0) window.dispatchEvent(new Event("hourglass:sessions"));
-          })
-          .catch(() => {});
-      }
-    });
-    return () => data.subscription.unsubscribe();
-  }, []);
+  // Realtime sync + hydrate on mount is centralized in useRealtimeSessions
+  // (wired once at the root). This component just reflects the local cache
+  // whenever the "hourglass:sessions" event fires.
 
   useEffect(() => {
     if (!open) return;
