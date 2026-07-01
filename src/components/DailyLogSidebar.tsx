@@ -31,6 +31,7 @@ export function DailyLogSidebar() {
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
   const [streaks, setStreaks] = useState<Streaks>(() => getCachedStreaks());
+  const syncState = useSyncState();
 
   useEffect(() => {
     const sync = () => {
