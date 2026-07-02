@@ -43,11 +43,15 @@ export function TimerView() {
 
   const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
+  // Gate any Date.now()-derived UI behind mount to avoid SSR/client hydration mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Only animate the flip when the user actively clicks Start during this
   // mount. On remount with an already-running timer, skip the intro animation.
   const initialFlipRef = useRef(flipNonce);
   const shouldAnimateFlip = flipNonce !== initialFlipRef.current;
+
 
   // Keep the visible minute field synced with context state.
   useEffect(() => {
