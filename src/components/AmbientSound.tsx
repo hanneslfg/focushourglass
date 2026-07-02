@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Volume2, VolumeX, Music2, ChevronDown } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 import { playClick } from "@/lib/click";
 
@@ -62,7 +62,7 @@ export function AmbientSound({ running }: { running: boolean }) {
     let cancelled = false;
     (async () => {
       try {
-        const { data, error } = await supabase.storage
+        const { data, error } = await publicSupabase.storage
           .from(BUCKET)
           .list("", { limit: 100, sortBy: { column: "name", order: "asc" } });
         if (error || !data || cancelled) return;
@@ -70,7 +70,7 @@ export function AmbientSound({ running }: { running: boolean }) {
           /\.(mp3|ogg|wav|m4a|aac|webm)$/i.test(f.name),
         );
         const mapped: Sound[] = audio.map((f) => {
-          const { data: pub } = supabase.storage
+          const { data: pub } = publicSupabase.storage
             .from(BUCKET)
             .getPublicUrl(f.name);
           return { name: f.name, title: titleize(f.name), url: pub.publicUrl };
