@@ -36,18 +36,22 @@ function titleize(filename: string) {
 }
 
 export function AmbientSound({ running }: { running: boolean }) {
+  const [mounted, setMounted] = useState(false);
   const [sounds, setSounds] = useState<Sound[]>([]);
-  const [selected, setSelected] = useState<string | null>(
-    () => safeStorage.getItem(LS_SOUND) || null,
-  );
-  const [volume, setVolume] = useState<number>(() => {
-    const v = Number(safeStorage.getItem(LS_VOL));
-    return Number.isFinite(v) && v > 0 ? Math.min(1, v) : 0.5;
-  });
-  const [muted, setMuted] = useState<boolean>(
-    () => safeStorage.getItem(LS_MUTED) === "1",
-  );
+  const [selected, setSelected] = useState<string | null>(null);
+  const [volume, setVolume] = useState<number>(0.5);
+  const [muted, setMuted] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+
+  // Hydrate client-only prefs after mount to avoid SSR mismatch.
+  useEffect(() => {
+    setSelected(safeStorage.getItem(LS_SOUND) || null);
+    const v = Number(safeStorage.getItem(LS_VOL));
+    if (Number.isFinite(v) && v > 0) setVolume(Math.min(1, v));
+    setMuted(safeStorage.getItem(LS_MUTED) === "1");
+    setMounted(true);
+  }, []);
+
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRef = useRef<number | null>(null);
