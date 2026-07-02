@@ -197,8 +197,14 @@ export function AmbientSound({ running }: { running: boolean }) {
 
   const hasSounds = sounds.length > 0;
 
+  // Render a stable placeholder during SSR / first paint so hydration matches.
+  if (!mounted) {
+    return <div className="relative inline-flex items-center gap-1.5 h-8" aria-hidden />;
+  }
+
   return (
     <div className="relative inline-flex items-center gap-1.5 text-muted-foreground">
+
       {/* Selector */}
       <button
         type="button"
