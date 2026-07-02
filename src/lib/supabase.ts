@@ -278,11 +278,11 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
     console.error("[supabase] syncPending: auth.getUser threw:", e);
   }
   if (!authUserId) {
-    console.log(
-      `[supabase] syncPending: ${pending.length} queued, but no auth user — skipping.`,
-    );
+    // Not signed in — queue stays put until the user authenticates.
+    // This is expected for anonymous usage; don't log to avoid noise.
     return { synced: 0, remaining: pending.length };
   }
+
 
   console.log(`[supabase] syncPending: attempting to flush ${pending.length} sessions…`);
   const failed: RemoteSession[] = [];
