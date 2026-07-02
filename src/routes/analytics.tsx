@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { DailyLogSidebar } from "@/components/DailyLogSidebar";
 import { AnalyticsView } from "@/components/AnalyticsView";
-import { getSessions, type Session } from "@/lib/sessions";
+import type { Session } from "@/lib/sessions";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/analytics")({
 
 function AnalyticsRoute() {
   const [activityView, setActivityView] = useState<ActivityView>("month");
-  const [sessions] = useState<Session[]>(() => getSessions());
+  const [sessions] = useState<Session[]>([]);
   const fullScreenMode =
     activityView === "year" ? "12m" : activityView === "all" ? "all" : null;
 
