@@ -212,6 +212,10 @@ export async function saveSessionRemote(s: RemoteSession) {
       .insert(payload)
       .select();
     if (error) {
+      if (!authUserId) {
+        queuePending(s);
+        return { ok: false, queued: true, error: error.message } as const;
+      }
       console.error("[supabase] saveSession failed:", error.message, error);
       if (
         error.message?.toLowerCase().includes("row-level security") ||
@@ -284,7 +288,8 @@ export async function updateSessionMinutesRemote(opts: {
 
 /**
  * Push any sessions queued in localStorage to Supabase. Safe to call on
- * component mount or after sign-in. No-op when the user isn't authenticated.
+ * component mount or after sign-in. Falls back to the public client for
+ * anon-writable deployments and keeps unsynced rows queued if writes fail.
  */
 export async function syncPendingSessions(): Promise<{ synced: number; remaining: number }> {
   const pending = readPending();
