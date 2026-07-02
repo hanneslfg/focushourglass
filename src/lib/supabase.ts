@@ -34,6 +34,19 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   },
 });
 
+/**
+ * Public, sessionless client for buckets / tables that intentionally allow
+ * anon access. It never waits for or mutates the auth session, so public
+ * reads like `focus-sounds` cannot block the signed-in app state.
+ */
+export const publicSupabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+  },
+});
+
 const USER_KEY = "hourglass.user_id.v1";
 
 export function getUserId(): string {
@@ -153,6 +166,20 @@ function buildPayload(s: RemoteSession, userId: string) {
   };
 }
 
+export async function getActiveSyncUserId(): Promise<string> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const sessionUserId = data.session?.user?.id;
+    if (sessionUserId) {
+      setUserId(sessionUserId);
+      return sessionUserId;
+    }
+  } catch {
+    // Session restoration may be temporarily unavailable; fall back below.
+  }
+  return getUserId();
+}
+
 /**
  * Save a session to Supabase if the user is authenticated, otherwise queue
  * it in localStorage so it can be flushed once the user signs in.
@@ -170,24 +197,17 @@ function buildPayload(s: RemoteSession, userId: string) {
 export async function saveSessionRemote(s: RemoteSession) {
   let authUserId: string | null = null;
   try {
-    const { data } = await supabase.auth.getUser();
-    authUserId = data.user?.id ?? null;
-  } catch (e) {
-    console.error("[supabase] saveSession: auth.getUser threw:", e);
+    const { data } = await supabase.auth.getSession();
+    authUserId = data.session?.user?.id ?? null;
+  } catch {
+    // Public insert fallback below keeps guest/offline sessions from blocking.
   }
 
-  if (!authUserId) {
-    console.warn(
-      "[supabase] saveSession: user not authenticated → saving to localStorage queue",
-    );
-    queuePending(s);
-    return { ok: false, queued: true } as const;
-  }
-
-  const payload = buildPayload(s, authUserId);
+  const payload = buildPayload(s, authUserId ?? s.user_id ?? getUserId());
+  const client = authUserId ? supabase : publicSupabase;
   console.log("[supabase] saveSession → inserting", payload);
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("sessions")
       .insert(payload)
       .select();
@@ -272,39 +292,30 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
 
   let authUserId: string | null = null;
   try {
-    const { data } = await supabase.auth.getUser();
-    authUserId = data.user?.id ?? null;
-  } catch (e) {
-    console.error("[supabase] syncPending: auth.getUser threw:", e);
-  }
-  if (!authUserId) {
-    // Not signed in — queue stays put until the user authenticates.
-    // This is expected for anonymous usage; don't log to avoid noise.
-    return { synced: 0, remaining: pending.length };
+    const { data } = await supabase.auth.getSession();
+    authUserId = data.session?.user?.id ?? null;
+  } catch {
+    // Continue with the public client. If the table is not public-writable,
+    // items remain queued without blocking the UI or clearing local work.
   }
 
-
-  console.log(`[supabase] syncPending: attempting to flush ${pending.length} sessions…`);
+  const fallbackUserId = authUserId ?? getUserId();
+  const client = authUserId ? supabase : publicSupabase;
   const failed: RemoteSession[] = [];
   let synced = 0;
   for (const s of pending) {
-    const payload = buildPayload(s, authUserId);
+    const payload = buildPayload(s, authUserId ?? s.user_id ?? fallbackUserId);
     try {
-      const { error } = await supabase.from("sessions").insert(payload);
+      const { error } = await client.from("sessions").insert(payload);
       if (error) {
-        console.error("[supabase] syncPending: insert failed:", error.message, error);
         failed.push(s);
       } else {
         synced += 1;
       }
     } catch (e) {
-      console.error("[supabase] syncPending: insert threw:", e);
       failed.push(s);
     }
   }
   writePending(failed);
-  console.log(
-    `[supabase] syncPending: synced=${synced}, remaining=${failed.length}`,
-  );
   return { synced, remaining: failed.length };
 }
