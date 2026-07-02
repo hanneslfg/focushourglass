@@ -56,8 +56,9 @@ export function AmbientSound({ running }: { running: boolean }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRef = useRef<number | null>(null);
 
-  // Fetch bucket contents
+  // Fetch bucket contents (client only, after mount)
   useEffect(() => {
+    if (!mounted) return;
     let cancelled = false;
     (async () => {
       try {
@@ -82,24 +83,28 @@ export function AmbientSound({ running }: { running: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mounted]);
 
   const current = useMemo(
     () => sounds.find((s) => s.name === selected) ?? null,
     [sounds, selected],
   );
 
-  // Persist prefs
+  // Persist prefs (skip until mounted so we don't overwrite stored values)
   useEffect(() => {
+    if (!mounted) return;
     if (selected) safeStorage.setItem(LS_SOUND, selected);
     else safeStorage.removeItem(LS_SOUND);
-  }, [selected]);
+  }, [selected, mounted]);
   useEffect(() => {
+    if (!mounted) return;
     safeStorage.setItem(LS_VOL, String(volume));
-  }, [volume]);
+  }, [volume, mounted]);
   useEffect(() => {
+    if (!mounted) return;
     safeStorage.setItem(LS_MUTED, muted ? "1" : "0");
-  }, [muted]);
+  }, [muted, mounted]);
+
 
   // Ensure <audio> element exists & mirrors selection
   useEffect(() => {
