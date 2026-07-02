@@ -14,9 +14,7 @@ interface Props {
 }
 
 export function SessionTagBar({ project, active, onChange, disabled }: Props) {
-  const [pool, setPool] = useState<string[]>(() =>
-    project ? getProjectTags(project.id) : [],
-  );
+  const [pool, setPool] = useState<string[]>([]);
 
   useEffect(() => {
     const sync = () => setPool(project ? getProjectTags(project.id) : []);
