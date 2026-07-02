@@ -12,6 +12,7 @@ import {
 import {
   getSettings,
   setSettings,
+  type Settings,
   getTodayGoal,
   getTodayFocusedMinutes,
   setTodayOverride,
@@ -90,12 +91,15 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function SettingsPanel() {
-  const [settings, setLocal] = useState(() => getSettings());
-  const [goalInput, setGoalInput] = useState(String(getSettings().defaultDailyGoal));
+  const [settings, setLocal] = useState<Settings>({
+    soundsEnabled: true,
+    defaultDailyGoal: 180,
+    dayStartHour: 0,
+    weekStartsOn: 1,
+  });
+  const [goalInput, setGoalInput] = useState("180");
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
-    typeof window !== "undefined" && "Notification" in window
-      ? Notification.permission
-      : "unsupported",
+    "unsupported",
   );
 
   useEffect(() => {
@@ -103,6 +107,8 @@ function SettingsPanel() {
       setLocal(getSettings());
       setGoalInput(String(getSettings().defaultDailyGoal));
     };
+    sync();
+    if ("Notification" in window) setNotifPerm(Notification.permission);
     window.addEventListener("hourglass:settings", sync);
     return () => window.removeEventListener("hourglass:settings", sync);
   }, []);

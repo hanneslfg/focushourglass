@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { FullScreenActivity, type View as ActivityView } from "@/components/ActivityGraph";
 import { Sidebar } from "@/components/Sidebar";
@@ -28,7 +28,17 @@ export const Route = createFileRoute("/analytics")({
 
 function AnalyticsRoute() {
   const [activityView, setActivityView] = useState<ActivityView>("month");
-  const [sessions] = useState<Session[]>(() => getSessions());
+  const [sessions, setSessions] = useState<Session[]>([]);
+  useEffect(() => {
+    const sync = () => setSessions(getSessions());
+    sync();
+    window.addEventListener("hourglass:sessions", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("hourglass:sessions", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
   const fullScreenMode =
     activityView === "year" ? "12m" : activityView === "all" ? "all" : null;
 

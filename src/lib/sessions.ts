@@ -113,12 +113,15 @@ function remoteRowToSession(r: RemoteRow): Session {
  */
 export async function hydrateFromRemote(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const { supabase } = await import("./supabase");
-  const { data: userData } = await supabase.auth.getUser();
-  const uid = userData.user?.id;
+  const { supabase, publicSupabase, getActiveSyncUserId } = await import("./supabase");
+  const { data: sessionData } = await supabase.auth.getSession().catch(() => ({
+    data: { session: null },
+  }));
+  const uid = await getActiveSyncUserId();
   if (!uid) return false;
 
-  const { data, error } = await supabase
+  const client = sessionData.session ? supabase : publicSupabase;
+  const { data, error } = await client
     .from("sessions")
     .select("*")
     .eq("user_id", uid)

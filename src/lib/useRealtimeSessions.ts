@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase, syncPendingSessions } from "./supabase";
+import { getActiveSyncUserId, syncPendingSessions, supabase } from "./supabase";
 import {
   upsertRemoteSession,
   updateSession,
@@ -86,8 +86,7 @@ export function useRealtimeSessions() {
     let cancelled = false;
 
     async function subscribe() {
-      const { data } = await supabase.auth.getUser();
-      const uid = data.user?.id;
+      const uid = await getActiveSyncUserId();
       if (!uid || cancelled) return;
 
       channel = supabase

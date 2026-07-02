@@ -18,8 +18,8 @@ interface Props {
 }
 
 export function ProjectTagsManager({ projectId, accent = "#f4a261" }: Props) {
-  const [pool, setPool] = useState<string[]>(() => getProjectTags(projectId));
-  const [all, setAll] = useState<string[]>(() => getAllUsedTags());
+  const [pool, setPool] = useState<string[]>([]);
+  const [all, setAll] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
