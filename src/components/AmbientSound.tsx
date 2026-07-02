@@ -36,24 +36,29 @@ function titleize(filename: string) {
 }
 
 export function AmbientSound({ running }: { running: boolean }) {
+  const [mounted, setMounted] = useState(false);
   const [sounds, setSounds] = useState<Sound[]>([]);
-  const [selected, setSelected] = useState<string | null>(
-    () => safeStorage.getItem(LS_SOUND) || null,
-  );
-  const [volume, setVolume] = useState<number>(() => {
-    const v = Number(safeStorage.getItem(LS_VOL));
-    return Number.isFinite(v) && v > 0 ? Math.min(1, v) : 0.5;
-  });
-  const [muted, setMuted] = useState<boolean>(
-    () => safeStorage.getItem(LS_MUTED) === "1",
-  );
+  const [selected, setSelected] = useState<string | null>(null);
+  const [volume, setVolume] = useState<number>(0.5);
+  const [muted, setMuted] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+
+  // Hydrate client-only prefs after mount to avoid SSR mismatch.
+  useEffect(() => {
+    setSelected(safeStorage.getItem(LS_SOUND) || null);
+    const v = Number(safeStorage.getItem(LS_VOL));
+    if (Number.isFinite(v) && v > 0) setVolume(Math.min(1, v));
+    setMuted(safeStorage.getItem(LS_MUTED) === "1");
+    setMounted(true);
+  }, []);
+
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRef = useRef<number | null>(null);
 
-  // Fetch bucket contents
+  // Fetch bucket contents (client only, after mount)
   useEffect(() => {
+    if (!mounted) return;
     let cancelled = false;
     (async () => {
       try {
@@ -78,24 +83,28 @@ export function AmbientSound({ running }: { running: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mounted]);
 
   const current = useMemo(
     () => sounds.find((s) => s.name === selected) ?? null,
     [sounds, selected],
   );
 
-  // Persist prefs
+  // Persist prefs (skip until mounted so we don't overwrite stored values)
   useEffect(() => {
+    if (!mounted) return;
     if (selected) safeStorage.setItem(LS_SOUND, selected);
     else safeStorage.removeItem(LS_SOUND);
-  }, [selected]);
+  }, [selected, mounted]);
   useEffect(() => {
+    if (!mounted) return;
     safeStorage.setItem(LS_VOL, String(volume));
-  }, [volume]);
+  }, [volume, mounted]);
   useEffect(() => {
+    if (!mounted) return;
     safeStorage.setItem(LS_MUTED, muted ? "1" : "0");
-  }, [muted]);
+  }, [muted, mounted]);
+
 
   // Ensure <audio> element exists & mirrors selection
   useEffect(() => {
@@ -188,8 +197,14 @@ export function AmbientSound({ running }: { running: boolean }) {
 
   const hasSounds = sounds.length > 0;
 
+  // Render a stable placeholder during SSR / first paint so hydration matches.
+  if (!mounted) {
+    return <div className="relative inline-flex items-center gap-1.5 h-8" aria-hidden />;
+  }
+
   return (
     <div className="relative inline-flex items-center gap-1.5 text-muted-foreground">
+
       {/* Selector */}
       <button
         type="button"
