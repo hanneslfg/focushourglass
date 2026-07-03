@@ -295,9 +295,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     })
       .then((res) => {
         if (res && !res.ok && !res.queued) {
-          removeSession(localId);
-          toast.error("Couldn't save session", {
-            description: "We'll retry when you're back online.",
+          toast.error("Saved locally", {
+            description: "This session was kept locally, but the cloud row was rejected.",
           });
         } else if (res && res.queued) {
           toast("Saved locally", {
@@ -348,8 +347,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
-            removeSession(localId);
-            toast.error("Couldn't save session");
+            toast.error("Saved locally", {
+              description: "This session was kept locally, but the cloud row was rejected.",
+            });
           }
         })
         .catch((e) => console.error("saveSessionRemote threw:", e));

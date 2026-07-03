@@ -122,6 +122,71 @@ export interface RemoteSession {
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
+const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
+
+type SessionInsertPayload = {
+  user_id: string;
+  task_name: string;
+  project_tag: string | null;
+  planned_duration: number;
+  actual_duration: number;
+  started_at: string;
+  completed_at: string;
+  was_aborted: boolean;
+  tags?: string[];
+};
+
+function cleanText(value: unknown, fallback = "Untitled session"): string {
+  const text = String(value ?? "").trim();
+  return text.length > 0 ? text.slice(0, 240) : fallback;
+}
+
+function cleanIso(value: unknown, fallback = new Date().toISOString()): string {
+  if (typeof value !== "string") return fallback;
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? new Date(time).toISOString() : fallback;
+}
+
+function cleanMinutes(value: unknown, min = 0): number {
+  const rounded = Math.round(Number(value));
+  return Number.isFinite(rounded) ? Math.max(min, rounded) : min;
+}
+
+function cleanTags(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<string>();
+  const tags = value
+    .map((tag) => String(tag ?? "").trim())
+    .filter((tag) => {
+      if (!tag || seen.has(tag.toLowerCase())) return false;
+      seen.add(tag.toLowerCase());
+      return true;
+    })
+    .slice(0, 24);
+  return tags.length > 0 ? tags : undefined;
+}
+
+function tagsColumnDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return safeStorage.getItem(TAGS_COLUMN_DISABLED_KEY) === "1";
+}
+
+function disableTagsColumn() {
+  if (typeof window === "undefined") return;
+  safeStorage.setItem(TAGS_COLUMN_DISABLED_KEY, "1");
+}
+
+function isMissingTagsColumnError(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return error?.code === "PGRST204" && message.includes("tags") && message.includes("column");
+}
+
+function isPermanentBadPayloadError(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) return false;
+  // These indicate the row shape does not match the current table schema and
+  // retrying the same queued object would freeze the sync loop forever.
+  return error.code === "PGRST204" || error.code === "22P02" || error.code === "23502";
+}
 
 function readPending(): RemoteSession[] {
   if (typeof window === "undefined") return [];
@@ -152,18 +217,49 @@ function queuePending(s: RemoteSession) {
   );
 }
 
-function buildPayload(s: RemoteSession, userId: string) {
-  return {
-    user_id: userId,
-    task_name: String(s.task_name),
-    project_tag: s.project_tag ?? null,
-    planned_duration: Math.round(Number(s.planned_duration)),
-    actual_duration: Math.round(Number(s.actual_duration)),
-    started_at: s.started_at,
-    completed_at: s.completed_at,
+function buildPayload(s: RemoteSession, userId: string, includeTags = !tagsColumnDisabled()): SessionInsertPayload {
+  const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
+    ? s.project_tag.trim().slice(0, 120)
+    : null;
+  const payload: SessionInsertPayload = {
+    user_id: cleanText(userId, getUserId()),
+    task_name: cleanText(s.task_name),
+    // The current sessions table stores the denormalized project label here;
+    // if a project was deleted or its id is stale, keep this nullable.
+    project_tag: projectTag,
+    planned_duration: cleanMinutes(s.planned_duration, 1),
+    actual_duration: cleanMinutes(s.actual_duration, 0),
+    started_at: cleanIso(s.started_at),
+    completed_at: cleanIso(s.completed_at),
     was_aborted: Boolean(s.was_aborted),
-    tags: Array.isArray(s.tags) && s.tags.length > 0 ? s.tags : null,
   };
+  const tags = cleanTags(s.tags);
+  if (includeTags && tags) payload.tags = tags;
+  return payload;
+}
+
+async function insertSessionPayload(
+  client: typeof supabase,
+  session: RemoteSession,
+  userId: string,
+  options: { select?: boolean } = {},
+) {
+  let payload = buildPayload(session, userId);
+  const query = () => {
+    const request = client.from("sessions").insert(payload);
+    return options.select ? request.select() : request;
+  };
+
+  let { data, error } = await query();
+  if (isMissingTagsColumnError(error) && "tags" in payload) {
+    console.error("Failing payload:", payload);
+    console.error("[supabase] sessions.tags column missing; retrying without tags.", error);
+    disableTagsColumn();
+    payload = buildPayload(session, userId, false);
+    ({ data, error } = await query());
+  }
+
+  return { data, error, payload };
 }
 
 export async function getActiveSyncUserId(): Promise<string> {
@@ -203,18 +299,19 @@ export async function saveSessionRemote(s: RemoteSession) {
     // Public insert fallback below keeps guest/offline sessions from blocking.
   }
 
-  const payload = buildPayload(s, authUserId ?? s.user_id ?? getUserId());
+  const syncUserId = authUserId ?? s.user_id ?? getUserId();
   const client = authUserId ? supabase : publicSupabase;
-  console.log("[supabase] saveSession → inserting", payload);
   try {
-    const { data, error } = await client
-      .from("sessions")
-      .insert(payload)
-      .select();
+    const { data, error, payload } = await insertSessionPayload(client, s, syncUserId, { select: true });
     if (error) {
+      console.error("Failing payload:", payload);
       if (!authUserId) {
-        queuePending(s);
-        return { ok: false, queued: true, error: error.message } as const;
+        if (!isPermanentBadPayloadError(error)) {
+          queuePending(s);
+          return { ok: false, queued: true, error: error.message } as const;
+        }
+        console.error("[supabase] Dropping invalid anonymous session payload from retry queue:", error);
+        return { ok: false, queued: false, error: error.message } as const;
       }
       console.error("[supabase] saveSession failed:", error.message, error);
       if (
@@ -224,6 +321,10 @@ export async function saveSessionRemote(s: RemoteSession) {
         console.error(
           "[supabase] ⚠ RLS BLOCKER: Add an INSERT policy on public.sessions for authenticated users (see saveSessionRemote docs).",
         );
+      }
+      if (isPermanentBadPayloadError(error)) {
+        console.error("[supabase] Dropping invalid session payload instead of retrying forever.");
+        return { ok: false, queued: false, error: error.message } as const;
       }
       queuePending(s);
       return { ok: false, queued: true, error: error.message } as const;
@@ -308,19 +409,29 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
   const client = authUserId ? supabase : publicSupabase;
   const failed: RemoteSession[] = [];
   let synced = 0;
+  let dropped = 0;
   for (const s of pending) {
-    const payload = buildPayload(s, authUserId ?? s.user_id ?? fallbackUserId);
     try {
-      const { error } = await client.from("sessions").insert(payload);
+      const { error, payload } = await insertSessionPayload(client, s, authUserId ?? s.user_id ?? fallbackUserId);
       if (error) {
-        failed.push(s);
+        console.error("Failing payload:", payload);
+        if (isPermanentBadPayloadError(error)) {
+          dropped += 1;
+          console.error("[supabase] Dropping invalid queued session so sync can continue:", error);
+        } else {
+          failed.push(s);
+        }
       } else {
         synced += 1;
       }
     } catch (e) {
+      console.error("Failing payload:", buildPayload(s, authUserId ?? s.user_id ?? fallbackUserId));
       failed.push(s);
     }
   }
   writePending(failed);
+  if (dropped > 0) {
+    console.warn(`[supabase] dropped ${dropped} invalid queued session(s) after schema mismatch.`);
+  }
   return { synced, remaining: failed.length };
 }
