@@ -618,87 +618,154 @@ export function AnalyticsView({
     });
   }, [sessions, range.start, range.end]);
 
-  // Tag filter — "__untagged" is a synthetic value covering sessions with no tags.
-  // The dropdown must show EVERY tag the user has ever attached to a session
-  // (across all devices via the synced `sessions.tags` column), not just tags
-  // present in the current date range — otherwise narrowing the range makes
-  // tags disappear from the filter and users can't select them.
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [tagsTick, setTagsTick] = useState(0);
+  // -------- Project + goal filters --------
+  // Every project the user has, plus every project name that appears in a
+  // session (so historical rows for deleted projects still filter cleanly).
+  const [projects, setProjects] = useState<ProjectTag[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+  const [selectedGoals, setSelectedGoals] = useState<Set<string>>(new Set());
+  const [dataTick, setDataTick] = useState(0);
   useEffect(() => {
-    const bump = () => setTagsTick((t) => t + 1);
-    window.addEventListener("hourglass:tags", bump);
+    const syncP = () => setProjects(getProjects());
+    const bump = () => setDataTick((t) => t + 1);
+    syncP();
+    window.addEventListener("hourglass:projects", syncP);
+    window.addEventListener("hourglass:goals", bump);
     window.addEventListener("hourglass:sessions", bump);
     return () => {
-      window.removeEventListener("hourglass:tags", bump);
+      window.removeEventListener("hourglass:projects", syncP);
+      window.removeEventListener("hourglass:goals", bump);
       window.removeEventListener("hourglass:sessions", bump);
     };
   }, []);
-  const availableTags = useMemo(() => {
-    const map = new Map<string, string>(); // lower -> display
-    // Global pool: every tag ever used, from any device.
-    for (const t of getAllUsedTags()) {
-      const n = t.trim();
-      if (!n) continue;
-      map.set(n.toLowerCase(), n);
+
+  const availableProjects = useMemo(() => {
+    // Union of live projects + project names present on sessions.
+    const map = new Map<string, { id: string; name: string; color: string }>();
+    for (const p of projects) {
+      map.set(p.id, { id: p.id, name: p.name, color: p.color });
     }
-    // Also fold in tags on sessions we already have loaded so newly-synced
-    // rows show up before the next `hourglass:tags` broadcast.
-    let hasUntagged = false;
+    let hasNoProject = false;
     for (const s of sessions) {
-      if (!s.tags || s.tags.length === 0) continue;
-      for (const t of s.tags) {
-        const n = t.trim();
-        if (!n) continue;
-        const k = n.toLowerCase();
-        if (!map.has(k)) map.set(k, n);
+      if (!s.projectId || !s.projectName) { hasNoProject = true; continue; }
+      if (!map.has(s.projectId)) {
+        map.set(s.projectId, { id: s.projectId, name: s.projectName, color: s.projectColor ?? "#94a3b8" });
       }
     }
-    for (const s of rawInRange) {
-      if (!s.tags || s.tags.length === 0) { hasUntagged = true; break; }
-      if (s.tags.every((t) => !t.trim())) { hasUntagged = true; break; }
-    }
-    const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    return { list, hasUntagged };
-  }, [rawInRange, sessions, tagsTick]);
+    return { list: [...map.values()].sort((a, b) => a.name.localeCompare(b.name)), hasNoProject };
+  }, [projects, sessions]);
 
-  const sessionMatchesTags = (s: Session, sel: Set<string>) => {
+  // Goals derived from BOTH project.goal store and historical session.goalText.
+  // Key is `${projectId}::${goalTextLower}` so goals with the same name in
+  // different projects stay distinct in filters and breakdowns.
+  const availableGoals = useMemo(() => {
+    const map = new Map<string, { key: string; projectId: string; projectName: string; projectColor: string; text: string; color: string; targetMinutes: number }>();
+    for (const p of projects) {
+      for (const g of getProjectGoals(p.id)) {
+        const key = `${p.id}::${g.text.toLowerCase()}`;
+        map.set(key, {
+          key,
+          projectId: p.id,
+          projectName: p.name,
+          projectColor: p.color,
+          text: g.text,
+          color: g.color,
+          targetMinutes: g.targetMinutes,
+        });
+      }
+    }
+    // Fold in goals seen on sessions but not defined in the goal store.
+    for (const s of sessions) {
+      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+      if (!gt || !s.projectId) continue;
+      const key = `${s.projectId}::${gt.toLowerCase()}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          projectId: s.projectId,
+          projectName: s.projectName ?? "Project",
+          projectColor: s.projectColor ?? "#94a3b8",
+          text: gt,
+          color: s.projectColor ?? "#94a3b8",
+          targetMinutes: 0,
+        });
+      }
+    }
+    let hasNoGoal = false;
+    for (const s of rawInRange) {
+      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+      if (!gt) { hasNoGoal = true; break; }
+    }
+    const list = [...map.values()].sort((a, b) =>
+      a.projectName.localeCompare(b.projectName) || a.text.localeCompare(b.text),
+    );
+    return { list, hasNoGoal };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, sessions, rawInRange, dataTick]);
+
+  const sessionMatchesProject = (s: Session, sel: Set<string>) => {
     if (sel.size === 0) return true;
-    const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
-    if (tags.length === 0) return sel.has("__untagged");
-    return tags.some((t) => sel.has(t.toLowerCase()));
+    if (!s.projectId) return sel.has("__none");
+    return sel.has(s.projectId);
+  };
+  const sessionMatchesGoal = (s: Session, sel: Set<string>) => {
+    if (sel.size === 0) return true;
+    const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+    if (!gt || !s.projectId) return sel.has("__none");
+    return sel.has(`${s.projectId}::${gt.toLowerCase()}`);
   };
 
   const inRange = useMemo(() => {
     return rawInRange
-      .filter((s) => sessionMatchesTags(s, selectedTags))
+      .filter((s) => sessionMatchesProject(s, selectedProjects))
+      .filter((s) => sessionMatchesGoal(s, selectedGoals))
       .sort((x, y) => (x.completedAt < y.completedAt ? 1 : -1));
-  }, [rawInRange, selectedTags]);
+  }, [rawInRange, selectedProjects, selectedGoals]);
 
-  // Tag → minutes breakdown, respecting the current range but ignoring the
-  // tag filter so users always see the full distribution.
-  const tagBreakdown = useMemo(() => {
-    const totals = new Map<string, { label: string; min: number }>();
-    let untagged = 0;
+  // Goal → minutes breakdown for the current range (ignores the goal filter
+  // so users always see the full distribution).
+  const goalBreakdown = useMemo(() => {
+    const totals = new Map<string, { key: string; text: string; projectId: string; projectName: string; projectColor: string; color: string; min: number; targetMinutes: number }>();
+    let untracked = 0;
     for (const s of rawInRange) {
+      if (!sessionMatchesProject(s, selectedProjects)) continue;
       const mins = s.focusedMinutes || 0;
-      const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
-      if (tags.length === 0) { untagged += mins; continue; }
-      // Split evenly across tags so totals stay comparable to session totals.
-      const share = mins / tags.length;
-      for (const t of tags) {
-        const k = t.toLowerCase();
-        const cur = totals.get(k) ?? { label: t, min: 0 };
-        cur.min += share;
-        totals.set(k, cur);
-      }
+      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+      if (!gt || !s.projectId) { untracked += mins; continue; }
+      const key = `${s.projectId}::${gt.toLowerCase()}`;
+      const goal = findGoalByText(s.projectId, gt);
+      const cur = totals.get(key) ?? {
+        key,
+        text: gt,
+        projectId: s.projectId,
+        projectName: s.projectName ?? "Project",
+        projectColor: s.projectColor ?? "#94a3b8",
+        color: goal?.color ?? s.projectColor ?? "#94a3b8",
+        min: 0,
+        targetMinutes: goal?.targetMinutes ?? 0,
+      };
+      cur.min += mins;
+      totals.set(key, cur);
     }
-    const rows = [...totals.entries()]
-      .map(([k, v]) => ({ key: k, label: v.label, min: Math.round(v.min) }))
+    const rows = [...totals.values()]
+      .map((v) => ({ ...v, min: Math.round(v.min) }))
       .sort((a, b) => b.min - a.min);
-    if (untagged > 0) rows.push({ key: "__untagged", label: "Untagged", min: Math.round(untagged) });
+    if (untracked > 0) {
+      rows.push({
+        key: "__none",
+        text: "No goal",
+        projectId: "",
+        projectName: "",
+        projectColor: "#94a3b8",
+        color: "#94a3b8",
+        min: Math.round(untracked),
+        targetMinutes: 0,
+      });
+    }
     return rows;
-  }, [rawInRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawInRange, selectedProjects, dataTick]);
+
 
 
   // Per-day series across range (inclusive)
