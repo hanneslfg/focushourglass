@@ -3,10 +3,12 @@ import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AmbientSound } from "./AmbientSound";
+import { VisualWarmup } from "./VisualWarmup";
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
+import { getSettings } from "@/lib/settings";
 
 function fmt(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
