@@ -160,16 +160,8 @@ export function checkMilestones() {
     );
   }
 
-  // Session streak milestones
-  const { sessionStreak } = computeStreaks();
-  for (const m of STREAK_MILESTONES) {
-    if (sessionStreak >= m && !state.firedStreaks.includes(m)) {
-      state.firedStreaks.push(m);
-      toast(`⚡ ${m}-session streak`, {
-        description: "Consistency compounds.",
-      });
-    }
-  }
+
+
 
   write(state);
 }
