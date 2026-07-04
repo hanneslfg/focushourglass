@@ -217,7 +217,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         color: a.projectColor ?? "#f4a261",
       });
     }
-    if (Array.isArray(a.tags)) setTagsState(a.tags);
+    if (Array.isArray(a.tags) && a.tags.length > 0) setGoalTextState(String(a.tags[0]));
     setMinutesState(planned);
     setTotal(plannedSec);
     setRemaining(remainingSec);
