@@ -178,11 +178,31 @@ export function useRealtimeSessions() {
         .subscribe();
     }
 
+    async function subscribeGoals() {
+      const uid = await getActiveSyncUserId();
+      if (!uid || cancelled) return;
+      goalsChannel = supabase
+        .channel(`hg:goals:${uid}`)
+        .on(
+          "broadcast",
+          { event: "goals_updated" },
+          (msg: { payload?: { projectId?: string; goals?: ProjectGoal[] } }) => {
+            const pid = msg.payload?.projectId;
+            const goals = msg.payload?.goals;
+            if (pid && Array.isArray(goals)) {
+              ingestRemoteGoals(pid, goals);
+            }
+          },
+        )
+        .subscribe();
+    }
+
     // Kick off an immediate refresh so we don't wait for the channel to
     // subscribe before the UI shows fresh cloud data.
     refresh();
     subscribe();
     subscribeProjects();
+    subscribeGoals();
 
     const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
