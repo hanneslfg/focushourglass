@@ -318,52 +318,78 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       lastCheckRef.current = now;
     }
     savedRef.current = true;
+    const wasBreak = currentKindRef.current === "break";
     const startedAt = startedAtRef.current ?? new Date().toISOString();
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.max(1, Math.round(focusedRef.current / 60));
-    const localId = crypto.randomUUID();
-    addSession({
-      id: localId,
-      task: task.trim(),
-      plannedMinutes,
-      focusedMinutes,
-      startedAt,
-      completedAt,
-      projectId: project?.id,
-      projectName: project?.name,
-      projectColor: project?.color,
-      tags: tags.length > 0 ? tags : undefined,
-    });
-    maybeNotifyGoalReached();
-    saveSessionRemote({
-      user_id: getUserId(),
-      task_name: task.trim(),
-      project_tag: project?.name ?? null,
-      planned_duration: plannedMinutes,
-      actual_duration: focusedMinutes,
-      started_at: startedAt,
-      completed_at: completedAt,
-      was_aborted: false,
-      tags: tags.length > 0 ? tags : undefined,
-    })
-      .then((res) => {
-        if (res && !res.ok && !res.queued) {
-          toast.error("Saved locally", {
-            description: "This session was kept locally, but the cloud row was rejected.",
-          });
-        } else if (res && res.queued) {
-          toast("Saved locally", {
-            description: "Will sync when you sign in or reconnect.",
-          });
-        }
+
+    if (!wasBreak) {
+      const localId = crypto.randomUUID();
+      addSession({
+        id: localId,
+        task: task.trim(),
+        plannedMinutes,
+        focusedMinutes,
+        startedAt,
+        completedAt,
+        projectId: project?.id,
+        projectName: project?.name,
+        projectColor: project?.color,
+        tags: tags.length > 0 ? tags : undefined,
+      });
+      maybeNotifyGoalReached();
+      saveSessionRemote({
+        user_id: getUserId(),
+        task_name: task.trim(),
+        project_tag: project?.name ?? null,
+        planned_duration: plannedMinutes,
+        actual_duration: focusedMinutes,
+        started_at: startedAt,
+        completed_at: completedAt,
+        was_aborted: false,
+        tags: tags.length > 0 ? tags : undefined,
       })
-      .catch((e) => console.error("saveSessionRemote threw:", e));
+        .then((res) => {
+          if (res && !res.ok && !res.queued) {
+            toast.error("Saved locally", {
+              description: "This session was kept locally, but the cloud row was rejected.",
+            });
+          } else if (res && res.queued) {
+            toast("Saved locally", {
+              description: "Will sync when you sign in or reconnect.",
+            });
+          }
+        })
+        .catch((e) => console.error("saveSessionRemote threw:", e));
+    }
     setPhase("complete");
     setEndAt(null);
     clearActive();
-    window.setTimeout(resetIdle, 1800);
-  }, [phase, task, project, tags, total, resetIdle, setEndAt]);
+
+    // Focus Blocks: seamlessly advance to the next block if one exists.
+    const next = getActiveRhythm() ? advanceRhythm() : null;
+    if (next) {
+      window.setTimeout(() => {
+        const isBreak = next.block.kind === "break";
+        // Break auto-fills task; focus keeps the user's task (or "Focus" as fallback).
+        if (isBreak) setTaskState("Break");
+        else if (!task.trim()) setTaskState("Focus");
+        startWith(next.block.minutes, next.block.kind);
+      }, 900);
+    } else {
+      currentKindRef.current = null;
+      window.setTimeout(resetIdle, 1800);
+    }
+  }, [phase, task, project, tags, total, resetIdle, setEndAt, startWith]);
+
+  // Rhythm-driven auto-advance: skip the "asking" prompt when the current
+  // block was scheduled by an active Focus Blocks rhythm.
+  useEffect(() => {
+    if (phase === "asking" && currentKindRef.current !== null) {
+      finalize();
+    }
+  }, [phase, finalize]);
 
 
 
