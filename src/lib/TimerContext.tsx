@@ -241,19 +241,37 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ---- Actions ------------------------------------------------------------
+  /** Internal: start the timer with an explicit duration and kind. */
+  const startWith = useCallback(
+    (mins: number, kind: BlockKind | null) => {
+      const now = Date.now();
+      focusedRef.current = 0;
+      savedRef.current = false;
+      startedAtRef.current = new Date().toISOString();
+      currentKindRef.current = kind;
+      setEndAt(now + mins * 60 * 1000);
+      lastCheckRef.current = now;
+      setTotal(mins * 60);
+      setRemaining(mins * 60);
+      setPhase("running");
+      setFlipNonce((n) => n + 1);
+    },
+    [setEndAt],
+  );
+
   const start = useCallback(() => {
-    if (!task.trim() || phase !== "idle") return;
-    const now = Date.now();
-    focusedRef.current = 0;
-    savedRef.current = false;
-    startedAtRef.current = new Date().toISOString();
-    setEndAt(now + minutes * 60 * 1000);
-    lastCheckRef.current = now;
-    setTotal(minutes * 60);
-    setRemaining(minutes * 60);
-    setPhase("running");
-    setFlipNonce((n) => n + 1);
-  }, [task, phase, minutes, setEndAt]);
+    if (phase !== "idle") return;
+    const active = getActiveRhythm();
+    if (active) {
+      const isBreak = active.block.kind === "break";
+      if (!isBreak && !task.trim()) return;
+      if (isBreak && !task.trim()) setTaskState("Break");
+      startWith(active.block.minutes, active.block.kind);
+      return;
+    }
+    if (!task.trim()) return;
+    startWith(minutes, null);
+  }, [task, phase, minutes, startWith]);
 
   const pause = useCallback(() => {
     if (phase === "running") {
