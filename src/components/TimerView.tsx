@@ -45,6 +45,7 @@ export function TimerView() {
 
   const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
+  const [warmupActive, setWarmupActive] = useState(false);
   // Gate any Date.now()-derived UI behind mount to avoid SSR/client hydration mismatch.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
