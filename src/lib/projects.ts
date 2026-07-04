@@ -148,7 +148,17 @@ export function addProject(name: string, color?: string): ProjectTag {
 }
 
 export function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>) {
-  writeLocal(readLocal().map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const list = readLocal();
+  const existing = list.find((p) => p.id === id);
+  if (existing) {
+    writeLocal(list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    return;
+  }
+  // Project was only derived from sessions; materialize a local record so
+  // the user's edits (like a custom color) persist across session syncs.
+  const derived = getProjects().find((p) => p.id === id);
+  if (!derived) return;
+  writeLocal([...list, { ...derived, ...patch, id }]);
 }
 
 export function deleteProject(id: string) {
