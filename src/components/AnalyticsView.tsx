@@ -701,21 +701,8 @@ export function AnalyticsView({
   const totalDays = Math.max(1, daily.length);
   const avgDaily = Math.round(totalMinutes / totalDays);
 
-  // Longest streak (consecutive days with min > 0) within range
-  const longestStreak = useMemo(() => {
-    let best = 0, cur = 0;
-    for (const d of daily) {
-      if (d.min > 0) { cur += 1; best = Math.max(best, cur); }
-      else cur = 0;
-    }
-    return best;
-  }, [daily]);
 
-  const streakSeries = useMemo(() => {
-    // Running streak length at each day (resets to 0 on gaps)
-    let cur = 0;
-    return daily.map((d) => (cur = d.min > 0 ? cur + 1 : 0));
-  }, [daily]);
+
 
   // 7-day moving average
   const wave = useMemo(() => {
