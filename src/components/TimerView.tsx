@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
+import { Minus, Plus, Play, Pause, Check, X, Coffee, Focus as FocusIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AmbientSound } from "./AmbientSound";
 import { VisualWarmup } from "./VisualWarmup";
+import { BlockTimeline } from "./FocusBlocksView";
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 import { getSettings } from "@/lib/settings";
+import { deactivateRhythm } from "@/lib/rhythms";
 
 function fmt(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
