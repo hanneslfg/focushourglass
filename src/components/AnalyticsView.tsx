@@ -1045,3 +1045,58 @@ function DateInput({ value, onChange, label }: { value: string; onChange: (v: st
     </label>
   );
 }
+
+/* =================== Tag breakdown chart =================== */
+
+interface TagRow { key: string; label: string; min: number }
+
+function TagBreakdown({ rows }: { rows: TagRow[] }) {
+  const total = rows.reduce((a, r) => a + r.min, 0);
+  const max = Math.max(1, ...rows.map((r) => r.min));
+  return (
+    <div
+      className="rounded-xl p-5 md:p-6"
+      style={{
+        background: "rgba(26,26,26,0.85)",
+        border: "1px solid rgba(245,158,11,0.18)",
+      }}
+    >
+      <ul className="space-y-3">
+        {rows.map((r) => {
+          const pct = total > 0 ? (r.min / total) * 100 : 0;
+          const barW = (r.min / max) * 100;
+          const isUntagged = r.key === "__untagged";
+          const barColor = isUntagged
+            ? "linear-gradient(90deg, rgba(148,163,184,0.55), rgba(148,163,184,0.25))"
+            : "linear-gradient(90deg, rgba(251,191,36,0.9), rgba(245,158,11,0.45))";
+          return (
+            <li key={r.key}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className={isUntagged ? "text-muted-foreground" : "text-amber-100"}>
+                  {isUntagged ? "Untagged" : `#${r.label}`}
+                </span>
+                <span
+                  className="tabular-nums text-xs text-muted-foreground"
+                  style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
+                >
+                  {fmtHM(r.min)} · {pct.toFixed(1)}%
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${barW}%`,
+                    background: barColor,
+                    boxShadow: isUntagged ? "none" : "0 0 8px rgba(245,158,11,0.35)",
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
