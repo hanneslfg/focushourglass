@@ -142,7 +142,8 @@ function useSessions(): Session[] {
 
 /* =================== Date range =================== */
 
-type RangeMode = "week" | "month" | "year" | "all" | "custom";
+type RangeMode = "today" | "week" | "month" | "year" | "all" | "custom";
+
 
 interface Range {
   start: Date;
