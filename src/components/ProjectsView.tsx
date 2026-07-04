@@ -348,7 +348,11 @@ function ProjectDetailFull({
 
       <ProjectHeaderEditable project={project} />
 
+      <ProjectGoalsSection projectId={project.id} focusedMinutes={totalMin} />
+
       <ProjectTagsManager projectId={project.id} accent={project.color} />
+
+
 
 
 
