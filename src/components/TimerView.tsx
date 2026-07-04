@@ -35,6 +35,8 @@ export function TimerView() {
     total,
     flipNonce,
     endAtMs,
+    rhythm,
+    blockKind,
     start,
     pause,
     finalize,
@@ -61,7 +63,10 @@ export function TimerView() {
     setMinuteInput(String(minutes));
   }, [minutes]);
 
-  const canStart = task.trim().length > 0 && phase === "idle";
+  // Break blocks can start without a task (the timer auto-fills "Break").
+  const nextIsBreak = phase === "idle" && rhythm?.block.kind === "break";
+  const canStart =
+    phase === "idle" && (nextIsBreak || task.trim().length > 0);
   const locked = phase !== "idle";
 
   function computeEndTime(offsetSeconds: number) {
