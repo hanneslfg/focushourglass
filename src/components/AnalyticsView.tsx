@@ -957,16 +957,16 @@ export function AnalyticsView({
         )}
       </section>
 
-      {/* Tag filter */}
-      {(availableTags.list.length > 0 || availableTags.hasUntagged) && (
+      {/* Project + Goal filters */}
+      {(availableProjects.list.length > 0 || availableProjects.hasNoProject) && (
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
-              Filter by tag
+              Filter by project
             </h2>
-            {tagFilterActive && (
+            {filtersActive && (
               <button
-                onClick={clearTags}
+                onClick={clearFilters}
                 className="text-[10px] uppercase tracking-[0.22em] text-amber-300/80 hover:text-amber-200 transition-colors"
               >
                 Clear
@@ -974,37 +974,87 @@ export function AnalyticsView({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {availableTags.list.map(([key, label]) => {
-              const active = selectedTags.has(key);
+            {availableProjects.list.map((p) => {
+              const active = selectedProjects.has(p.id);
               return (
                 <button
-                  key={key}
+                  key={p.id}
                   type="button"
-                  onClick={() => toggleTag(key)}
-                  className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                  onClick={() => toggleProject(p.id)}
+                  className="inline-flex items-center gap-1.5 pl-2 pr-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
                   style={{
-                    background: active ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.06)",
-                    color: active ? "rgb(252,211,77)" : "rgba(252,211,77,0.75)",
-                    border: `1px solid ${active ? "rgba(245,158,11,0.6)" : "rgba(245,158,11,0.22)"}`,
-                    boxShadow: active ? "0 0 10px rgba(245,158,11,0.25)" : "none",
+                    background: active ? `${p.color}33` : `${p.color}0f`,
+                    color: active ? p.color : `${p.color}bb`,
+                    border: `1px solid ${active ? p.color : `${p.color}44`}`,
+                    boxShadow: active ? `0 0 10px ${p.color}44` : "none",
                   }}
                 >
-                  #{label}
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.color }} />
+                  {p.name}
                 </button>
               );
             })}
-            {availableTags.hasUntagged && (
+            {availableProjects.hasNoProject && (
               <button
                 type="button"
-                onClick={() => toggleTag("__untagged")}
-                className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                onClick={() => toggleProject("__none")}
+                className="px-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
                 style={{
-                  background: selectedTags.has("__untagged") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
-                  color: selectedTags.has("__untagged") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
-                  border: `1px solid ${selectedTags.has("__untagged") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
+                  background: selectedProjects.has("__none") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
+                  color: selectedProjects.has("__none") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
+                  border: `1px solid ${selectedProjects.has("__none") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
                 }}
               >
-                Untagged
+                No project
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {(availableGoals.list.length > 0 || availableGoals.hasNoGoal) && (
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
+              Filter by goal
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableGoals.list.map((g) => {
+              const active = selectedGoals.has(g.key);
+              return (
+                <button
+                  key={g.key}
+                  type="button"
+                  onClick={() => toggleGoal(g.key)}
+                  className="inline-flex items-center gap-1.5 pl-2 pr-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
+                  style={{
+                    background: active ? `${g.color}33` : `${g.color}0f`,
+                    color: active ? g.color : `${g.color}bb`,
+                    border: `1px solid ${active ? g.color : `${g.color}44`}`,
+                    boxShadow: active ? `0 0 10px ${g.color}44` : "none",
+                  }}
+                  title={`${g.projectName} · ${g.text}`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: g.color }} />
+                  <span className="opacity-70">{g.projectName}</span>
+                  <span className="opacity-40">·</span>
+                  <span>{g.text}</span>
+                </button>
+              );
+            })}
+            {availableGoals.hasNoGoal && (
+              <button
+                type="button"
+                onClick={() => toggleGoal("__none")}
+                className="px-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
+                style={{
+                  background: selectedGoals.has("__none") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
+                  color: selectedGoals.has("__none") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
+                  border: `1px solid ${selectedGoals.has("__none") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
+                }}
+              >
+                No goal
               </button>
             )}
           </div>
