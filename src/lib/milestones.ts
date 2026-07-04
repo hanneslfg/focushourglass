@@ -2,7 +2,7 @@ import { safeStorage } from "./safeStorage";
 import { toast } from "sonner";
 import { effectiveDayKey, getTodayFocusedMinutes, getTodayGoal, todayKey } from "./settings";
 import { getSessions } from "./sessions";
-import { computeStreaks } from "./streaks";
+
 
 const KEY = "hourglass.milestones.v1";
 const RECORD_KEY = "hourglass.dailyRecord.v1";
@@ -23,7 +23,7 @@ interface DailyRecord {
   date: string;
 }
 
-const STREAK_MILESTONES = [5, 10, 25, 50, 100, 200, 500];
+
 
 function read(): MilestoneState {
   const empty: MilestoneState = {
@@ -160,16 +160,8 @@ export function checkMilestones() {
     );
   }
 
-  // Session streak milestones
-  const { sessionStreak } = computeStreaks();
-  for (const m of STREAK_MILESTONES) {
-    if (sessionStreak >= m && !state.firedStreaks.includes(m)) {
-      state.firedStreaks.push(m);
-      toast(`⚡ ${m}-session streak`, {
-        description: "Consistency compounds.",
-      });
-    }
-  }
+
+
 
   write(state);
 }

@@ -142,7 +142,8 @@ function useSessions(): Session[] {
 
 /* =================== Date range =================== */
 
-type RangeMode = "week" | "month" | "year" | "all" | "custom";
+type RangeMode = "today" | "week" | "month" | "year" | "all" | "custom";
+
 
 interface Range {
   start: Date;
@@ -163,7 +164,11 @@ function computeRange(
   weekOffset: number,
 ): Range {
   const today = effectiveToday();
+  if (mode === "today") {
+    return { start: startOfDay(today), end: endOfDay(today) };
+  }
   if (mode === "week") {
+
     const thisWeekStart = startOfWeek(today);
     const start = addDays(thisWeekStart, weekOffset * 7);
     const end = endOfDay(addDays(start, 6));
@@ -608,17 +613,72 @@ export function AnalyticsView({
     [mode, sessions, customRange, weekOffset],
   );
 
-  // Sessions filtered to range
-  const inRange = useMemo(() => {
+  // Sessions in range (before tag filter — used to compute available tags)
+  const rawInRange = useMemo(() => {
     const a = range.start.getTime();
     const b = range.end.getTime();
-    return sessions
-      .filter((s) => {
-        const t = new Date(s.completedAt).getTime();
-        return t >= a && t <= b;
-      })
-      .sort((x, y) => (x.completedAt < y.completedAt ? 1 : -1));
+    return sessions.filter((s) => {
+      const t = new Date(s.completedAt).getTime();
+      return t >= a && t <= b;
+    });
   }, [sessions, range.start, range.end]);
+
+  // Tag filter — "__untagged" is a synthetic value covering sessions with no tags
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const availableTags = useMemo(() => {
+    const map = new Map<string, string>(); // lower -> display
+    let hasUntagged = false;
+    for (const s of rawInRange) {
+      if (!s.tags || s.tags.length === 0) { hasUntagged = true; continue; }
+      for (const t of s.tags) {
+        const n = t.trim();
+        if (!n) { hasUntagged = true; continue; }
+        const k = n.toLowerCase();
+        if (!map.has(k)) map.set(k, n);
+      }
+    }
+    const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    return { list, hasUntagged };
+  }, [rawInRange]);
+
+  const sessionMatchesTags = (s: Session, sel: Set<string>) => {
+    if (sel.size === 0) return true;
+    const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
+    if (tags.length === 0) return sel.has("__untagged");
+    return tags.some((t) => sel.has(t.toLowerCase()));
+  };
+
+  const inRange = useMemo(() => {
+    return rawInRange
+      .filter((s) => sessionMatchesTags(s, selectedTags))
+      .sort((x, y) => (x.completedAt < y.completedAt ? 1 : -1));
+  }, [rawInRange, selectedTags]);
+
+  // Tag → minutes breakdown, respecting the current range but ignoring the
+  // tag filter so users always see the full distribution.
+  const tagBreakdown = useMemo(() => {
+    const totals = new Map<string, { label: string; min: number }>();
+    let untagged = 0;
+    for (const s of rawInRange) {
+      const mins = s.focusedMinutes || 0;
+      const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
+      if (tags.length === 0) { untagged += mins; continue; }
+      // Split evenly across tags so totals stay comparable to session totals.
+      const share = mins / tags.length;
+      for (const t of tags) {
+        const k = t.toLowerCase();
+        const cur = totals.get(k) ?? { label: t, min: 0 };
+        cur.min += share;
+        totals.set(k, cur);
+      }
+    }
+    const rows = [...totals.entries()]
+      .map(([k, v]) => ({ key: k, label: v.label, min: Math.round(v.min) }))
+      .sort((a, b) => b.min - a.min);
+    if (untagged > 0) rows.push({ key: "__untagged", label: "Untagged", min: Math.round(untagged) });
+    return rows;
+  }, [rawInRange]);
+
 
   // Per-day series across range (inclusive)
   const daily = useMemo(() => {
@@ -641,21 +701,8 @@ export function AnalyticsView({
   const totalDays = Math.max(1, daily.length);
   const avgDaily = Math.round(totalMinutes / totalDays);
 
-  // Longest streak (consecutive days with min > 0) within range
-  const longestStreak = useMemo(() => {
-    let best = 0, cur = 0;
-    for (const d of daily) {
-      if (d.min > 0) { cur += 1; best = Math.max(best, cur); }
-      else cur = 0;
-    }
-    return best;
-  }, [daily]);
 
-  const streakSeries = useMemo(() => {
-    // Running streak length at each day (resets to 0 on gaps)
-    let cur = 0;
-    return daily.map((d) => (cur = d.min > 0 ? cur + 1 : 0));
-  }, [daily]);
+
 
   // 7-day moving average
   const wave = useMemo(() => {
@@ -709,11 +756,23 @@ export function AnalyticsView({
   }, [mode, range.start, range.end, weekOffset]);
 
   const rangeLabel =
+    mode === "today" ? "today" :
     mode === "week" ? weekLabel :
     mode === "month" ? "this month" :
     mode === "year" ? "this year" :
     mode === "all" ? "all-time" :
     `${customStart} → ${customEnd}`;
+
+  const tagFilterActive = selectedTags.size > 0;
+  const toggleTag = (key: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearTags = () => setSelectedTags(new Set());
+
 
   return (
     <div className="w-full min-h-full px-6 md:px-12 lg:px-16 py-10 md:py-14 space-y-12">
@@ -733,13 +792,15 @@ export function AnalyticsView({
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex items-center rounded-full p-1 gap-1"
             style={{ background: "rgba(26,26,26,0.9)", border: "1px solid rgba(245,158,11,0.18)" }}>
-            {(["week", "month", "year", "all", "custom"] as RangeMode[]).map((m) => {
+            {(["today", "week", "month", "year", "all", "custom"] as RangeMode[]).map((m) => {
               const active = mode === m;
               const label =
+                m === "today" ? "Today" :
                 m === "week" ? "Week" :
                 m === "month" ? "Month" :
                 m === "year" ? "Year" :
                 m === "all" ? "All-Time" : "Custom";
+
               return (
                 <button
                   key={m}
@@ -796,6 +857,62 @@ export function AnalyticsView({
         )}
       </section>
 
+      {/* Tag filter */}
+      {(availableTags.list.length > 0 || availableTags.hasUntagged) && (
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
+              Filter by tag
+            </h2>
+            {tagFilterActive && (
+              <button
+                onClick={clearTags}
+                className="text-[10px] uppercase tracking-[0.22em] text-amber-300/80 hover:text-amber-200 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableTags.list.map(([key, label]) => {
+              const active = selectedTags.has(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleTag(key)}
+                  className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                  style={{
+                    background: active ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.06)",
+                    color: active ? "rgb(252,211,77)" : "rgba(252,211,77,0.75)",
+                    border: `1px solid ${active ? "rgba(245,158,11,0.6)" : "rgba(245,158,11,0.22)"}`,
+                    boxShadow: active ? "0 0 10px rgba(245,158,11,0.25)" : "none",
+                  }}
+                >
+                  #{label}
+                </button>
+              );
+            })}
+            {availableTags.hasUntagged && (
+              <button
+                type="button"
+                onClick={() => toggleTag("__untagged")}
+                className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                style={{
+                  background: selectedTags.has("__untagged") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
+                  color: selectedTags.has("__untagged") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
+                  border: `1px solid ${selectedTags.has("__untagged") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
+                }}
+              >
+                Untagged
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+
+
 
       {/* Activity grid */}
       <section>
@@ -823,9 +940,10 @@ export function AnalyticsView({
         <StatCard label="Average Daily Focus" value={fmtHM(avgDaily)} sub="7-day rolling">
           <Sparkline data={wave} variant="wave" />
         </StatCard>
-        <StatCard label="Longest Streak" value={`${longestStreak}d`} sub="in range">
-          <Sparkline data={streakSeries} variant="area" />
+        <StatCard label="Sessions" value={`${inRange.length}`} sub={tagFilterActive ? "matching filters" : "in range"}>
+          <Sparkline data={daily.map((d) => d.min > 0 ? 1 : 0)} variant="bar" />
         </StatCard>
+
         <div className="md:col-span-2 lg:col-span-3">
           <StatCard
             label="Hourly Focus Distribution"
@@ -840,7 +958,23 @@ export function AnalyticsView({
         </div>
       </section>
 
+      {/* Tag breakdown */}
+      {tagBreakdown.length > 0 && (
+        <section>
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
+              Time by tag · {rangeLabel}
+            </h2>
+            <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
+              {tagBreakdown.length} tag{tagBreakdown.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <TagBreakdown rows={tagBreakdown} />
+        </section>
+      )}
+
       {/* Timer blocks for the whole range */}
+
       <section>
         <div className="flex items-baseline justify-between mb-5">
           <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
@@ -911,3 +1045,58 @@ function DateInput({ value, onChange, label }: { value: string; onChange: (v: st
     </label>
   );
 }
+
+/* =================== Tag breakdown chart =================== */
+
+interface TagRow { key: string; label: string; min: number }
+
+function TagBreakdown({ rows }: { rows: TagRow[] }) {
+  const total = rows.reduce((a, r) => a + r.min, 0);
+  const max = Math.max(1, ...rows.map((r) => r.min));
+  return (
+    <div
+      className="rounded-xl p-5 md:p-6"
+      style={{
+        background: "rgba(26,26,26,0.85)",
+        border: "1px solid rgba(245,158,11,0.18)",
+      }}
+    >
+      <ul className="space-y-3">
+        {rows.map((r) => {
+          const pct = total > 0 ? (r.min / total) * 100 : 0;
+          const barW = (r.min / max) * 100;
+          const isUntagged = r.key === "__untagged";
+          const barColor = isUntagged
+            ? "linear-gradient(90deg, rgba(148,163,184,0.55), rgba(148,163,184,0.25))"
+            : "linear-gradient(90deg, rgba(251,191,36,0.9), rgba(245,158,11,0.45))";
+          return (
+            <li key={r.key}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className={isUntagged ? "text-muted-foreground" : "text-amber-100"}>
+                  {isUntagged ? "Untagged" : `#${r.label}`}
+                </span>
+                <span
+                  className="tabular-nums text-xs text-muted-foreground"
+                  style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
+                >
+                  {fmtHM(r.min)} · {pct.toFixed(1)}%
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${barW}%`,
+                    background: barColor,
+                    boxShadow: isUntagged ? "none" : "0 0 8px rgba(245,158,11,0.35)",
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+

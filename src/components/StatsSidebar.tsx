@@ -415,16 +415,13 @@ export function StatsSidebar({
               )}
             </section>
 
-            <section className="grid grid-cols-2 gap-2">
-              <Stat
-                label="Longest streak"
-                value={`${stats.streak} session${stats.streak === 1 ? "" : "s"}`}
-              />
+            <section>
               <Stat
                 label="Avg session"
                 value={stats.avgMin > 0 ? `${stats.avgMin} min` : "—"}
               />
             </section>
+
 
             <section>
               <SectionTitle>Timeline</SectionTitle>
