@@ -882,9 +882,10 @@ export function AnalyticsView({
         <StatCard label="Average Daily Focus" value={fmtHM(avgDaily)} sub="7-day rolling">
           <Sparkline data={wave} variant="wave" />
         </StatCard>
-        <StatCard label="Longest Streak" value={`${longestStreak}d`} sub="in range">
-          <Sparkline data={streakSeries} variant="area" />
+        <StatCard label="Sessions" value={`${inRange.length}`} sub={tagFilterActive ? "matching filters" : "in range"}>
+          <Sparkline data={daily.map((d) => d.min > 0 ? 1 : 0)} variant="bar" />
         </StatCard>
+
         <div className="md:col-span-2 lg:col-span-3">
           <StatCard
             label="Hourly Focus Distribution"
