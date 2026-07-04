@@ -196,6 +196,35 @@ function SettingsPanel() {
       </section>
 
       <section>
+        <SectionTitle>Focus warm-up</SectionTitle>
+        <button
+          onClick={() => setSettings({ warmupEnabled: !settings.warmupEnabled })}
+          className="mt-3 w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors touch-manipulation"
+        >
+          <span className="flex items-center gap-2.5 text-sm">
+            <Eye className="h-4 w-4" strokeWidth={1.5} />
+            Visual calibration (60s)
+          </span>
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              settings.warmupEnabled ? "bg-primary" : "bg-border"
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${
+                settings.warmupEnabled ? "translate-x-[18px]" : "translate-x-1"
+              }`}
+            />
+          </span>
+        </button>
+        <p className="mt-2 text-[11px] text-muted-foreground/70">
+          Before each session, stare at a single center point for 60 seconds to
+          contract attention. Press <kbd className="px-1 text-[10px] border border-border rounded">Esc</kbd> to skip.
+        </p>
+      </section>
+
+
+      <section>
         <SectionTitle>Default daily goal</SectionTitle>
         <div className="mt-3 flex items-center gap-2">
           <input
