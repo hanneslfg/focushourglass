@@ -995,7 +995,26 @@ export function AnalyticsView({
           </div>
         ) : (
           <div className="space-y-3">
-            {inRange.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)}
+            {inRange.slice(0, visibleBlocks).map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)}
+            {visibleBlocks < inRange.length ? (
+              <div className="pt-2 flex flex-col items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleBlocks((n) => n + 5)}
+                  className="px-5 py-2 rounded-md text-[10px] uppercase tracking-[0.28em] text-amber-100/90 transition-all hover:text-amber-100"
+                  style={{ background: "rgba(26,26,26,0.9)", border: "1px solid rgba(245,158,11,0.35)" }}
+                >
+                  Load more
+                </button>
+                <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
+                  Showing {visibleBlocks} of {inRange.length}
+                </span>
+              </div>
+            ) : inRange.length > 3 ? (
+              <p className="pt-2 text-center text-[9px] uppercase tracking-[0.22em] text-muted-foreground/45">
+                All {inRange.length} block{inRange.length === 1 ? "" : "s"} loaded
+              </p>
+            ) : null}
           </div>
         )}
       </section>
