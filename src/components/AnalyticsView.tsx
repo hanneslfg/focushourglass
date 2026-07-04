@@ -818,7 +818,7 @@ export function AnalyticsView({
   const [openDay, setOpenDay] = useState<{ key: string; date: Date } | null>(null);
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [visibleBlocks, setVisibleBlocks] = useState(3);
-  useEffect(() => { setVisibleBlocks(3); }, [mode, weekOffset, customStart, customEnd, selectedTags]);
+  useEffect(() => { setVisibleBlocks(3); }, [mode, weekOffset, customStart, customEnd, selectedProjects, selectedGoals]);
   const openDayBlocks = useMemo(() => {
     if (!openDay) return [];
     return sessions
@@ -853,15 +853,25 @@ export function AnalyticsView({
     mode === "all" ? "all-time" :
     `${customStart} → ${customEnd}`;
 
-  const tagFilterActive = selectedTags.size > 0;
-  const toggleTag = (key: string) => {
-    setSelectedTags((prev) => {
+  const filtersActive = selectedProjects.size > 0 || selectedGoals.size > 0;
+  const toggleProject = (key: string) => {
+    setSelectedProjects((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
-  const clearTags = () => setSelectedTags(new Set());
+  const toggleGoal = (key: string) => {
+    setSelectedGoals((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearFilters = () => {
+    setSelectedProjects(new Set());
+    setSelectedGoals(new Set());
+  };
 
 
   return (
