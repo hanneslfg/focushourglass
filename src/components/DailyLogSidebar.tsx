@@ -8,8 +8,8 @@ import {
   clearTodayOverride,
   effectiveDayKey,
 } from "@/lib/settings";
-import { refreshStreaks, getCachedStreaks, type Streaks } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
+
 
 function fmtHM(mins: number) {
   if (mins <= 0) return "0m";
