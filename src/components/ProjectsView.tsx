@@ -465,10 +465,7 @@ function ProjectDetailFull({
 function GoalChip({ goalText, projectId }: { goalText: string; projectId?: string }) {
   const goal = projectId ? findGoalByText(projectId, goalText) : null;
   const color = goal?.color ?? "#94a3b8";
-  const achieved = goal ? isGoalAchieved(goal, Number.POSITIVE_INFINITY /* handled elsewhere */) : false;
-  // We can't easily compute per-goal focused minutes here without a re-query,
-  // so surface `goal.done` as the achievement marker in the row context.
-  const isDone = goal?.done ?? false;
+  const done = goal?.done ?? false;
   return (
     <span
       className="inline-flex items-center gap-1.5 pl-1.5 pr-2 h-5 rounded-full text-[10px] tracking-wide"
@@ -480,7 +477,7 @@ function GoalChip({ goalText, projectId }: { goalText: string; projectId?: strin
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
       <span className="truncate max-w-[12rem]">{goalText}</span>
-      {(achieved && isDone) && (
+      {done && (
         <span className="text-[9px] uppercase tracking-[0.18em] opacity-80">✓</span>
       )}
     </span>
