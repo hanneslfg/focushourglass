@@ -214,8 +214,13 @@ export function useRealtimeSessions() {
           supabase.removeChannel(projectsChannel);
           projectsChannel = null;
         }
+        if (goalsChannel) {
+          supabase.removeChannel(goalsChannel);
+          goalsChannel = null;
+        }
         subscribe();
         subscribeProjects();
+        subscribeGoals();
       }
     });
 
