@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
+import { getAllUsedTags } from "@/lib/tags";
 import { supabase } from "@/lib/supabase";
 import {
   effectiveDayKey,
