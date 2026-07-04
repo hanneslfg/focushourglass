@@ -18,6 +18,8 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
   const [remaining, setRemaining] = useState(duration);
   const startedAtRef = useRef<number>(Date.now());
   const doneRef = useRef(false);
+  const intervalRef = useRef<number | null>(null);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
     startedAtRef.current = Date.now();
@@ -35,10 +37,12 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
             /* ignore */
           }
         }
+        setFading(true);
         // brief fade-out then hand off to the timer
         window.setTimeout(() => onComplete(), 450);
       }
     }, 100);
+    intervalRef.current = id;
     return () => window.clearInterval(id);
   }, [duration, onComplete]);
 
@@ -50,12 +54,19 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
+  const skipToSession = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    // Instant hand-off — no fade, no chime — drop straight into the session.
+    onComplete();
+  };
+
   const progress = 1 - remaining / duration;
   const R = 46;
   const C = 2 * Math.PI * R;
   const dash = C * progress;
   const secondsLeft = Math.ceil(remaining);
-  const fading = doneRef.current;
 
   return (
     <div
@@ -117,6 +128,16 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
           }}
           aria-hidden
         />
+
+        {/* Minimal skip — starts the session instantly */}
+        <button
+          type="button"
+          onClick={skipToSession}
+          className="absolute left-1/2 -translate-x-1/2 -bottom-10 text-[9px] uppercase tracking-[0.32em] text-white/20 hover:text-white/55 transition-colors"
+          aria-label="Skip warm-up and start session"
+        >
+          Skip
+        </button>
       </div>
 
       {/* Countdown + instruction */}
@@ -130,13 +151,13 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
         </p>
       </div>
 
-      {/* Skip — hidden until hover so it doesn't distract */}
+      {/* Cancel (top-right) — bails out entirely without starting the session */}
       <button
         onClick={onCancel}
-        className="absolute top-6 right-6 text-[10px] uppercase tracking-[0.28em] text-white/20 hover:text-white/60 transition-colors"
-        aria-label="Skip warm-up"
+        className="absolute top-6 right-6 text-[10px] uppercase tracking-[0.28em] text-white/15 hover:text-white/45 transition-colors"
+        aria-label="Cancel warm-up"
       >
-        Skip
+        Cancel
       </button>
     </div>
   );
