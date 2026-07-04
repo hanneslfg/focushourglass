@@ -2,10 +2,12 @@ import { safeStorage } from "./safeStorage";
 import { toast } from "sonner";
 import { effectiveDayKey, getTodayFocusedMinutes, getTodayGoal, todayKey } from "./settings";
 import { getSessions } from "./sessions";
+import { getDailyStreak, STREAK_MILESTONES } from "./streaks";
 
 
 const KEY = "hourglass.milestones.v1";
 const RECORD_KEY = "hourglass.dailyRecord.v1";
+const STREAK_KEY = "hourglass.streakMilestones.v1";
 
 interface MilestoneState {
   date: string;
@@ -160,8 +162,46 @@ export function checkMilestones() {
     );
   }
 
-
-
+  // Daily streak milestones — professional, single toast per achieved milestone.
+  const streak = getDailyStreak();
+  if (streak > 0) {
+    const achieved = readAchievedStreaks();
+    for (const m of STREAK_MILESTONES) {
+      if (streak >= m && !achieved.includes(m)) {
+        achieved.push(m);
+        writeAchievedStreaks(achieved);
+        toast(`${m}-day streak`, {
+          description:
+            m >= 100
+              ? `Extraordinary consistency. ${m} consecutive days of focus.`
+              : `${m} consecutive days of focus. Keep the rhythm.`,
+          duration: 6000,
+        });
+      }
+    }
+  }
 
   write(state);
+}
+
+function readAchievedStreaks(): number[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = safeStorage.getItem(STREAK_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter((n) => typeof n === "number");
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
+
+function writeAchievedStreaks(list: number[]) {
+  try {
+    safeStorage.setItem(STREAK_KEY, JSON.stringify(list));
+  } catch {
+    // ignore
+  }
 }
