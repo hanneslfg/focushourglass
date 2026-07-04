@@ -295,7 +295,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setPhase("idle");
     setTaskState("");
     setProjectState(null);
-    setTagsState([]);
+    setGoalTextState(null);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
