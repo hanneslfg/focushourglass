@@ -162,7 +162,17 @@ export function TimerView() {
 
 
         {/* Hourglass */}
-        <div className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85">
+        <div
+          className="relative w-48 h-60 md:w-64 md:h-80 text-foreground/85 transition-[color] duration-700"
+          style={
+            blockKind === "break"
+              ? ({
+                  ["--sand" as string]: "oklch(0.82 0.04 235)",
+                  ["--sand-glow" as string]: "oklch(0.78 0.06 235)",
+                } as React.CSSProperties)
+              : undefined
+          }
+        >
           <div key={flipNonce} className={`w-full h-full ${shouldAnimateFlip ? "animate-hg-flip" : ""}`}>
             <div
               className="w-full h-full"
@@ -235,7 +245,7 @@ export function TimerView() {
             </div>
           ) : (
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              {phase === "running" && "Focusing"}
+              {phase === "running" && (blockKind === "break" ? "Resting" : "Focusing")}
               {phase === "paused" && "Paused"}
               {phase === "asking" && "Time up"}
               
