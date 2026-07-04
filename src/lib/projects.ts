@@ -1,5 +1,6 @@
 import { safeStorage } from "./safeStorage";
 import { getSessions } from "./sessions";
+import { supabase, getActiveSyncUserId } from "./supabase";
 
 export interface ProjectTag {
   id: string;
@@ -169,6 +170,51 @@ export function deleteProject(id: string) {
   const deleted = readDeleted();
   deleted.add(id);
   writeDeleted(deleted);
+  // 3. Broadcast the deletion to every other signed-in device so the
+  //    project vanishes from mobile / tablet caches without waiting for
+  //    a full reload. The channel is lazy — if Supabase is unreachable
+  //    the local delete still stands.
+  broadcastDeletion(id).catch((e) =>
+    console.warn("[projects] broadcast delete failed:", e),
+  );
+}
+
+/** Merge tombstones received from another device and re-render project lists. */
+export function ingestRemoteDeletion(id: string) {
+  if (!id) return;
+  const deleted = readDeleted();
+  if (deleted.has(id)) return;
+  deleted.add(id);
+  // Also strip from the local-only list on this device.
+  const list = readLocal();
+  const pruned = list.filter((p) => p.id !== id);
+  if (pruned.length !== list.length) {
+    safeStorage.setItem(KEY, JSON.stringify(pruned));
+  }
+  writeDeleted(deleted);
+}
+
+async function broadcastDeletion(projectId: string) {
+  if (typeof window === "undefined") return;
+  const uid = await getActiveSyncUserId();
+  if (!uid) return;
+  const channel = supabase.channel(`hg:projects:${uid}`);
+  // The channel must be subscribed before broadcasting.
+  await new Promise<void>((resolve) => {
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") resolve();
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") resolve();
+    });
+  });
+  await channel.send({
+    type: "broadcast",
+    event: "project_deleted",
+    payload: { id: projectId, at: Date.now() },
+  });
+  // Give the message a beat to flush, then tear down.
+  window.setTimeout(() => {
+    supabase.removeChannel(channel);
+  }, 400);
 }
 
 // Re-broadcast a projects event whenever sessions change so any component
