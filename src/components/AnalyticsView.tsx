@@ -857,6 +857,62 @@ export function AnalyticsView({
         )}
       </section>
 
+      {/* Tag filter */}
+      {(availableTags.list.length > 0 || availableTags.hasUntagged) && (
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
+              Filter by tag
+            </h2>
+            {tagFilterActive && (
+              <button
+                onClick={clearTags}
+                className="text-[10px] uppercase tracking-[0.22em] text-amber-300/80 hover:text-amber-200 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableTags.list.map(([key, label]) => {
+              const active = selectedTags.has(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleTag(key)}
+                  className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                  style={{
+                    background: active ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.06)",
+                    color: active ? "rgb(252,211,77)" : "rgba(252,211,77,0.75)",
+                    border: `1px solid ${active ? "rgba(245,158,11,0.6)" : "rgba(245,158,11,0.22)"}`,
+                    boxShadow: active ? "0 0 10px rgba(245,158,11,0.25)" : "none",
+                  }}
+                >
+                  #{label}
+                </button>
+              );
+            })}
+            {availableTags.hasUntagged && (
+              <button
+                type="button"
+                onClick={() => toggleTag("__untagged")}
+                className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                style={{
+                  background: selectedTags.has("__untagged") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
+                  color: selectedTags.has("__untagged") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
+                  border: `1px solid ${selectedTags.has("__untagged") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
+                }}
+              >
+                Untagged
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+
+
 
       {/* Activity grid */}
       <section>
