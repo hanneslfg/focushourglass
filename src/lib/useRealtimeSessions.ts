@@ -83,6 +83,7 @@ async function refresh() {
 export function useRealtimeSessions() {
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    let projectsChannel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
     async function subscribe() {
