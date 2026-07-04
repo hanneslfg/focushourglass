@@ -23,7 +23,7 @@ interface DailyRecord {
   date: string;
 }
 
-const STREAK_MILESTONES = [5, 10, 25, 50, 100, 200, 500];
+
 
 function read(): MilestoneState {
   const empty: MilestoneState = {
