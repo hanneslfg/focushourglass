@@ -39,8 +39,8 @@ export function DailyLogSidebar() {
       setGoal(getTodayGoal());
       setDone(getTodayFocusedMinutes());
       setOverride(getTodayOverride());
-      setStreaks(getCachedStreaks());
-      setStreaks(refreshStreaks());
+
+
     };
     sync();
     window.addEventListener("hourglass:sessions", sync);
