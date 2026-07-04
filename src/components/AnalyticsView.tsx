@@ -729,6 +729,8 @@ export function AnalyticsView({
   // Day detail modal
   const [openDay, setOpenDay] = useState<{ key: string; date: Date } | null>(null);
   const [openSession, setOpenSession] = useState<Session | null>(null);
+  const [visibleBlocks, setVisibleBlocks] = useState(3);
+  useEffect(() => { setVisibleBlocks(3); }, [mode, weekOffset, customStart, customEnd, selectedTags]);
   const openDayBlocks = useMemo(() => {
     if (!openDay) return [];
     return sessions
