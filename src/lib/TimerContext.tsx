@@ -172,6 +172,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       if (r <= 0) {
         setEndAt(null);
         playGong();
+        // Rhythm-driven blocks (Focus Blocks) auto-advance without an
+        // "asking" prompt; handled by the finalize-on-asking effect below.
         setPhase("asking");
       }
     }, 1000);
