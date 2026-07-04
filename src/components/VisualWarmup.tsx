@@ -18,6 +18,8 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
   const [remaining, setRemaining] = useState(duration);
   const startedAtRef = useRef<number>(Date.now());
   const doneRef = useRef(false);
+  const intervalRef = useRef<number | null>(null);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
     startedAtRef.current = Date.now();
@@ -35,10 +37,12 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
             /* ignore */
           }
         }
+        setFading(true);
         // brief fade-out then hand off to the timer
         window.setTimeout(() => onComplete(), 450);
       }
     }, 100);
+    intervalRef.current = id;
     return () => window.clearInterval(id);
   }, [duration, onComplete]);
 
@@ -50,12 +54,19 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
+  const skipToSession = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+    // Instant hand-off — no fade, no chime — drop straight into the session.
+    onComplete();
+  };
+
   const progress = 1 - remaining / duration;
   const R = 46;
   const C = 2 * Math.PI * R;
   const dash = C * progress;
   const secondsLeft = Math.ceil(remaining);
-  const fading = doneRef.current;
 
   return (
     <div
