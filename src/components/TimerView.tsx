@@ -286,6 +286,15 @@ export function TimerView() {
           </p>
         )}
       </div>
+      {warmupActive && (
+        <VisualWarmup
+          onComplete={() => {
+            setWarmupActive(false);
+            start();
+          }}
+          onCancel={() => setWarmupActive(false)}
+        />
+      )}
     </div>
   );
 }
