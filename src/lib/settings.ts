@@ -14,6 +14,8 @@ export interface Settings {
   dayStartHour: number;
   /** Day index that starts the week (0 = Sunday, 1 = Monday). Default 1. */
   weekStartsOn: WeekStart;
+  /** Overt-attention warm-up before every session (60s stare-at-center). Default false. */
+  warmupEnabled: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -21,6 +23,7 @@ const DEFAULTS: Settings = {
   defaultDailyGoal: 180,
   dayStartHour: 0,
   weekStartsOn: 1,
+  warmupEnabled: false,
 };
 
 export function getSettings(): Settings {
