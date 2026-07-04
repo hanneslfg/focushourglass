@@ -97,6 +97,9 @@ function remoteRowToSession(r: RemoteRow): Session {
   const projectId = name ? projectIdFromName(name) : undefined;
   const projectColor = name ? colorForProjectName(name) : undefined;
 
+  const cleanTags = Array.isArray(r.tags) ? r.tags.filter(Boolean) : undefined;
+  const goalText = cleanTags && cleanTags.length > 0 ? String(cleanTags[0]) : undefined;
+
   return {
     id: r.id ?? crypto.randomUUID(),
     task: r.task_name,
@@ -107,7 +110,8 @@ function remoteRowToSession(r: RemoteRow): Session {
     projectId,
     projectName: name,
     projectColor,
-    tags: Array.isArray(r.tags) ? r.tags.filter(Boolean) : undefined,
+    goalText,
+    tags: cleanTags,
   };
 }
 
