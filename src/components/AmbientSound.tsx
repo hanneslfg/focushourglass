@@ -54,6 +54,13 @@ export function AmbientSound({ running }: { running: boolean }) {
 
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio graph for truly gapless looping (preferred path)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const bufferRef = useRef<AudioBuffer | null>(null);
+  const bufferUrlRef = useRef<string | null>(null);
+  const usingWebAudioRef = useRef<boolean>(false);
   const fadeRef = useRef<number | null>(null);
 
   // Fetch bucket contents (client only, after mount)
