@@ -124,3 +124,27 @@ export function SessionDetailModal({ session, open, onOpenChange }: Props) {
     </Dialog>
   );
 }
+
+function GoalChipInline({
+  goalText,
+  projectId,
+  focusedMinutes,
+}: { goalText: string; projectId?: string; focusedMinutes: number }) {
+  const goal = projectId ? findGoalByText(projectId, goalText) : null;
+  const color = goal?.color ?? "#94a3b8";
+  const achieved = isGoalAchieved(goal, focusedMinutes);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 pl-2 pr-2.5 h-6 rounded-full text-[10px] tracking-wide self-start w-fit"
+      style={{
+        background: `${color}1a`,
+        border: `1px solid ${color}55`,
+        color,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      <span className="truncate max-w-[16rem]">{goalText}</span>
+      {achieved && <Check className="h-3 w-3" strokeWidth={2.5} />}
+    </span>
+  );
+}
