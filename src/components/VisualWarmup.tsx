@@ -151,13 +151,13 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
         </p>
       </div>
 
-      {/* Skip — hidden until hover so it doesn't distract */}
+      {/* Cancel (top-right) — bails out entirely without starting the session */}
       <button
         onClick={onCancel}
-        className="absolute top-6 right-6 text-[10px] uppercase tracking-[0.28em] text-white/20 hover:text-white/60 transition-colors"
-        aria-label="Skip warm-up"
+        className="absolute top-6 right-6 text-[10px] uppercase tracking-[0.28em] text-white/15 hover:text-white/45 transition-colors"
+        aria-label="Cancel warm-up"
       >
-        Skip
+        Cancel
       </button>
     </div>
   );
