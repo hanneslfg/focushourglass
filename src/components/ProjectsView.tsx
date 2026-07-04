@@ -11,6 +11,7 @@ import {
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { ProjectTagsManager } from "./ProjectTagsManager";
+import { ProjectGoalsSection } from "./ProjectGoalsSection";
 
 function fmtHours(mins: number) {
   if (mins < 60) return `${mins}m`;
