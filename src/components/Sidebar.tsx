@@ -159,6 +159,7 @@ export function Sidebar() {
     { to: "/", label: "Timer", icon: HourglassIcon },
     { to: "/projects", label: "Projects", icon: FolderKanban },
     { to: "/analytics", label: "Analytics", icon: BarChart3 },
+    { to: "/focus-blocks", label: "Focus Blocks", icon: Layers },
   ];
   return (
     <>
