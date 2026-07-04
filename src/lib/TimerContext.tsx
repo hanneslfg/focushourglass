@@ -118,6 +118,25 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
   }, [minutes, phase]);
 
+  // Subscribe to rhythm store changes.
+  useEffect(() => {
+    const sync = () => setRhythm(getActiveRhythm());
+    sync();
+    window.addEventListener("hourglass:rhythm", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("hourglass:rhythm", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  // When idle, snap the timer duration to the active block so the Home
+  // screen shows the correct block time immediately after activation.
+  useEffect(() => {
+    if (phase !== "idle") return;
+    if (rhythm) setMinutesState(rhythm.block.minutes);
+  }, [phase, rhythm]);
+
   const persist = useCallback(
     (running: boolean) => {
       if (!startedAtRef.current) return;
