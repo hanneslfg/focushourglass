@@ -2,7 +2,7 @@ import { safeStorage } from "./safeStorage";
 import { toast } from "sonner";
 import { effectiveDayKey, getTodayFocusedMinutes, getTodayGoal, todayKey } from "./settings";
 import { getSessions } from "./sessions";
-import { computeStreaks } from "./streaks";
+
 
 const KEY = "hourglass.milestones.v1";
 const RECORD_KEY = "hourglass.dailyRecord.v1";
