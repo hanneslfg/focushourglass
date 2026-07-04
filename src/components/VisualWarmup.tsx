@@ -128,6 +128,16 @@ export function VisualWarmup({ duration = 60, onComplete, onCancel }: Props) {
           }}
           aria-hidden
         />
+
+        {/* Minimal skip — starts the session instantly */}
+        <button
+          type="button"
+          onClick={skipToSession}
+          className="absolute left-1/2 -translate-x-1/2 -bottom-10 text-[9px] uppercase tracking-[0.32em] text-white/20 hover:text-white/55 transition-colors"
+          aria-label="Skip warm-up and start session"
+        >
+          Skip
+        </button>
       </div>
 
       {/* Countdown + instruction */}
