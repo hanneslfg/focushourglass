@@ -245,7 +245,7 @@ export function TimerView() {
             </div>
           ) : (
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              {phase === "running" && "Focusing"}
+              {phase === "running" && (blockKind === "break" ? "Resting" : "Focusing")}
               {phase === "paused" && "Paused"}
               {phase === "asking" && "Time up"}
               
