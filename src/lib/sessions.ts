@@ -15,7 +15,14 @@ export interface Session {
   projectId?: string;
   projectName?: string;
   projectColor?: string;
-  /** Free-form multi-tags chosen by the user for this session. */
+  /**
+   * Selected goal for this session (denormalized text so historical
+   * sessions still show it if the goal is later deleted). Persisted via
+   * the legacy `sessions.tags` text[] column as a single-element array
+   * for backward compatibility.
+   */
+  goalText?: string;
+  /** @deprecated Legacy multi-tag storage. Use `goalText`. */
   tags?: string[];
 }
 
