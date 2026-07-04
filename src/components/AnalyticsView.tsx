@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
-import { getAllUsedTags } from "@/lib/tags";
+import { getProjects, type ProjectTag } from "@/lib/projects";
+import { getProjectGoals, findGoalByText, isGoalAchieved } from "@/lib/goals";
 import { supabase } from "@/lib/supabase";
 import {
   effectiveDayKey,
