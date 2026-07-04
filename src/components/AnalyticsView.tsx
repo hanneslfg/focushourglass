@@ -756,11 +756,23 @@ export function AnalyticsView({
   }, [mode, range.start, range.end, weekOffset]);
 
   const rangeLabel =
+    mode === "today" ? "today" :
     mode === "week" ? weekLabel :
     mode === "month" ? "this month" :
     mode === "year" ? "this year" :
     mode === "all" ? "all-time" :
     `${customStart} → ${customEnd}`;
+
+  const tagFilterActive = selectedTags.size > 0;
+  const toggleTag = (key: string) => {
+    setSelectedTags((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearTags = () => setSelectedTags(new Set());
+
 
   return (
     <div className="w-full min-h-full px-6 md:px-12 lg:px-16 py-10 md:py-14 space-y-12">
