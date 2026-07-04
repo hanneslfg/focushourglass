@@ -958,7 +958,23 @@ export function AnalyticsView({
         </div>
       </section>
 
+      {/* Tag breakdown */}
+      {tagBreakdown.length > 0 && (
+        <section>
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
+              Time by tag · {rangeLabel}
+            </h2>
+            <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
+              {tagBreakdown.length} tag{tagBreakdown.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <TagBreakdown rows={tagBreakdown} />
+        </section>
+      )}
+
       {/* Timer blocks for the whole range */}
+
       <section>
         <div className="flex items-baseline justify-between mb-5">
           <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
