@@ -337,7 +337,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
-        tags: tags.length > 0 ? tags : undefined,
+        goalText: goalText ?? undefined,
+        tags: goalText ? [goalText] : undefined,
       });
       maybeNotifyGoalReached();
       saveSessionRemote({
@@ -349,7 +350,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: false,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: goalText ? [goalText] : undefined,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
