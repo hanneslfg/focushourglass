@@ -8,6 +8,7 @@ import {
   clearTodayOverride,
   effectiveDayKey,
 } from "@/lib/settings";
+import { getDailyStreak } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
 
 
