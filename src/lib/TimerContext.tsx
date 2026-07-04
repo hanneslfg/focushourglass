@@ -395,7 +395,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
   const abort = useCallback(() => {
     setEndAt(null);
-    if (startedAtRef.current && task.trim() && !savedRef.current) {
+    const wasBreak = currentKindRef.current === "break";
+    currentKindRef.current = null;
+    if (!wasBreak && startedAtRef.current && task.trim() && !savedRef.current) {
       savedRef.current = true;
       const startedAt = startedAtRef.current;
       const completedAt = new Date().toISOString();
