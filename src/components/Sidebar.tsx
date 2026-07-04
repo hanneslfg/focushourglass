@@ -4,6 +4,7 @@ import {
   Hourglass as HourglassIcon,
   FolderKanban,
   BarChart3,
+  Layers,
   Settings as SettingsIcon,
   LogOut,
   User as UserIcon,

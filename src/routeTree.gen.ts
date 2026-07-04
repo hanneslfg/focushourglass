@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as FocusBlocksRouteImport } from './routes/focus-blocks'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FocusBlocksRoute = FocusBlocksRouteImport.update({
+  id: '/focus-blocks',
+  path: '/focus-blocks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalendarRoute = CalendarRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
+  '/focus-blocks': typeof FocusBlocksRoute
   '/projects': typeof ProjectsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
+  '/focus-blocks': typeof FocusBlocksRoute
   '/projects': typeof ProjectsRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
+  '/focus-blocks': typeof FocusBlocksRoute
   '/projects': typeof ProjectsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/analytics' | '/calendar' | '/projects'
+  fullPaths: '/' | '/analytics' | '/calendar' | '/focus-blocks' | '/projects'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/analytics' | '/calendar' | '/projects'
-  id: '__root__' | '/' | '/analytics' | '/calendar' | '/projects'
+  to: '/' | '/analytics' | '/calendar' | '/focus-blocks' | '/projects'
+  id:
+    | '__root__'
+    | '/'
+    | '/analytics'
+    | '/calendar'
+    | '/focus-blocks'
+    | '/projects'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   CalendarRoute: typeof CalendarRoute
+  FocusBlocksRoute: typeof FocusBlocksRoute
   ProjectsRoute: typeof ProjectsRoute
 }
 
@@ -76,6 +92,13 @@ declare module '@tanstack/react-router' {
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/focus-blocks': {
+      id: '/focus-blocks'
+      path: '/focus-blocks'
+      fullPath: '/focus-blocks'
+      preLoaderRoute: typeof FocusBlocksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calendar': {
@@ -106,6 +129,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   CalendarRoute: CalendarRoute,
+  FocusBlocksRoute: FocusBlocksRoute,
   ProjectsRoute: ProjectsRoute,
 }
 export const routeTree = rootRouteImport
