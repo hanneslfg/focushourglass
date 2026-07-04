@@ -96,6 +96,7 @@ function SettingsPanel() {
     defaultDailyGoal: 180,
     dayStartHour: 0,
     weekStartsOn: 1,
+    warmupEnabled: false,
   });
   const [goalInput, setGoalInput] = useState("180");
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
