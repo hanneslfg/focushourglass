@@ -147,6 +147,35 @@ export function DailyLogSidebar() {
               </div>
             </section>
 
+            {/* Daily streak — minimalist */}
+            <section
+              className="flex items-center justify-between rounded-md border border-border/70 bg-background/40 px-4 py-3"
+              aria-label="Current daily streak"
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden
+                  className="inline-block h-2 w-2 rotate-45"
+                  style={{
+                    background: streak > 0 ? "hsl(38 92% 62%)" : "hsl(var(--muted-foreground) / 0.4)",
+                    boxShadow:
+                      streak > 0 ? "0 0 10px hsl(38 92% 62% / 0.55)" : "none",
+                  }}
+                />
+                <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Current streak
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-xl tabular-nums tracking-tight text-foreground">
+                  {streak}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {streak === 1 ? "day" : "days"}
+                </span>
+              </div>
+            </section>
+
             {/* Center: Goal progress */}
             <section className="rounded-md border border-border bg-background/40 px-4 py-3.5">
               <div className="flex items-baseline justify-between gap-2">
