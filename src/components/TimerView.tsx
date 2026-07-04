@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
+import { Minus, Plus, Play, Pause, Check, X, Coffee, Focus as FocusIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AmbientSound } from "./AmbientSound";
 import { VisualWarmup } from "./VisualWarmup";
+import { BlockTimeline } from "./FocusBlocksView";
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 import { getSettings } from "@/lib/settings";
+import { deactivateRhythm } from "@/lib/rhythms";
 
 function fmt(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
@@ -35,6 +38,8 @@ export function TimerView() {
     total,
     flipNonce,
     endAtMs,
+    rhythm,
+    blockKind,
     start,
     pause,
     finalize,
@@ -61,7 +66,10 @@ export function TimerView() {
     setMinuteInput(String(minutes));
   }, [minutes]);
 
-  const canStart = task.trim().length > 0 && phase === "idle";
+  // Break blocks can start without a task (the timer auto-fills "Break").
+  const nextIsBreak = phase === "idle" && rhythm?.block.kind === "break";
+  const canStart =
+    phase === "idle" && (nextIsBreak || task.trim().length > 0);
   const locked = phase !== "idle";
 
   function computeEndTime(offsetSeconds: number) {
@@ -82,6 +90,49 @@ export function TimerView() {
   return (
     <div className="flex-1 flex items-start md:items-center justify-center px-4 md:px-6 pt-28 pb-6 md:py-10">
       <div className="w-full max-w-md flex flex-col items-center gap-6 md:gap-10">
+        {/* Rhythm banner (Focus Blocks) */}
+        {rhythm && (
+          <div className="w-full rounded-lg border border-border/70 bg-card/60 px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  {blockKind === "break" ? (
+                    <Coffee className="h-3 w-3 text-sky-400/80" strokeWidth={1.75} />
+                  ) : (
+                    <FocusIcon className="h-3 w-3 text-amber-400/80" strokeWidth={1.75} />
+                  )}
+                  {blockKind === "break" ? "Break" : "Focus"} block{" "}
+                  {rhythm.index + 1}/{rhythm.rhythm.blocks.length}
+                </div>
+                <div className="mt-0.5 text-sm truncate text-foreground/90">
+                  {rhythm.rhythm.name}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  to="/focus-blocks"
+                  className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Edit
+                </Link>
+                <button
+                  onClick={() => deactivateRhythm()}
+                  className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive transition-colors"
+                  title="Stop this rhythm"
+                >
+                  End
+                </button>
+              </div>
+            </div>
+            <div className="mt-3">
+              <BlockTimeline
+                blocks={rhythm.rhythm.blocks}
+                currentIndex={rhythm.index}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Task */}
         <div className="w-full">
           <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2 text-center">
