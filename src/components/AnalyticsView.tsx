@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
+import { getAllUsedTags } from "@/lib/tags";
 import { supabase } from "@/lib/supabase";
 import {
   effectiveDayKey,
@@ -623,23 +624,49 @@ export function AnalyticsView({
     });
   }, [sessions, range.start, range.end]);
 
-  // Tag filter — "__untagged" is a synthetic value covering sessions with no tags
+  // Tag filter — "__untagged" is a synthetic value covering sessions with no tags.
+  // The dropdown must show EVERY tag the user has ever attached to a session
+  // (across all devices via the synced `sessions.tags` column), not just tags
+  // present in the current date range — otherwise narrowing the range makes
+  // tags disappear from the filter and users can't select them.
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [tagsTick, setTagsTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setTagsTick((t) => t + 1);
+    window.addEventListener("hourglass:tags", bump);
+    window.addEventListener("hourglass:sessions", bump);
+    return () => {
+      window.removeEventListener("hourglass:tags", bump);
+      window.removeEventListener("hourglass:sessions", bump);
+    };
+  }, []);
   const availableTags = useMemo(() => {
     const map = new Map<string, string>(); // lower -> display
+    // Global pool: every tag ever used, from any device.
+    for (const t of getAllUsedTags()) {
+      const n = t.trim();
+      if (!n) continue;
+      map.set(n.toLowerCase(), n);
+    }
+    // Also fold in tags on sessions we already have loaded so newly-synced
+    // rows show up before the next `hourglass:tags` broadcast.
     let hasUntagged = false;
-    for (const s of rawInRange) {
-      if (!s.tags || s.tags.length === 0) { hasUntagged = true; continue; }
+    for (const s of sessions) {
+      if (!s.tags || s.tags.length === 0) continue;
       for (const t of s.tags) {
         const n = t.trim();
-        if (!n) { hasUntagged = true; continue; }
+        if (!n) continue;
         const k = n.toLowerCase();
         if (!map.has(k)) map.set(k, n);
       }
     }
+    for (const s of rawInRange) {
+      if (!s.tags || s.tags.length === 0) { hasUntagged = true; break; }
+      if (s.tags.every((t) => !t.trim())) { hasUntagged = true; break; }
+    }
     const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     return { list, hasUntagged };
-  }, [rawInRange]);
+  }, [rawInRange, sessions, tagsTick]);
 
   const sessionMatchesTags = (s: Session, sel: Set<string>) => {
     if (sel.size === 0) return true;
