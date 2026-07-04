@@ -383,7 +383,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       currentKindRef.current = null;
       window.setTimeout(resetIdle, 1800);
     }
-  }, [phase, task, project, tags, total, resetIdle, setEndAt, startWith]);
+  }, [phase, task, project, goalText, total, resetIdle, setEndAt, startWith]);
 
   // Rhythm-driven auto-advance: skip the "asking" prompt when the current
   // block was scheduled by an active Focus Blocks rhythm.
@@ -416,7 +416,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
-        tags: tags.length > 0 ? tags : undefined,
+        goalText: goalText ?? undefined,
+        tags: goalText ? [goalText] : undefined,
       });
       saveSessionRemote({
         user_id: getUserId(),
