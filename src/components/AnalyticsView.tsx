@@ -164,7 +164,11 @@ function computeRange(
   weekOffset: number,
 ): Range {
   const today = effectiveToday();
+  if (mode === "today") {
+    return { start: startOfDay(today), end: endOfDay(today) };
+  }
   if (mode === "week") {
+
     const thisWeekStart = startOfWeek(today);
     const start = addDays(thisWeekStart, weekOffset * 7);
     const end = endOfDay(addDays(start, 6));
