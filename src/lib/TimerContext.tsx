@@ -57,6 +57,11 @@ interface TimerCtx {
   flipNonce: number;
   endAtMs: number | null;
 
+  // rhythm awareness (Focus Blocks)
+  rhythm: ActiveRhythmState | null;
+  /** Kind of the currently-running block ('break' while a break interval runs). */
+  blockKind: BlockKind | null;
+
   // actions
   start: () => void;
   pause: () => void;
