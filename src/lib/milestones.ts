@@ -2,10 +2,12 @@ import { safeStorage } from "./safeStorage";
 import { toast } from "sonner";
 import { effectiveDayKey, getTodayFocusedMinutes, getTodayGoal, todayKey } from "./settings";
 import { getSessions } from "./sessions";
+import { getDailyStreak, STREAK_MILESTONES } from "./streaks";
 
 
 const KEY = "hourglass.milestones.v1";
 const RECORD_KEY = "hourglass.dailyRecord.v1";
+const STREAK_KEY = "hourglass.streakMilestones.v1";
 
 interface MilestoneState {
   date: string;
