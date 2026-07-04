@@ -9,7 +9,7 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
-import { findGoalByText, isGoalAchieved } from "@/lib/goals";
+import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
 
