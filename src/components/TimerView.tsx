@@ -5,7 +5,7 @@ import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AmbientSound } from "./AmbientSound";
 import { VisualWarmup } from "./VisualWarmup";
-import { BlockTimeline } from "./FocusBlocksView";
+
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
