@@ -3,10 +3,12 @@ import { Minus, Plus, Play, Pause, Check, X } from "lucide-react";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AmbientSound } from "./AmbientSound";
+import { VisualWarmup } from "./VisualWarmup";
 
 import { SessionTagBar } from "./SessionTagBar";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
+import { getSettings } from "@/lib/settings";
 
 function fmt(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
@@ -43,6 +45,7 @@ export function TimerView() {
 
   const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
+  const [warmupActive, setWarmupActive] = useState(false);
   // Gate any Date.now()-derived UI behind mount to avoid SSR/client hydration mismatch.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -252,7 +255,10 @@ export function TimerView() {
         ) : (
           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center justify-center gap-2 w-full">
             <button
-              onClick={start}
+              onClick={() => {
+                if (getSettings().warmupEnabled) setWarmupActive(true);
+                else start();
+              }}
               disabled={!canStart}
               className="col-span-2 md:col-span-1 inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md bg-foreground text-background text-base md:text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
             >
@@ -280,6 +286,15 @@ export function TimerView() {
           </p>
         )}
       </div>
+      {warmupActive && (
+        <VisualWarmup
+          onComplete={() => {
+            setWarmupActive(false);
+            start();
+          }}
+          onCancel={() => setWarmupActive(false)}
+        />
+      )}
     </div>
   );
 }
