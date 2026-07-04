@@ -96,6 +96,12 @@ function writeDeleted(ids: Set<string>) {
  */
 export function getProjects(): ProjectTag[] {
   const deleted = readDeleted();
+  const locals = new Map<string, ProjectTag>();
+  for (const p of readLocal()) {
+    const id = projectIdFromName(p.name);
+    if (deleted.has(id)) continue;
+    locals.set(id, { ...p, id });
+  }
   const fromSessions = new Map<string, ProjectTag>();
   for (const s of getSessions()) {
     const name = s.projectName?.trim();
@@ -103,19 +109,20 @@ export function getProjects(): ProjectTag[] {
     const id = projectIdFromName(name);
     if (deleted.has(id)) continue;
     if (fromSessions.has(id)) continue;
+    // Local (user-edited) color ALWAYS wins over the session-derived one,
+    // otherwise a fresh session sync overwrites the user's custom color with
+    // whatever color was denormalized on the row (often the deterministic
+    // default).
+    const localColor = locals.get(id)?.color;
     fromSessions.set(id, {
       id,
       name,
-      color: s.projectColor || colorForProjectName(name),
+      color: localColor || s.projectColor || colorForProjectName(name),
     });
   }
   // Merge in any local-only projects (not yet used in a session).
-  for (const p of readLocal()) {
-    const id = projectIdFromName(p.name);
-    if (deleted.has(id)) continue;
-    if (!fromSessions.has(id)) {
-      fromSessions.set(id, { ...p, id });
-    }
+  for (const [id, p] of locals) {
+    if (!fromSessions.has(id)) fromSessions.set(id, p);
   }
   return [...fromSessions.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
