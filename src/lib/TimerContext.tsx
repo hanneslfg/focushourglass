@@ -91,8 +91,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [total, setTotal] = useState(90 * 60);
   const [flipNonce, setFlipNonce] = useState(0);
   const [endAtMs, setEndAtMs] = useState<number | null>(null);
-  
 
+  // Active Focus Blocks rhythm (mirrors localStorage; re-reads on events).
+  const [rhythm, setRhythm] = useState<ActiveRhythmState | null>(() =>
+    typeof window === "undefined" ? null : getActiveRhythm(),
+  );
+  const currentKindRef = useRef<BlockKind | null>(null);
 
   const focusedRef = useRef(0);
   const startedAtRef = useRef<string | null>(null);
