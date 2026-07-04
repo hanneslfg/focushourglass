@@ -238,6 +238,7 @@ export function useRealtimeSessions() {
       authSub.subscription.unsubscribe();
       if (channel) supabase.removeChannel(channel);
       if (projectsChannel) supabase.removeChannel(projectsChannel);
+      if (goalsChannel) supabase.removeChannel(goalsChannel);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("focus", onFocus);
