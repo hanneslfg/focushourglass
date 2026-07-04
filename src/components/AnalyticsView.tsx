@@ -1090,7 +1090,7 @@ export function AnalyticsView({
         <StatCard label="Average Daily Focus" value={fmtHM(avgDaily)} sub="7-day rolling">
           <Sparkline data={wave} variant="wave" />
         </StatCard>
-        <StatCard label="Sessions" value={`${inRange.length}`} sub={tagFilterActive ? "matching filters" : "in range"}>
+        <StatCard label="Sessions" value={`${inRange.length}`} sub={filtersActive ? "matching filters" : "in range"}>
           <Sparkline data={daily.map((d) => d.min > 0 ? 1 : 0)} variant="bar" />
         </StatCard>
 
@@ -1108,18 +1108,18 @@ export function AnalyticsView({
         </div>
       </section>
 
-      {/* Tag breakdown */}
-      {tagBreakdown.length > 0 && (
+      {/* Goal breakdown */}
+      {goalBreakdown.length > 0 && (
         <section>
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
-              Time by tag · {rangeLabel}
+              Time by goal · {rangeLabel}
             </h2>
             <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
-              {tagBreakdown.length} tag{tagBreakdown.length === 1 ? "" : "s"}
+              {goalBreakdown.length} goal{goalBreakdown.length === 1 ? "" : "s"}
             </span>
           </div>
-          <TagBreakdown rows={tagBreakdown} />
+          <GoalBreakdown rows={goalBreakdown} />
         </section>
       )}
 
