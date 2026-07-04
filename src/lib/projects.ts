@@ -1,5 +1,6 @@
 import { safeStorage } from "./safeStorage";
 import { getSessions } from "./sessions";
+import { supabase, getActiveSyncUserId } from "./supabase";
 
 export interface ProjectTag {
   id: string;
