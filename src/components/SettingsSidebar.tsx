@@ -8,6 +8,7 @@ import {
   Minus,
   Plus,
   Target,
+  Eye,
 } from "lucide-react";
 import {
   getSettings,
