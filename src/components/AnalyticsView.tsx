@@ -792,13 +792,15 @@ export function AnalyticsView({
         <div className="flex flex-wrap items-center gap-3">
           <div className="inline-flex items-center rounded-full p-1 gap-1"
             style={{ background: "rgba(26,26,26,0.9)", border: "1px solid rgba(245,158,11,0.18)" }}>
-            {(["week", "month", "year", "all", "custom"] as RangeMode[]).map((m) => {
+            {(["today", "week", "month", "year", "all", "custom"] as RangeMode[]).map((m) => {
               const active = mode === m;
               const label =
+                m === "today" ? "Today" :
                 m === "week" ? "Week" :
                 m === "month" ? "Month" :
                 m === "year" ? "Year" :
                 m === "all" ? "All-Time" : "Custom";
+
               return (
                 <button
                   key={m}
