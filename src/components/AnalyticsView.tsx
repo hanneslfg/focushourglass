@@ -613,17 +613,72 @@ export function AnalyticsView({
     [mode, sessions, customRange, weekOffset],
   );
 
-  // Sessions filtered to range
-  const inRange = useMemo(() => {
+  // Sessions in range (before tag filter — used to compute available tags)
+  const rawInRange = useMemo(() => {
     const a = range.start.getTime();
     const b = range.end.getTime();
-    return sessions
-      .filter((s) => {
-        const t = new Date(s.completedAt).getTime();
-        return t >= a && t <= b;
-      })
-      .sort((x, y) => (x.completedAt < y.completedAt ? 1 : -1));
+    return sessions.filter((s) => {
+      const t = new Date(s.completedAt).getTime();
+      return t >= a && t <= b;
+    });
   }, [sessions, range.start, range.end]);
+
+  // Tag filter — "__untagged" is a synthetic value covering sessions with no tags
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const availableTags = useMemo(() => {
+    const map = new Map<string, string>(); // lower -> display
+    let hasUntagged = false;
+    for (const s of rawInRange) {
+      if (!s.tags || s.tags.length === 0) { hasUntagged = true; continue; }
+      for (const t of s.tags) {
+        const n = t.trim();
+        if (!n) { hasUntagged = true; continue; }
+        const k = n.toLowerCase();
+        if (!map.has(k)) map.set(k, n);
+      }
+    }
+    const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    return { list, hasUntagged };
+  }, [rawInRange]);
+
+  const sessionMatchesTags = (s: Session, sel: Set<string>) => {
+    if (sel.size === 0) return true;
+    const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
+    if (tags.length === 0) return sel.has("__untagged");
+    return tags.some((t) => sel.has(t.toLowerCase()));
+  };
+
+  const inRange = useMemo(() => {
+    return rawInRange
+      .filter((s) => sessionMatchesTags(s, selectedTags))
+      .sort((x, y) => (x.completedAt < y.completedAt ? 1 : -1));
+  }, [rawInRange, selectedTags]);
+
+  // Tag → minutes breakdown, respecting the current range but ignoring the
+  // tag filter so users always see the full distribution.
+  const tagBreakdown = useMemo(() => {
+    const totals = new Map<string, { label: string; min: number }>();
+    let untagged = 0;
+    for (const s of rawInRange) {
+      const mins = s.focusedMinutes || 0;
+      const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
+      if (tags.length === 0) { untagged += mins; continue; }
+      // Split evenly across tags so totals stay comparable to session totals.
+      const share = mins / tags.length;
+      for (const t of tags) {
+        const k = t.toLowerCase();
+        const cur = totals.get(k) ?? { label: t, min: 0 };
+        cur.min += share;
+        totals.set(k, cur);
+      }
+    }
+    const rows = [...totals.entries()]
+      .map(([k, v]) => ({ key: k, label: v.label, min: Math.round(v.min) }))
+      .sort((a, b) => b.min - a.min);
+    if (untagged > 0) rows.push({ key: "__untagged", label: "Untagged", min: Math.round(untagged) });
+    return rows;
+  }, [rawInRange]);
+
 
   // Per-day series across range (inclusive)
   const daily = useMemo(() => {
