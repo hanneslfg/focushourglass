@@ -255,7 +255,10 @@ export function TimerView() {
         ) : (
           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center justify-center gap-2 w-full">
             <button
-              onClick={start}
+              onClick={() => {
+                if (getSettings().warmupEnabled) setWarmupActive(true);
+                else start();
+              }}
               disabled={!canStart}
               className="col-span-2 md:col-span-1 inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md bg-foreground text-background text-base md:text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
             >
