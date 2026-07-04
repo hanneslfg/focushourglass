@@ -428,7 +428,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: true,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: goalText ? [goalText] : undefined,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -441,7 +441,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     resetIdle();
-  }, [task, project, tags, total, resetIdle, setEndAt]);
+  }, [task, project, goalText, total, resetIdle, setEndAt]);
 
   const addExtra = useCallback(
     (mins: number) => {
