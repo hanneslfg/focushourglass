@@ -30,11 +30,7 @@ export function DailyLogSidebar() {
   const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
-  const [streaks, setStreaks] = useState<Streaks>({
-    dayStreak: 0,
-    sessionStreak: 0,
-    lastActivity: null,
-  });
+
   const syncState = useSyncState();
 
   useEffect(() => {
