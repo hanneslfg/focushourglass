@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { AdjustFocusTime } from "./AdjustFocusTime";
 import { updateSession, type Session } from "@/lib/sessions";
 import { updateSessionMinutesRemote } from "@/lib/supabase";
+import { findGoalByText, isGoalAchieved } from "@/lib/goals";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 function fmtClock(iso: string) {
@@ -101,21 +103,13 @@ export function SessionDetailModal({ session, open, onOpenChange }: Props) {
           </div>
         )}
 
-        {session.tags && session.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {session.tags.map((t) => (
-              <span
-                key={t}
-                className="inline-block px-1.5 py-px rounded text-[10px] tracking-wide uppercase"
-                style={{
-                  background: "rgba(245,158,11,0.10)",
-                  color: "rgba(252,211,77,0.95)",
-                  border: "1px solid rgba(245,158,11,0.28)",
-                }}
-              >
-                {t}
-              </span>
-            ))}
+        {(session.goalText ?? session.tags?.[0]) && (
+          <div className="mt-2">
+            <GoalChipInline
+              goalText={session.goalText ?? session.tags?.[0] ?? ""}
+              projectId={session.projectId}
+              focusedMinutes={session.focusedMinutes}
+            />
           </div>
         )}
 
