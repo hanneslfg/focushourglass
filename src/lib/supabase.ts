@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { safeStorage } from "./safeStorage";
 
 const SUPABASE_URL = "https://ujksluqzycmbflqdhczo.supabase.co";
@@ -22,30 +22,33 @@ function storageAvailable(): boolean {
 
 const canPersist = storageAvailable();
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    // Use our wrapped storage so any future setItem/getItem failure can't bubble.
-    storage: safeStorage as unknown as Storage,
-    // Disable persistence entirely when the browser blocks storage — the
-    // client otherwise tries to write tokens and throws.
-    persistSession: canPersist,
-    autoRefreshToken: canPersist,
-    detectSessionInUrl: true,
-  },
-});
+// Stash the client on globalThis so HMR reloads, duplicate module resolutions,
+// and any lingering imports all share ONE GoTrueClient. Multiple instances
+// share the same storage key and race each other, wiping in-progress state
+// (like project color overrides) right after a session sync.
+const GLOBAL_KEY = "__hourglass_supabase_client__";
+type GlobalWithSupabase = typeof globalThis & { [GLOBAL_KEY]?: SupabaseClient };
+const g = globalThis as GlobalWithSupabase;
+
+export const supabase: SupabaseClient =
+  g[GLOBAL_KEY] ??
+  (g[GLOBAL_KEY] = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      storage: safeStorage as unknown as Storage,
+      persistSession: canPersist,
+      autoRefreshToken: canPersist,
+      detectSessionInUrl: true,
+      storageKey: "hourglass.sb.auth.v1",
+    },
+  }));
 
 /**
- * Public, sessionless client for buckets / tables that intentionally allow
- * anon access. It never waits for or mutates the auth session, so public
- * reads like `focus-sounds` cannot block the signed-in app state.
+ * Public/sessionless reads previously used a second GoTrue client, which
+ * triggered "Multiple GoTrueClient instances detected" and fought the main
+ * client for the same storage key. It's the same anon key either way, so
+ * alias to the single global instance.
  */
-export const publicSupabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-});
+export const publicSupabase: SupabaseClient = supabase;
 
 const USER_KEY = "hourglass.user_id.v1";
 
