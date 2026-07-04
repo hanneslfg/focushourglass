@@ -7,7 +7,7 @@ import { AmbientSound } from "./AmbientSound";
 import { VisualWarmup } from "./VisualWarmup";
 
 
-import { SessionTagBar } from "./SessionTagBar";
+import { ProjectGoalPicker } from "./ProjectGoalPicker";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 import { getSettings } from "@/lib/settings";
@@ -29,8 +29,8 @@ export function TimerView() {
     setTask,
     project,
     setProject,
-    tags,
-    setTags,
+    goalText,
+    setGoalText,
     minutes,
     setMinutes,
     phase,
@@ -153,8 +153,8 @@ export function TimerView() {
           />
         </div>
 
-        {/* Project tag toggles */}
-        <SessionTagBar project={project} active={tags} onChange={setTags} disabled={locked} />
+        {/* Project goal picker — expands under the project when one is selected */}
+        <ProjectGoalPicker project={project} goalText={goalText} onChange={setGoalText} disabled={locked} />
 
         {/* Ambient sound selector */}
         <AmbientSound running={phase === "running"} />

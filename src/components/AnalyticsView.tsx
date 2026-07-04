@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
-import { getAllUsedTags } from "@/lib/tags";
+import { getProjects, type ProjectTag } from "@/lib/projects";
+import { getProjectGoals, findGoalByText, isGoalAchieved } from "@/lib/goals";
 import { supabase } from "@/lib/supabase";
 import {
   effectiveDayKey,
@@ -518,21 +520,13 @@ function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => 
             {s.projectName}
           </div>
         )}
-        {s.tags && s.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {s.tags.map((t) => (
-              <span
-                key={t}
-                className="inline-block px-1.5 py-px rounded text-[9px] tracking-wide uppercase"
-                style={{
-                  background: "rgba(245,158,11,0.10)",
-                  color: "rgba(252,211,77,0.95)",
-                  border: "1px solid rgba(245,158,11,0.28)",
-                }}
-              >
-                {t}
-              </span>
-            ))}
+        {(s.goalText ?? s.tags?.[0]) && (
+          <div className="mt-2">
+            <GoalMiniChip
+              goalText={s.goalText ?? s.tags?.[0] ?? ""}
+              projectId={s.projectId}
+              focusedMinutes={s.focusedMinutes}
+            />
           </div>
         )}
         <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/55 tabular-nums">
@@ -624,87 +618,154 @@ export function AnalyticsView({
     });
   }, [sessions, range.start, range.end]);
 
-  // Tag filter — "__untagged" is a synthetic value covering sessions with no tags.
-  // The dropdown must show EVERY tag the user has ever attached to a session
-  // (across all devices via the synced `sessions.tags` column), not just tags
-  // present in the current date range — otherwise narrowing the range makes
-  // tags disappear from the filter and users can't select them.
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [tagsTick, setTagsTick] = useState(0);
+  // -------- Project + goal filters --------
+  // Every project the user has, plus every project name that appears in a
+  // session (so historical rows for deleted projects still filter cleanly).
+  const [projects, setProjects] = useState<ProjectTag[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
+  const [selectedGoals, setSelectedGoals] = useState<Set<string>>(new Set());
+  const [dataTick, setDataTick] = useState(0);
   useEffect(() => {
-    const bump = () => setTagsTick((t) => t + 1);
-    window.addEventListener("hourglass:tags", bump);
+    const syncP = () => setProjects(getProjects());
+    const bump = () => setDataTick((t) => t + 1);
+    syncP();
+    window.addEventListener("hourglass:projects", syncP);
+    window.addEventListener("hourglass:goals", bump);
     window.addEventListener("hourglass:sessions", bump);
     return () => {
-      window.removeEventListener("hourglass:tags", bump);
+      window.removeEventListener("hourglass:projects", syncP);
+      window.removeEventListener("hourglass:goals", bump);
       window.removeEventListener("hourglass:sessions", bump);
     };
   }, []);
-  const availableTags = useMemo(() => {
-    const map = new Map<string, string>(); // lower -> display
-    // Global pool: every tag ever used, from any device.
-    for (const t of getAllUsedTags()) {
-      const n = t.trim();
-      if (!n) continue;
-      map.set(n.toLowerCase(), n);
+
+  const availableProjects = useMemo(() => {
+    // Union of live projects + project names present on sessions.
+    const map = new Map<string, { id: string; name: string; color: string }>();
+    for (const p of projects) {
+      map.set(p.id, { id: p.id, name: p.name, color: p.color });
     }
-    // Also fold in tags on sessions we already have loaded so newly-synced
-    // rows show up before the next `hourglass:tags` broadcast.
-    let hasUntagged = false;
+    let hasNoProject = false;
     for (const s of sessions) {
-      if (!s.tags || s.tags.length === 0) continue;
-      for (const t of s.tags) {
-        const n = t.trim();
-        if (!n) continue;
-        const k = n.toLowerCase();
-        if (!map.has(k)) map.set(k, n);
+      if (!s.projectId || !s.projectName) { hasNoProject = true; continue; }
+      if (!map.has(s.projectId)) {
+        map.set(s.projectId, { id: s.projectId, name: s.projectName, color: s.projectColor ?? "#94a3b8" });
       }
     }
-    for (const s of rawInRange) {
-      if (!s.tags || s.tags.length === 0) { hasUntagged = true; break; }
-      if (s.tags.every((t) => !t.trim())) { hasUntagged = true; break; }
-    }
-    const list = [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    return { list, hasUntagged };
-  }, [rawInRange, sessions, tagsTick]);
+    return { list: [...map.values()].sort((a, b) => a.name.localeCompare(b.name)), hasNoProject };
+  }, [projects, sessions]);
 
-  const sessionMatchesTags = (s: Session, sel: Set<string>) => {
+  // Goals derived from BOTH project.goal store and historical session.goalText.
+  // Key is `${projectId}::${goalTextLower}` so goals with the same name in
+  // different projects stay distinct in filters and breakdowns.
+  const availableGoals = useMemo(() => {
+    const map = new Map<string, { key: string; projectId: string; projectName: string; projectColor: string; text: string; color: string; targetMinutes: number }>();
+    for (const p of projects) {
+      for (const g of getProjectGoals(p.id)) {
+        const key = `${p.id}::${g.text.toLowerCase()}`;
+        map.set(key, {
+          key,
+          projectId: p.id,
+          projectName: p.name,
+          projectColor: p.color,
+          text: g.text,
+          color: g.color,
+          targetMinutes: g.targetMinutes,
+        });
+      }
+    }
+    // Fold in goals seen on sessions but not defined in the goal store.
+    for (const s of sessions) {
+      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+      if (!gt || !s.projectId) continue;
+      const key = `${s.projectId}::${gt.toLowerCase()}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          projectId: s.projectId,
+          projectName: s.projectName ?? "Project",
+          projectColor: s.projectColor ?? "#94a3b8",
+          text: gt,
+          color: s.projectColor ?? "#94a3b8",
+          targetMinutes: 0,
+        });
+      }
+    }
+    let hasNoGoal = false;
+    for (const s of rawInRange) {
+      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+      if (!gt) { hasNoGoal = true; break; }
+    }
+    const list = [...map.values()].sort((a, b) =>
+      a.projectName.localeCompare(b.projectName) || a.text.localeCompare(b.text),
+    );
+    return { list, hasNoGoal };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, sessions, rawInRange, dataTick]);
+
+  const sessionMatchesProject = (s: Session, sel: Set<string>) => {
     if (sel.size === 0) return true;
-    const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
-    if (tags.length === 0) return sel.has("__untagged");
-    return tags.some((t) => sel.has(t.toLowerCase()));
+    if (!s.projectId) return sel.has("__none");
+    return sel.has(s.projectId);
+  };
+  const sessionMatchesGoal = (s: Session, sel: Set<string>) => {
+    if (sel.size === 0) return true;
+    const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+    if (!gt || !s.projectId) return sel.has("__none");
+    return sel.has(`${s.projectId}::${gt.toLowerCase()}`);
   };
 
   const inRange = useMemo(() => {
     return rawInRange
-      .filter((s) => sessionMatchesTags(s, selectedTags))
+      .filter((s) => sessionMatchesProject(s, selectedProjects))
+      .filter((s) => sessionMatchesGoal(s, selectedGoals))
       .sort((x, y) => (x.completedAt < y.completedAt ? 1 : -1));
-  }, [rawInRange, selectedTags]);
+  }, [rawInRange, selectedProjects, selectedGoals]);
 
-  // Tag → minutes breakdown, respecting the current range but ignoring the
-  // tag filter so users always see the full distribution.
-  const tagBreakdown = useMemo(() => {
-    const totals = new Map<string, { label: string; min: number }>();
-    let untagged = 0;
+  // Goal → minutes breakdown for the current range (ignores the goal filter
+  // so users always see the full distribution).
+  const goalBreakdown = useMemo(() => {
+    const totals = new Map<string, { key: string; text: string; projectId: string; projectName: string; projectColor: string; color: string; min: number; targetMinutes: number }>();
+    let untracked = 0;
     for (const s of rawInRange) {
+      if (!sessionMatchesProject(s, selectedProjects)) continue;
       const mins = s.focusedMinutes || 0;
-      const tags = (s.tags ?? []).map((t) => t.trim()).filter(Boolean);
-      if (tags.length === 0) { untagged += mins; continue; }
-      // Split evenly across tags so totals stay comparable to session totals.
-      const share = mins / tags.length;
-      for (const t of tags) {
-        const k = t.toLowerCase();
-        const cur = totals.get(k) ?? { label: t, min: 0 };
-        cur.min += share;
-        totals.set(k, cur);
-      }
+      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
+      if (!gt || !s.projectId) { untracked += mins; continue; }
+      const key = `${s.projectId}::${gt.toLowerCase()}`;
+      const goal = findGoalByText(s.projectId, gt);
+      const cur = totals.get(key) ?? {
+        key,
+        text: gt,
+        projectId: s.projectId,
+        projectName: s.projectName ?? "Project",
+        projectColor: s.projectColor ?? "#94a3b8",
+        color: goal?.color ?? s.projectColor ?? "#94a3b8",
+        min: 0,
+        targetMinutes: goal?.targetMinutes ?? 0,
+      };
+      cur.min += mins;
+      totals.set(key, cur);
     }
-    const rows = [...totals.entries()]
-      .map(([k, v]) => ({ key: k, label: v.label, min: Math.round(v.min) }))
+    const rows = [...totals.values()]
+      .map((v) => ({ ...v, min: Math.round(v.min) }))
       .sort((a, b) => b.min - a.min);
-    if (untagged > 0) rows.push({ key: "__untagged", label: "Untagged", min: Math.round(untagged) });
+    if (untracked > 0) {
+      rows.push({
+        key: "__none",
+        text: "No goal",
+        projectId: "",
+        projectName: "",
+        projectColor: "#94a3b8",
+        color: "#94a3b8",
+        min: Math.round(untracked),
+        targetMinutes: 0,
+      });
+    }
     return rows;
-  }, [rawInRange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawInRange, selectedProjects, dataTick]);
+
 
 
   // Per-day series across range (inclusive)
@@ -757,7 +818,7 @@ export function AnalyticsView({
   const [openDay, setOpenDay] = useState<{ key: string; date: Date } | null>(null);
   const [openSession, setOpenSession] = useState<Session | null>(null);
   const [visibleBlocks, setVisibleBlocks] = useState(3);
-  useEffect(() => { setVisibleBlocks(3); }, [mode, weekOffset, customStart, customEnd, selectedTags]);
+  useEffect(() => { setVisibleBlocks(3); }, [mode, weekOffset, customStart, customEnd, selectedProjects, selectedGoals]);
   const openDayBlocks = useMemo(() => {
     if (!openDay) return [];
     return sessions
@@ -792,15 +853,25 @@ export function AnalyticsView({
     mode === "all" ? "all-time" :
     `${customStart} → ${customEnd}`;
 
-  const tagFilterActive = selectedTags.size > 0;
-  const toggleTag = (key: string) => {
-    setSelectedTags((prev) => {
+  const filtersActive = selectedProjects.size > 0 || selectedGoals.size > 0;
+  const toggleProject = (key: string) => {
+    setSelectedProjects((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
-  const clearTags = () => setSelectedTags(new Set());
+  const toggleGoal = (key: string) => {
+    setSelectedGoals((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearFilters = () => {
+    setSelectedProjects(new Set());
+    setSelectedGoals(new Set());
+  };
 
 
   return (
@@ -886,16 +957,16 @@ export function AnalyticsView({
         )}
       </section>
 
-      {/* Tag filter */}
-      {(availableTags.list.length > 0 || availableTags.hasUntagged) && (
+      {/* Project + Goal filters */}
+      {(availableProjects.list.length > 0 || availableProjects.hasNoProject) && (
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
-              Filter by tag
+              Filter by project
             </h2>
-            {tagFilterActive && (
+            {filtersActive && (
               <button
-                onClick={clearTags}
+                onClick={clearFilters}
                 className="text-[10px] uppercase tracking-[0.22em] text-amber-300/80 hover:text-amber-200 transition-colors"
               >
                 Clear
@@ -903,37 +974,87 @@ export function AnalyticsView({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {availableTags.list.map(([key, label]) => {
-              const active = selectedTags.has(key);
+            {availableProjects.list.map((p) => {
+              const active = selectedProjects.has(p.id);
               return (
                 <button
-                  key={key}
+                  key={p.id}
                   type="button"
-                  onClick={() => toggleTag(key)}
-                  className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                  onClick={() => toggleProject(p.id)}
+                  className="inline-flex items-center gap-1.5 pl-2 pr-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
                   style={{
-                    background: active ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.06)",
-                    color: active ? "rgb(252,211,77)" : "rgba(252,211,77,0.75)",
-                    border: `1px solid ${active ? "rgba(245,158,11,0.6)" : "rgba(245,158,11,0.22)"}`,
-                    boxShadow: active ? "0 0 10px rgba(245,158,11,0.25)" : "none",
+                    background: active ? `${p.color}33` : `${p.color}0f`,
+                    color: active ? p.color : `${p.color}bb`,
+                    border: `1px solid ${active ? p.color : `${p.color}44`}`,
+                    boxShadow: active ? `0 0 10px ${p.color}44` : "none",
                   }}
                 >
-                  #{label}
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.color }} />
+                  {p.name}
                 </button>
               );
             })}
-            {availableTags.hasUntagged && (
+            {availableProjects.hasNoProject && (
               <button
                 type="button"
-                onClick={() => toggleTag("__untagged")}
-                className="px-3 py-1 rounded-full text-[11px] tracking-wide transition-all"
+                onClick={() => toggleProject("__none")}
+                className="px-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
                 style={{
-                  background: selectedTags.has("__untagged") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
-                  color: selectedTags.has("__untagged") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
-                  border: `1px solid ${selectedTags.has("__untagged") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
+                  background: selectedProjects.has("__none") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
+                  color: selectedProjects.has("__none") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
+                  border: `1px solid ${selectedProjects.has("__none") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
                 }}
               >
-                Untagged
+                No project
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {(availableGoals.list.length > 0 || availableGoals.hasNoGoal) && (
+        <section>
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
+              Filter by goal
+            </h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {availableGoals.list.map((g) => {
+              const active = selectedGoals.has(g.key);
+              return (
+                <button
+                  key={g.key}
+                  type="button"
+                  onClick={() => toggleGoal(g.key)}
+                  className="inline-flex items-center gap-1.5 pl-2 pr-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
+                  style={{
+                    background: active ? `${g.color}33` : `${g.color}0f`,
+                    color: active ? g.color : `${g.color}bb`,
+                    border: `1px solid ${active ? g.color : `${g.color}44`}`,
+                    boxShadow: active ? `0 0 10px ${g.color}44` : "none",
+                  }}
+                  title={`${g.projectName} · ${g.text}`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: g.color }} />
+                  <span className="opacity-70">{g.projectName}</span>
+                  <span className="opacity-40">·</span>
+                  <span>{g.text}</span>
+                </button>
+              );
+            })}
+            {availableGoals.hasNoGoal && (
+              <button
+                type="button"
+                onClick={() => toggleGoal("__none")}
+                className="px-3 h-7 rounded-full text-[11px] tracking-wide transition-all"
+                style={{
+                  background: selectedGoals.has("__none") ? "rgba(148,163,184,0.22)" : "rgba(148,163,184,0.06)",
+                  color: selectedGoals.has("__none") ? "rgb(226,232,240)" : "rgba(203,213,225,0.75)",
+                  border: `1px solid ${selectedGoals.has("__none") ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.22)"}`,
+                }}
+              >
+                No goal
               </button>
             )}
           </div>
@@ -969,7 +1090,7 @@ export function AnalyticsView({
         <StatCard label="Average Daily Focus" value={fmtHM(avgDaily)} sub="7-day rolling">
           <Sparkline data={wave} variant="wave" />
         </StatCard>
-        <StatCard label="Sessions" value={`${inRange.length}`} sub={tagFilterActive ? "matching filters" : "in range"}>
+        <StatCard label="Sessions" value={`${inRange.length}`} sub={filtersActive ? "matching filters" : "in range"}>
           <Sparkline data={daily.map((d) => d.min > 0 ? 1 : 0)} variant="bar" />
         </StatCard>
 
@@ -987,18 +1108,18 @@ export function AnalyticsView({
         </div>
       </section>
 
-      {/* Tag breakdown */}
-      {tagBreakdown.length > 0 && (
+      {/* Goal breakdown */}
+      {goalBreakdown.length > 0 && (
         <section>
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
-              Time by tag · {rangeLabel}
+              Time by goal · {rangeLabel}
             </h2>
             <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
-              {tagBreakdown.length} tag{tagBreakdown.length === 1 ? "" : "s"}
+              {goalBreakdown.length} goal{goalBreakdown.length === 1 ? "" : "s"}
             </span>
           </div>
-          <TagBreakdown rows={tagBreakdown} />
+          <GoalBreakdown rows={goalBreakdown} />
         </section>
       )}
 
@@ -1094,11 +1215,20 @@ function DateInput({ value, onChange, label }: { value: string; onChange: (v: st
   );
 }
 
-/* =================== Tag breakdown chart =================== */
+/* =================== Goal breakdown chart =================== */
 
-interface TagRow { key: string; label: string; min: number }
+interface GoalRow {
+  key: string;
+  text: string;
+  projectId: string;
+  projectName: string;
+  projectColor: string;
+  color: string;
+  min: number;
+  targetMinutes: number;
+}
 
-function TagBreakdown({ rows }: { rows: TagRow[] }) {
+function GoalBreakdown({ rows }: { rows: GoalRow[] }) {
   const total = rows.reduce((a, r) => a + r.min, 0);
   const max = Math.max(1, ...rows.map((r) => r.min));
   return (
@@ -1109,25 +1239,54 @@ function TagBreakdown({ rows }: { rows: TagRow[] }) {
         border: "1px solid rgba(245,158,11,0.18)",
       }}
     >
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {rows.map((r) => {
           const pct = total > 0 ? (r.min / total) * 100 : 0;
           const barW = (r.min / max) * 100;
-          const isUntagged = r.key === "__untagged";
-          const barColor = isUntagged
-            ? "linear-gradient(90deg, rgba(148,163,184,0.55), rgba(148,163,184,0.25))"
-            : "linear-gradient(90deg, rgba(251,191,36,0.9), rgba(245,158,11,0.45))";
+          const isNone = r.key === "__none";
+          const color = isNone ? "#94a3b8" : r.color;
+          const achieved = !isNone && r.targetMinutes > 0 && r.min >= r.targetMinutes;
+          const targetProgress = r.targetMinutes > 0 ? Math.min(1, r.min / r.targetMinutes) : 0;
           return (
             <li key={r.key}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className={isUntagged ? "text-muted-foreground" : "text-amber-100"}>
-                  {isUntagged ? "Untagged" : `#${r.label}`}
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
+                  {!isNone && (
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70 shrink-0">
+                      {r.projectName}
+                    </span>
+                  )}
+                  <span
+                    className="truncate"
+                    style={{ color: isNone ? "var(--muted-foreground)" : color }}
+                  >
+                    {r.text}
+                  </span>
+                  {achieved && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] shrink-0 px-1.5 py-0.5 rounded-full"
+                      style={{
+                        color,
+                        background: `${color}1f`,
+                        border: `1px solid ${color}66`,
+                      }}
+                      title="Goal achieved"
+                    >
+                      <Check className="h-3 w-3" strokeWidth={2.5} />
+                      Achieved
+                    </span>
+                  )}
                 </span>
                 <span
-                  className="tabular-nums text-xs text-muted-foreground"
+                  className="tabular-nums text-xs text-muted-foreground shrink-0"
                   style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
                 >
-                  {fmtHM(r.min)} · {pct.toFixed(1)}%
+                  {fmtHM(r.min)}
+                  {r.targetMinutes > 0 && (
+                    <span className="opacity-60"> / {fmtHM(r.targetMinutes)}</span>
+                  )}
+                  <span className="opacity-60"> · {pct.toFixed(1)}%</span>
                 </span>
               </div>
               <div className="mt-1.5 h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
@@ -1135,11 +1294,17 @@ function TagBreakdown({ rows }: { rows: TagRow[] }) {
                   className="h-full rounded-full transition-all"
                   style={{
                     width: `${barW}%`,
-                    background: barColor,
-                    boxShadow: isUntagged ? "none" : "0 0 8px rgba(245,158,11,0.35)",
+                    background: `linear-gradient(90deg, ${color}, ${color}88)`,
+                    boxShadow: isNone ? "none" : `0 0 8px ${color}66`,
                   }}
                 />
               </div>
+              {r.targetMinutes > 0 && (
+                <div className="mt-1 flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 tabular-nums">
+                  <span>Target progress</span>
+                  <span>{Math.round(targetProgress * 100)}%</span>
+                </div>
+              )}
             </li>
           );
         })}
@@ -1147,4 +1312,31 @@ function TagBreakdown({ rows }: { rows: TagRow[] }) {
     </div>
   );
 }
+
+/* =================== Goal mini chip (on session cards) =================== */
+
+function GoalMiniChip({
+  goalText,
+  projectId,
+  focusedMinutes,
+}: { goalText: string; projectId?: string; focusedMinutes: number }) {
+  const goal = projectId ? findGoalByText(projectId, goalText) : null;
+  const color = goal?.color ?? "#94a3b8";
+  const achieved = isGoalAchieved(goal, focusedMinutes);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 pl-1.5 pr-2 h-5 rounded-full text-[10px] tracking-wide"
+      style={{
+        background: `${color}1a`,
+        border: `1px solid ${color}55`,
+        color,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      <span className="truncate max-w-[12rem]">{goalText}</span>
+      {achieved && <Check className="h-3 w-3" strokeWidth={2.5} />}
+    </span>
+  );
+}
+
 

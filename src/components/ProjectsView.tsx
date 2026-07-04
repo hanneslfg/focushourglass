@@ -9,8 +9,8 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
-import { ProjectTagsManager } from "./ProjectTagsManager";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
 
 function fmtHours(mins: number) {
@@ -350,7 +350,6 @@ function ProjectDetailFull({
 
       <ProjectGoalsSection projectId={project.id} focusedMinutes={totalMin} />
 
-      <ProjectTagsManager projectId={project.id} accent={project.color} />
 
 
 
@@ -434,21 +433,9 @@ function ProjectDetailFull({
                           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
                             {formatTime(new Date(s.startedAt || s.completedAt))}
                           </div>
-                          {s.tags && s.tags.length > 0 && (
-                            <div className="mt-1.5 flex flex-wrap gap-1">
-                              {s.tags.map((t) => (
-                                <span
-                                  key={t}
-                                  className="inline-block px-1.5 py-px rounded text-[9px] tracking-wide uppercase"
-                                  style={{
-                                    background: "rgba(245,158,11,0.10)",
-                                    color: "rgba(252,211,77,0.95)",
-                                    border: "1px solid rgba(245,158,11,0.28)",
-                                  }}
-                                >
-                                  {t}
-                                </span>
-                              ))}
+                          {(s.goalText ?? s.tags?.[0]) && (
+                            <div className="mt-1.5">
+                              <GoalChip goalText={s.goalText ?? s.tags?.[0] ?? ""} projectId={s.projectId} />
                             </div>
                           )}
                         </div>
@@ -471,6 +458,29 @@ function ProjectDetailFull({
         onOpenChange={(o) => !o && setOpenSession(null)}
       />
     </div>
+  );
+}
+
+
+function GoalChip({ goalText, projectId }: { goalText: string; projectId?: string }) {
+  const goal = projectId ? findGoalByText(projectId, goalText) : null;
+  const color = goal?.color ?? "#94a3b8";
+  const done = goal?.done ?? false;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 pl-1.5 pr-2 h-5 rounded-full text-[10px] tracking-wide"
+      style={{
+        background: `${color}1a`,
+        border: `1px solid ${color}55`,
+        color,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      <span className="truncate max-w-[12rem]">{goalText}</span>
+      {done && (
+        <span className="text-[9px] uppercase tracking-[0.18em] opacity-80">✓</span>
+      )}
+    </span>
   );
 }
 

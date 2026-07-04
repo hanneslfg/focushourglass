@@ -65,6 +65,22 @@ export function getProjectGoals(projectId: string): ProjectGoal[] {
   return [...list].sort((a, b) => Number(a.done) - Number(b.done) || a.createdAt - b.createdAt);
 }
 
+/** Case-insensitive lookup of a goal by its text inside a project. */
+export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
+  if (!projectId || !text) return null;
+  const needle = text.trim().toLowerCase();
+  if (!needle) return null;
+  const list = readAll()[projectId] ?? [];
+  return list.find((g) => g.text.trim().toLowerCase() === needle) ?? null;
+}
+
+/** True when the goal has a positive target and the focused time meets it. */
+export function isGoalAchieved(goal: ProjectGoal | null | undefined, focusedMinutes: number): boolean {
+  if (!goal) return false;
+  if (goal.done) return true;
+  return goal.targetMinutes > 0 && focusedMinutes >= goal.targetMinutes;
+}
+
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()

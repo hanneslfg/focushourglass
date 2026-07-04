@@ -45,8 +45,9 @@ interface TimerCtx {
   setTask: (s: string) => void;
   project: ProjectTag | null;
   setProject: (p: ProjectTag | null) => void;
-  tags: string[];
-  setTags: (t: string[]) => void;
+  /** Selected goal text for this session (denormalized). */
+  goalText: string | null;
+  setGoalText: (t: string | null) => void;
   minutes: number;
   setMinutes: (m: number) => void;
 
@@ -83,7 +84,7 @@ export function useTimer(): TimerCtx {
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
-  const [tags, setTagsState] = useState<string[]>([]);
+  const [goalText, setGoalTextState] = useState<string | null>(null);
   const [minutes, setMinutesState] = useState(90);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -145,7 +146,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: goalText ? [goalText] : undefined,
         plannedMinutes: Math.round(total / 60),
         startedAt: startedAtRef.current,
         focusedSeconds: focusedRef.current,
@@ -154,7 +155,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       };
       saveActive(state);
     },
-    [task, project, tags, total],
+    [task, project, goalText, total],
   );
 
   // ---- Tick loop ----------------------------------------------------------
@@ -216,7 +217,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         color: a.projectColor ?? "#f4a261",
       });
     }
-    if (Array.isArray(a.tags)) setTagsState(a.tags);
+    if (Array.isArray(a.tags) && a.tags.length > 0) setGoalTextState(String(a.tags[0]));
     setMinutesState(planned);
     setTotal(plannedSec);
     setRemaining(remainingSec);
@@ -294,7 +295,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setPhase("idle");
     setTaskState("");
     setProjectState(null);
-    setTagsState([]);
+    setGoalTextState(null);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
@@ -336,7 +337,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
-        tags: tags.length > 0 ? tags : undefined,
+        goalText: goalText ?? undefined,
+        tags: goalText ? [goalText] : undefined,
       });
       maybeNotifyGoalReached();
       saveSessionRemote({
@@ -348,7 +350,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: false,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: goalText ? [goalText] : undefined,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -381,7 +383,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       currentKindRef.current = null;
       window.setTimeout(resetIdle, 1800);
     }
-  }, [phase, task, project, tags, total, resetIdle, setEndAt, startWith]);
+  }, [phase, task, project, goalText, total, resetIdle, setEndAt, startWith]);
 
   // Rhythm-driven auto-advance: skip the "asking" prompt when the current
   // block was scheduled by an active Focus Blocks rhythm.
@@ -414,7 +416,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
-        tags: tags.length > 0 ? tags : undefined,
+        goalText: goalText ?? undefined,
+        tags: goalText ? [goalText] : undefined,
       });
       saveSessionRemote({
         user_id: getUserId(),
@@ -425,7 +428,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: true,
-        tags: tags.length > 0 ? tags : undefined,
+        tags: goalText ? [goalText] : undefined,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -438,7 +441,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     resetIdle();
-  }, [task, project, tags, total, resetIdle, setEndAt]);
+  }, [task, project, goalText, total, resetIdle, setEndAt]);
 
   const addExtra = useCallback(
     (mins: number) => {
@@ -486,8 +489,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         toast("Auto-paused", { description: "Project changed mid-session." });
       }
       setProjectState(p);
-      // Active session tags are scoped to a project; clear them on switch.
-      if (changed) setTagsState([]);
+      // Active session goal is scoped to a project; clear on switch.
+      if (changed) setGoalTextState(null);
     },
     [phase, project, setEndAt],
   );
@@ -503,8 +506,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setTask,
         project,
         setProject,
-        tags,
-        setTags: setTagsState,
+        goalText,
+        setGoalText: setGoalTextState,
         minutes,
         setMinutes,
         phase,
