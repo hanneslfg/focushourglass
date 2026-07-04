@@ -322,11 +322,17 @@ export function AmbientSound({ running }: { running: boolean }) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      stopWebAudioSource();
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
       if (fadeRef.current) window.clearInterval(fadeRef.current);
+      if (audioCtxRef.current) {
+        try { audioCtxRef.current.close(); } catch { /* ignore */ }
+        audioCtxRef.current = null;
+        gainRef.current = null;
+      }
     };
   }, []);
 
