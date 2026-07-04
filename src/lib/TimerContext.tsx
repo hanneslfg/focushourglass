@@ -30,6 +30,12 @@ import { addSession, removeSession } from "./sessions";
 import { saveSessionRemote, getUserId } from "./supabase";
 import { playGong } from "./gong";
 import { maybeNotifyGoalReached } from "./settings";
+import {
+  advanceRhythm,
+  getActiveRhythm,
+  type ActiveRhythmState,
+  type BlockKind,
+} from "./rhythms";
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
