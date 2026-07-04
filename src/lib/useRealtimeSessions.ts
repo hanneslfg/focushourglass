@@ -158,10 +158,29 @@ export function useRealtimeSessions() {
         });
     }
 
+    async function subscribeProjects() {
+      const uid = await getActiveSyncUserId();
+      if (!uid || cancelled) return;
+      projectsChannel = supabase
+        .channel(`hg:projects:${uid}`)
+        .on(
+          "broadcast",
+          { event: "project_deleted" },
+          (msg: { payload?: { id?: string } }) => {
+            const id = msg.payload?.id;
+            if (id) {
+              ingestRemoteDeletion(id);
+            }
+          },
+        )
+        .subscribe();
+    }
+
     // Kick off an immediate refresh so we don't wait for the channel to
     // subscribe before the UI shows fresh cloud data.
     refresh();
     subscribe();
+    subscribeProjects();
 
     const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
@@ -169,7 +188,12 @@ export function useRealtimeSessions() {
           supabase.removeChannel(channel);
           channel = null;
         }
+        if (projectsChannel) {
+          supabase.removeChannel(projectsChannel);
+          projectsChannel = null;
+        }
         subscribe();
+        subscribeProjects();
       }
     });
 
@@ -186,6 +210,7 @@ export function useRealtimeSessions() {
       cancelled = true;
       authSub.subscription.unsubscribe();
       if (channel) supabase.removeChannel(channel);
+      if (projectsChannel) supabase.removeChannel(projectsChannel);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("focus", onFocus);
