@@ -1215,11 +1215,20 @@ function DateInput({ value, onChange, label }: { value: string; onChange: (v: st
   );
 }
 
-/* =================== Tag breakdown chart =================== */
+/* =================== Goal breakdown chart =================== */
 
-interface TagRow { key: string; label: string; min: number }
+interface GoalRow {
+  key: string;
+  text: string;
+  projectId: string;
+  projectName: string;
+  projectColor: string;
+  color: string;
+  min: number;
+  targetMinutes: number;
+}
 
-function TagBreakdown({ rows }: { rows: TagRow[] }) {
+function GoalBreakdown({ rows }: { rows: GoalRow[] }) {
   const total = rows.reduce((a, r) => a + r.min, 0);
   const max = Math.max(1, ...rows.map((r) => r.min));
   return (
@@ -1230,25 +1239,54 @@ function TagBreakdown({ rows }: { rows: TagRow[] }) {
         border: "1px solid rgba(245,158,11,0.18)",
       }}
     >
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {rows.map((r) => {
           const pct = total > 0 ? (r.min / total) * 100 : 0;
           const barW = (r.min / max) * 100;
-          const isUntagged = r.key === "__untagged";
-          const barColor = isUntagged
-            ? "linear-gradient(90deg, rgba(148,163,184,0.55), rgba(148,163,184,0.25))"
-            : "linear-gradient(90deg, rgba(251,191,36,0.9), rgba(245,158,11,0.45))";
+          const isNone = r.key === "__none";
+          const color = isNone ? "#94a3b8" : r.color;
+          const achieved = !isNone && r.targetMinutes > 0 && r.min >= r.targetMinutes;
+          const targetProgress = r.targetMinutes > 0 ? Math.min(1, r.min / r.targetMinutes) : 0;
           return (
             <li key={r.key}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className={isUntagged ? "text-muted-foreground" : "text-amber-100"}>
-                  {isUntagged ? "Untagged" : `#${r.label}`}
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: color }} />
+                  {!isNone && (
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70 shrink-0">
+                      {r.projectName}
+                    </span>
+                  )}
+                  <span
+                    className="truncate"
+                    style={{ color: isNone ? "var(--muted-foreground)" : color }}
+                  >
+                    {r.text}
+                  </span>
+                  {achieved && (
+                    <span
+                      className="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] shrink-0 px-1.5 py-0.5 rounded-full"
+                      style={{
+                        color,
+                        background: `${color}1f`,
+                        border: `1px solid ${color}66`,
+                      }}
+                      title="Goal achieved"
+                    >
+                      <Check className="h-3 w-3" strokeWidth={2.5} />
+                      Achieved
+                    </span>
+                  )}
                 </span>
                 <span
-                  className="tabular-nums text-xs text-muted-foreground"
+                  className="tabular-nums text-xs text-muted-foreground shrink-0"
                   style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
                 >
-                  {fmtHM(r.min)} · {pct.toFixed(1)}%
+                  {fmtHM(r.min)}
+                  {r.targetMinutes > 0 && (
+                    <span className="opacity-60"> / {fmtHM(r.targetMinutes)}</span>
+                  )}
+                  <span className="opacity-60"> · {pct.toFixed(1)}%</span>
                 </span>
               </div>
               <div className="mt-1.5 h-1.5 w-full rounded-full bg-border/40 overflow-hidden">
@@ -1256,11 +1294,17 @@ function TagBreakdown({ rows }: { rows: TagRow[] }) {
                   className="h-full rounded-full transition-all"
                   style={{
                     width: `${barW}%`,
-                    background: barColor,
-                    boxShadow: isUntagged ? "none" : "0 0 8px rgba(245,158,11,0.35)",
+                    background: `linear-gradient(90deg, ${color}, ${color}88)`,
+                    boxShadow: isNone ? "none" : `0 0 8px ${color}66`,
                   }}
                 />
               </div>
+              {r.targetMinutes > 0 && (
+                <div className="mt-1 flex items-center justify-between text-[9px] uppercase tracking-[0.2em] text-muted-foreground/50 tabular-nums">
+                  <span>Target progress</span>
+                  <span>{Math.round(targetProgress * 100)}%</span>
+                </div>
+              )}
             </li>
           );
         })}
@@ -1268,4 +1312,31 @@ function TagBreakdown({ rows }: { rows: TagRow[] }) {
     </div>
   );
 }
+
+/* =================== Goal mini chip (on session cards) =================== */
+
+function GoalMiniChip({
+  goalText,
+  projectId,
+  focusedMinutes,
+}: { goalText: string; projectId?: string; focusedMinutes: number }) {
+  const goal = projectId ? findGoalByText(projectId, goalText) : null;
+  const color = goal?.color ?? "#94a3b8";
+  const achieved = isGoalAchieved(goal, focusedMinutes);
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 pl-1.5 pr-2 h-5 rounded-full text-[10px] tracking-wide"
+      style={{
+        background: `${color}1a`,
+        border: `1px solid ${color}55`,
+        color,
+      }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      <span className="truncate max-w-[12rem]">{goalText}</span>
+      {achieved && <Check className="h-3 w-3" strokeWidth={2.5} />}
+    </span>
+  );
+}
+
 
