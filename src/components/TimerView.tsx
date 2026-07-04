@@ -90,46 +90,40 @@ export function TimerView() {
   return (
     <div className="flex-1 flex items-start md:items-center justify-center px-4 md:px-6 pt-28 pb-6 md:py-10">
       <div className="w-full max-w-md flex flex-col items-center gap-6 md:gap-10">
-        {/* Rhythm banner (Focus Blocks) */}
+        {/* Rhythm indicator (Focus Blocks) — minimal floating pill */}
         {rhythm && (
-          <div className="w-full rounded-lg border border-border/70 bg-card/60 px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                  {blockKind === "break" ? (
-                    <Coffee className="h-3 w-3 text-sky-400/80" strokeWidth={1.75} />
-                  ) : (
-                    <FocusIcon className="h-3 w-3 text-amber-400/80" strokeWidth={1.75} />
-                  )}
-                  {blockKind === "break" ? "Break" : "Focus"} block{" "}
-                  {rhythm.index + 1}/{rhythm.rhythm.blocks.length}
-                </div>
-                <div className="mt-0.5 text-sm truncate text-foreground/90">
-                  {rhythm.rhythm.name}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  to="/focus-blocks"
-                  className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={() => deactivateRhythm()}
-                  className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive transition-colors"
-                  title="Stop this rhythm"
-                >
-                  End
-                </button>
-              </div>
-            </div>
-            <div className="mt-3">
-              <BlockTimeline
-                blocks={rhythm.rhythm.blocks}
-                currentIndex={rhythm.index}
-              />
-            </div>
+          <div
+            key={`${rhythm.rhythm.id}-${rhythm.index}`}
+            className="group flex items-center gap-2 rounded-full bg-white/[0.03] backdrop-blur-md px-3 py-1 text-[11px] text-muted-foreground/80 ring-1 ring-inset ring-white/[0.06] transition-opacity duration-500 animate-in fade-in"
+          >
+            {blockKind === "break" ? (
+              <Coffee className="h-3 w-3 text-sky-400/70" strokeWidth={1.75} />
+            ) : (
+              <FocusIcon className="h-3 w-3 text-amber-400/70" strokeWidth={1.75} />
+            )}
+            <span className="truncate max-w-[16rem]">
+              <span className="text-foreground/70">{rhythm.rhythm.name}</span>
+              <span className="mx-1.5 opacity-40">•</span>
+              <span>
+                Block {rhythm.index + 1}/{rhythm.rhythm.blocks.length}:{" "}
+                {blockKind === "break" ? "Break" : "Focus"}
+              </span>
+            </span>
+            <span className="ml-1 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Link
+                to="/focus-blocks"
+                className="text-[10px] uppercase tracking-[0.18em] hover:text-foreground transition-colors"
+              >
+                Edit
+              </Link>
+              <button
+                onClick={() => deactivateRhythm()}
+                className="text-[10px] uppercase tracking-[0.18em] hover:text-destructive transition-colors"
+                title="Stop this rhythm"
+              >
+                End
+              </button>
+            </span>
           </div>
         )}
 
