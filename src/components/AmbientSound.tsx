@@ -54,6 +54,13 @@ export function AmbientSound({ running }: { running: boolean }) {
 
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio graph for truly gapless looping (preferred path)
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const bufferRef = useRef<AudioBuffer | null>(null);
+  const bufferUrlRef = useRef<string | null>(null);
+  const usingWebAudioRef = useRef<boolean>(false);
   const fadeRef = useRef<number | null>(null);
 
   // Fetch bucket contents (client only, after mount)
@@ -106,15 +113,21 @@ export function AmbientSound({ running }: { running: boolean }) {
   }, [muted, mounted]);
 
 
-  // Ensure <audio> element exists & mirrors selection
+  // Ensure <audio> element exists & mirrors selection (fallback path).
+  // Also kicks off a Web Audio buffer decode for gapless looping.
   useEffect(() => {
     if (!current) {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
+      stopWebAudioSource();
+      bufferRef.current = null;
+      bufferUrlRef.current = null;
       return;
     }
+
+    // HTMLAudio fallback: fully preload to avoid mid-loop network hits.
     let el = audioRef.current;
     if (!el) {
       el = new Audio();
@@ -123,58 +136,180 @@ export function AmbientSound({ running }: { running: boolean }) {
       el.crossOrigin = "anonymous";
       audioRef.current = el;
     }
+    el.loop = true;
+    el.preload = "auto";
     if (el.src !== current.url) {
       el.src = current.url;
       el.load();
+    }
+
+    // Fetch + decode into an AudioBuffer for the Web Audio path.
+    // Once decoded, an AudioBufferSourceNode with loop=true plays sample-
+    // accurate, gapless — no re-fetch, no seek, no silence at wrap.
+    if (bufferUrlRef.current !== current.url) {
+      bufferUrlRef.current = current.url;
+      bufferRef.current = null;
+      const url = current.url;
+      (async () => {
+        try {
+          const res = await fetch(url, { mode: "cors" });
+          if (!res.ok) return;
+          const arr = await res.arrayBuffer();
+          if (bufferUrlRef.current !== url) return; // selection changed
+          const ctx = ensureAudioContext();
+          if (!ctx) return;
+          const buf = await ctx.decodeAudioData(arr.slice(0));
+          if (bufferUrlRef.current !== url) return;
+          bufferRef.current = buf;
+          // If we're already supposed to be running, upgrade to Web Audio now.
+          if (running && !usingWebAudioRef.current) {
+            startWebAudioSource(muted ? 0 : volume);
+            // Fade the HTMLAudio fallback out to avoid double-playback.
+            if (audioRef.current) audioRef.current.pause();
+          }
+        } catch {
+          /* decode failed — HTMLAudio fallback keeps working */
+        }
+      })();
     }
   }, [current]);
 
   // Volume / mute
   useEffect(() => {
     const el = audioRef.current;
-    if (!el) return;
-    el.volume = muted ? 0 : volume;
+    if (el) el.volume = muted ? 0 : volume;
+    const g = gainRef.current;
+    if (g && audioCtxRef.current) {
+      const target = muted ? 0 : volume;
+      const t = audioCtxRef.current.currentTime;
+      g.gain.cancelScheduledValues(t);
+      g.gain.linearRampToValueAtTime(target, t + 0.05);
+    }
   }, [volume, muted]);
+
+  function ensureAudioContext(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    if (audioCtxRef.current) return audioCtxRef.current;
+    const Ctor: typeof AudioContext | undefined =
+      (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext })
+        .AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    try {
+      const ctx = new Ctor();
+      const g = ctx.createGain();
+      g.gain.value = 0;
+      g.connect(ctx.destination);
+      audioCtxRef.current = ctx;
+      gainRef.current = g;
+      return ctx;
+    } catch {
+      return null;
+    }
+  }
+
+  function startWebAudioSource(initialVolume: number) {
+    const ctx = audioCtxRef.current;
+    const g = gainRef.current;
+    const buf = bufferRef.current;
+    if (!ctx || !g || !buf) return false;
+    // Resume if suspended (autoplay policy).
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    stopWebAudioSource();
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    src.loopStart = 0;
+    src.loopEnd = buf.duration;
+    src.connect(g);
+    src.start(0);
+    sourceRef.current = src;
+    usingWebAudioRef.current = true;
+    // Fade in
+    const t = ctx.currentTime;
+    g.gain.cancelScheduledValues(t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(initialVolume, t + 0.5);
+    return true;
+  }
+
+  function stopWebAudioSource() {
+    const src = sourceRef.current;
+    if (src) {
+      try { src.stop(); } catch { /* ignore */ }
+      try { src.disconnect(); } catch { /* ignore */ }
+    }
+    sourceRef.current = null;
+    usingWebAudioRef.current = false;
+  }
 
   // Play / pause driven by timer phase (with small fade)
   useEffect(() => {
-    const el = audioRef.current;
-    if (!el || !current) return;
-    if (fadeRef.current) {
-      window.clearInterval(fadeRef.current);
-      fadeRef.current = null;
-    }
+    if (!current) return;
     const target = muted ? 0 : volume;
+
     if (running) {
-      el.volume = 0;
-      el.play().catch(() => {
-        /* autoplay blocked — user must interact once; harmless */
-      });
-      const step = target / 12;
-      fadeRef.current = window.setInterval(() => {
-        if (!audioRef.current) return;
-        const next = Math.min(target, audioRef.current.volume + step);
-        audioRef.current.volume = next;
-        if (next >= target && fadeRef.current) {
+      // Prefer Web Audio path for gapless loop; fall back to HTMLAudio.
+      if (bufferRef.current && ensureAudioContext()) {
+        if (audioRef.current) audioRef.current.pause();
+        startWebAudioSource(target);
+      } else {
+        const el = audioRef.current;
+        if (!el) return;
+        if (fadeRef.current) {
           window.clearInterval(fadeRef.current);
           fadeRef.current = null;
         }
-      }, 40);
-    } else {
-      const start = el.volume;
-      const step = start / 10;
-      fadeRef.current = window.setInterval(() => {
-        if (!audioRef.current) return;
-        const next = Math.max(0, audioRef.current.volume - step);
-        audioRef.current.volume = next;
-        if (next <= 0) {
-          audioRef.current.pause();
-          if (fadeRef.current) {
+        el.loop = true;
+        el.volume = 0;
+        el.play().catch(() => { /* autoplay blocked */ });
+        const step = target / 12;
+        fadeRef.current = window.setInterval(() => {
+          if (!audioRef.current) return;
+          const next = Math.min(target, audioRef.current.volume + step);
+          audioRef.current.volume = next;
+          if (next >= target && fadeRef.current) {
             window.clearInterval(fadeRef.current);
             fadeRef.current = null;
           }
+        }, 40);
+      }
+    } else {
+      // Stop Web Audio source (with short fade) if active
+      if (usingWebAudioRef.current && audioCtxRef.current && gainRef.current) {
+        const ctx = audioCtxRef.current;
+        const g = gainRef.current;
+        const t = ctx.currentTime;
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(g.gain.value, t);
+        g.gain.linearRampToValueAtTime(0, t + 0.3);
+        const src = sourceRef.current;
+        window.setTimeout(() => {
+          if (sourceRef.current === src) stopWebAudioSource();
+        }, 350);
+      }
+      // Fade HTMLAudio fallback out if it was playing
+      const el = audioRef.current;
+      if (el && !el.paused) {
+        if (fadeRef.current) {
+          window.clearInterval(fadeRef.current);
+          fadeRef.current = null;
         }
-      }, 30);
+        const start = el.volume;
+        const step = Math.max(0.02, start / 10);
+        fadeRef.current = window.setInterval(() => {
+          if (!audioRef.current) return;
+          const next = Math.max(0, audioRef.current.volume - step);
+          audioRef.current.volume = next;
+          if (next <= 0) {
+            audioRef.current.pause();
+            if (fadeRef.current) {
+              window.clearInterval(fadeRef.current);
+              fadeRef.current = null;
+            }
+          }
+        }, 30);
+      }
     }
     return () => {
       if (fadeRef.current) {
@@ -187,11 +322,17 @@ export function AmbientSound({ running }: { running: boolean }) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      stopWebAudioSource();
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
       }
       if (fadeRef.current) window.clearInterval(fadeRef.current);
+      if (audioCtxRef.current) {
+        try { audioCtxRef.current.close(); } catch { /* ignore */ }
+        audioCtxRef.current = null;
+        gainRef.current = null;
+      }
     };
   }, []);
 
