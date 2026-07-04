@@ -510,6 +510,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         total,
         flipNonce,
         endAtMs,
+        rhythm,
+        blockKind: rhythm ? rhythm.block.kind : null,
         start,
         pause,
         finalize,
