@@ -347,20 +347,12 @@ function GoalRow({
       </div>
 
       {editing && (
-        <div className="px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60">
+        <div className="relative px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60">
           <ColorPalette value={goal.color} onChange={onSaveColor} size={16} />
           <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/60">Enter to save · Esc to cancel</span>
         </div>
       )}
 
-      {!editing && goal.targetMinutes > 0 && !goal.done && (
-        <div className="h-1 w-full bg-foreground/[0.05]">
-          <div
-            className="h-full transition-all"
-            style={{ width: `${pct * 100}%`, background: goal.color, boxShadow: `0 0 8px ${goal.color}66` }}
-          />
-        </div>
-      )}
     </li>
   );
 }
