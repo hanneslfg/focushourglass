@@ -48,11 +48,16 @@ function ColorPalette({
 
 interface Props {
   projectId: string;
-  /** Minutes focused so far on this project, for progress rings. */
-  focusedMinutes: number;
+  /**
+   * Focused minutes for this project, keyed by lowercased goal text.
+   * Time spent WITHOUT an active goal selection is not attributed here —
+   * goals only accumulate their own, explicitly-selected sessions.
+   */
+  focusedMinutesByGoal: Map<string, number>;
 }
 
-export function ProjectGoalsSection({ projectId, focusedMinutes }: Props) {
+export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) {
+
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -175,7 +180,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutes }: Props) {
               key={g.id}
               goal={g}
               editing={editingId === g.id}
-              focusedMinutes={focusedMinutes}
+              focusedMinutes={focusedMinutesByGoal.get(g.text.trim().toLowerCase()) ?? 0}
               onEdit={() => setEditingId(g.id)}
               onDone={() => setEditingId(null)}
               onSaveText={(text) => updateGoal(projectId, g.id, { text })}
@@ -188,6 +193,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutes }: Props) {
               }}
             />
           ))}
+
         </ul>
       )}
     </section>
@@ -243,10 +249,23 @@ function GoalRow({
 
   return (
     <li
-      className="rounded-lg border border-border bg-card/40 hover:bg-card/60 transition-colors overflow-hidden"
+      className="relative rounded-lg border border-border bg-card/40 hover:bg-card/60 transition-colors overflow-hidden"
       style={{ borderLeft: `3px solid ${goal.color}` }}
     >
-      <div className="flex items-center gap-3 px-4 py-3">
+      {/* Background progress fill — horizontal, low-opacity, goal-tinted. */}
+      {goal.targetMinutes > 0 && (
+        <div
+          aria-hidden
+          className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-500"
+          style={{
+            width: `${pct * 100}%`,
+            background: goal.color,
+            opacity: goal.done ? 0.18 : 0.12,
+          }}
+        />
+      )}
+      <div className="relative flex items-center gap-3 px-4 py-3">
+
         <button
           onClick={onToggleDone}
           className={`shrink-0 h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${
@@ -328,20 +347,12 @@ function GoalRow({
       </div>
 
       {editing && (
-        <div className="px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60">
+        <div className="relative px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60">
           <ColorPalette value={goal.color} onChange={onSaveColor} size={16} />
           <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/60">Enter to save · Esc to cancel</span>
         </div>
       )}
 
-      {!editing && goal.targetMinutes > 0 && !goal.done && (
-        <div className="h-1 w-full bg-foreground/[0.05]">
-          <div
-            className="h-full transition-all"
-            style={{ width: `${pct * 100}%`, background: goal.color, boxShadow: `0 0 8px ${goal.color}66` }}
-          />
-        </div>
-      )}
     </li>
   );
 }

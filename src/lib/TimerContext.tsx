@@ -369,21 +369,40 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setEndAt(null);
     clearActive();
 
-    // Focus Blocks: seamlessly advance to the next block if one exists.
+    // Focus Blocks: cue up the next block. Break blocks auto-start; Focus
+    // blocks HALT on the task input so each work block is dedicated to its
+    // own "One Thing" — user must define/confirm the task before countdown.
     const next = getActiveRhythm() ? advanceRhythm() : null;
     if (next) {
-      window.setTimeout(() => {
-        const isBreak = next.block.kind === "break";
-        // Break auto-fills task; focus keeps the user's task (or "Focus" as fallback).
-        if (isBreak) setTaskState("Break");
-        else if (!task.trim()) setTaskState("Focus");
-        startWith(next.block.minutes, next.block.kind);
-      }, 900);
+      const isBreak = next.block.kind === "break";
+      if (isBreak) {
+        window.setTimeout(() => {
+          setTaskState("Break");
+          startWith(next.block.minutes, next.block.kind);
+        }, 900);
+      } else {
+        // Reset to idle for the next focus block — user must enter their
+        // One Thing and hit start. The rhythm state (block N/M) persists.
+        window.setTimeout(() => {
+          currentKindRef.current = null;
+          savedRef.current = false;
+          focusedRef.current = 0;
+          startedAtRef.current = null;
+          setTaskState("");
+          setGoalTextState(null);
+          setMinutesState(next.block.minutes);
+          setTotal(next.block.minutes * 60);
+          setRemaining(next.block.minutes * 60);
+          setEndAt(null);
+          setPhase("idle");
+        }, 900);
+      }
     } else {
       currentKindRef.current = null;
       window.setTimeout(resetIdle, 1800);
     }
   }, [phase, task, project, goalText, total, resetIdle, setEndAt, startWith]);
+
 
   // Rhythm-driven auto-advance: skip the "asking" prompt when the current
   // block was scheduled by an active Focus Blocks rhythm.
