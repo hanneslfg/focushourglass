@@ -249,10 +249,23 @@ function GoalRow({
 
   return (
     <li
-      className="rounded-lg border border-border bg-card/40 hover:bg-card/60 transition-colors overflow-hidden"
+      className="relative rounded-lg border border-border bg-card/40 hover:bg-card/60 transition-colors overflow-hidden"
       style={{ borderLeft: `3px solid ${goal.color}` }}
     >
-      <div className="flex items-center gap-3 px-4 py-3">
+      {/* Background progress fill — horizontal, low-opacity, goal-tinted. */}
+      {goal.targetMinutes > 0 && (
+        <div
+          aria-hidden
+          className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-500"
+          style={{
+            width: `${pct * 100}%`,
+            background: goal.color,
+            opacity: goal.done ? 0.18 : 0.12,
+          }}
+        />
+      )}
+      <div className="relative flex items-center gap-3 px-4 py-3">
+
         <button
           onClick={onToggleDone}
           className={`shrink-0 h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${
