@@ -180,7 +180,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
               key={g.id}
               goal={g}
               editing={editingId === g.id}
-              focusedMinutes={focusedMinutes}
+              focusedMinutes={focusedMinutesByGoal.get(g.text.trim().toLowerCase()) ?? 0}
               onEdit={() => setEditingId(g.id)}
               onDone={() => setEditingId(null)}
               onSaveText={(text) => updateGoal(projectId, g.id, { text })}
@@ -193,6 +193,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
               }}
             />
           ))}
+
         </ul>
       )}
     </section>
