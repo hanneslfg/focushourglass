@@ -97,7 +97,9 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinute
           <div className="flex items-center justify-between w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 tabular-nums px-0.5">
             <span>1 min</span>
             <span>{trackedMinutes} min tracked</span>
+            <span>{max} min max</span>
           </div>
+
         </div>
       ) : (
         <button
