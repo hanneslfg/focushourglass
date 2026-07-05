@@ -278,9 +278,17 @@ export function DailyLogSidebar() {
           </div>
         </div>
       </aside>
+
+      <AddSessionModal open={addOpen} onOpenChange={setAddOpen} />
+      <SessionDetailModal
+        session={editSession}
+        open={editSession !== null}
+        onOpenChange={(o) => !o && setEditSession(null)}
+      />
     </>
   );
 }
+
 
 
 
