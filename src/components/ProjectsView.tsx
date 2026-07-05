@@ -348,7 +348,19 @@ function ProjectDetailFull({
 
       <ProjectHeaderEditable project={project} />
 
-      <ProjectGoalsSection projectId={project.id} focusedMinutes={totalMin} />
+      <ProjectGoalsSection
+        projectId={project.id}
+        focusedMinutesByGoal={(() => {
+          const m = new Map<string, number>();
+          for (const s of sessions) {
+            const gt = (s.goalText ?? s.tags?.[0] ?? "").trim().toLowerCase();
+            if (!gt) continue;
+            m.set(gt, (m.get(gt) ?? 0) + (s.focusedMinutes || 0));
+          }
+          return m;
+        })()}
+      />
+
 
 
 
