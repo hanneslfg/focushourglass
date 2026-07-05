@@ -117,9 +117,12 @@ export function SessionDetailModal({ session, open, onOpenChange }: Props) {
           <AdjustFocusTime
             trackedMinutes={session.focusedMinutes}
             taskName={session.task || "Untitled session"}
+            maxMinutes={Math.max(session.focusedMinutes + 240, 480)}
+            startExpanded
             onConfirm={handleConfirm}
           />
         </div>
+
       </DialogContent>
     </Dialog>
   );

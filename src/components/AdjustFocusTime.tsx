@@ -15,10 +15,14 @@ interface Props {
   trackedMinutes: number;
   taskName: string;
   onConfirm: (finalMinutes: number) => void;
+  /** Override slider max (defaults to trackedMinutes). Use to allow upward adjustment. */
+  maxMinutes?: number;
+  /** Start the adjust slider expanded by default. */
+  startExpanded?: boolean;
 }
 
-export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm }: Props) {
-  const [adjust, setAdjust] = useState(false);
+export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinutes, startExpanded }: Props) {
+  const [adjust, setAdjust] = useState(Boolean(startExpanded));
   const [value, setValue] = useState(trackedMinutes);
 
   useEffect(() => {
@@ -26,9 +30,11 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm }: Props) 
   }, [trackedMinutes]);
 
   const subtracted = Math.max(0, trackedMinutes - value);
+  const added = Math.max(0, value - trackedMinutes);
   const min = 1;
-  const max = Math.max(trackedMinutes, 1);
+  const max = Math.max(maxMinutes ?? trackedMinutes, trackedMinutes, 1);
   const pct = ((value - min) / Math.max(1, max - min)) * 100;
+
 
   return (
     <div className="flex flex-col items-center gap-5 w-full">
@@ -46,11 +52,16 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm }: Props) 
           <div className="text-[11px] uppercase tracking-[0.2em] text-amber-300/70">
             −{subtracted} min adjusted
           </div>
+        ) : added > 0 ? (
+          <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-300/70">
+            +{added} min added
+          </div>
         ) : (
           <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
             Focused time
           </div>
         )}
+
       </div>
 
       {/* Inline adjust slider */}
@@ -86,7 +97,9 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm }: Props) 
           <div className="flex items-center justify-between w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 tabular-nums px-0.5">
             <span>1 min</span>
             <span>{trackedMinutes} min tracked</span>
+            <span>{max} min max</span>
           </div>
+
         </div>
       ) : (
         <button
