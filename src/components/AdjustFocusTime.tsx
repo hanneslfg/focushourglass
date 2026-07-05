@@ -52,11 +52,16 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinute
           <div className="text-[11px] uppercase tracking-[0.2em] text-amber-300/70">
             −{subtracted} min adjusted
           </div>
+        ) : added > 0 ? (
+          <div className="text-[11px] uppercase tracking-[0.2em] text-emerald-300/70">
+            +{added} min added
+          </div>
         ) : (
           <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
             Focused time
           </div>
         )}
+
       </div>
 
       {/* Inline adjust slider */}
