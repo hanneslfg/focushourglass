@@ -31,11 +31,14 @@ function isToday(iso: string) {
 
 export function DailyLogSidebar() {
   const [open, setOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editSession, setEditSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
   const [streak, setStreak] = useState(0);
+
 
   const syncState = useSyncState();
 
