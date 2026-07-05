@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import {
   getTodayGoal,
@@ -10,6 +10,10 @@ import {
 } from "@/lib/settings";
 import { getDailyStreak } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
+import { AddSessionModal } from "./AddSessionModal";
+import { SessionDetailModal } from "./SessionDetailModal";
+
+
 
 
 function fmtHM(mins: number) {
