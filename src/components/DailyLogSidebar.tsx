@@ -220,12 +220,22 @@ export function DailyLogSidebar() {
 
             {/* Bottom: Completed blocks today */}
             <section>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
-                Completed blocks
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Completed blocks
+                </div>
+                <button
+                  onClick={() => setAddOpen(true)}
+                  className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-amber-300 transition-colors"
+                  title="Log a forgotten session"
+                >
+                  <Plus className="h-3 w-3" strokeWidth={2} />
+                  Add session
+                </button>
               </div>
               {todays.length === 0 ? (
                 <p className="text-xs text-muted-foreground/70 italic">
-                  No focus blocks yet today. Start the timer to begin.
+                  No focus blocks yet today. Start the timer or add one manually.
                 </p>
               ) : (
                 <ol className="relative space-y-0">
@@ -240,7 +250,11 @@ export function DailyLogSidebar() {
                       {i < todays.length - 1 && (
                         <span className="absolute left-[9px] top-3.5 bottom-0 w-px bg-border" />
                       )}
-                      <div className="flex items-baseline justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditSession(s)}
+                        className="w-full text-left flex items-baseline justify-between gap-2 rounded-sm px-1 -mx-1 py-0.5 hover:bg-white/[0.03] transition-colors"
+                      >
                         <div className="min-w-0 flex-1">
                           <div className="text-sm text-foreground truncate">
                             {s.task || "Untitled"}
@@ -254,12 +268,13 @@ export function DailyLogSidebar() {
                         <div className="text-xs tabular-nums text-muted-foreground shrink-0">
                           {s.focusedMinutes} min
                         </div>
-                      </div>
+                      </button>
                     </li>
                   ))}
                 </ol>
               )}
             </section>
+
           </div>
         </div>
       </aside>
