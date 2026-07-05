@@ -48,11 +48,16 @@ function ColorPalette({
 
 interface Props {
   projectId: string;
-  /** Minutes focused so far on this project, for progress rings. */
-  focusedMinutes: number;
+  /**
+   * Focused minutes for this project, keyed by lowercased goal text.
+   * Time spent WITHOUT an active goal selection is not attributed here —
+   * goals only accumulate their own, explicitly-selected sessions.
+   */
+  focusedMinutesByGoal: Map<string, number>;
 }
 
-export function ProjectGoalsSection({ projectId, focusedMinutes }: Props) {
+export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) {
+
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
