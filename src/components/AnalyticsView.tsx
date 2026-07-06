@@ -610,6 +610,16 @@ export function AnalyticsView({
   onActivityViewChange: (v: ActivityView) => void;
 }) {
   const sessions = useSessions();
+  const handleDelete = (s: Session) => {
+    // Optimistic local remove — updates goal bars, daily totals, and charts instantly
+    // through the "hourglass:sessions" event dispatched by `removeSession`.
+    removeSession(s.id);
+    void deleteSessionRemote({ id: s.id, startedAt: s.startedAt, taskName: s.task }).then((res) => {
+      if (!res.ok) {
+        console.warn("[analytics] deleteSessionRemote did not confirm; local removal stands.");
+      }
+    });
+  };
   const [mode, setMode] = useState<RangeMode>("month");
   const [weekOffset, setWeekOffset] = useState(0);
   const today = useMemo(() => effectiveToday(), []);
