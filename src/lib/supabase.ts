@@ -401,21 +401,24 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
 
   let authUserId: string | null = null;
   try {
-    const { data } = await supabase.auth.getSession();
-    authUserId = data.session?.user?.id ?? null;
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
   } catch {
-    // Continue with the public client. If the table is not public-writable,
-    // items remain queued without blocking the UI or clearing local work.
+    // treat as unauthenticated
   }
 
-  const fallbackUserId = authUserId ?? getUserId();
-  const client = authUserId ? supabase : publicSupabase;
+  if (!authUserId) {
+    // No verified identity — do not push queued rows through the anon client
+    // under a client-picked user_id. Keep them queued for a real sign-in.
+    return { synced: 0, remaining: pending.length };
+  }
+
   const failed: RemoteSession[] = [];
   let synced = 0;
   let dropped = 0;
   for (const s of pending) {
     try {
-      const { error, payload } = await insertSessionPayload(client, s, authUserId ?? s.user_id ?? fallbackUserId);
+      const { error, payload } = await insertSessionPayload(supabase, s, authUserId);
       if (error) {
         console.error("Failing payload:", payload);
         if (isPermanentBadPayloadError(error)) {
@@ -428,7 +431,7 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
         synced += 1;
       }
     } catch (e) {
-      console.error("Failing payload:", buildPayload(s, authUserId ?? s.user_id ?? fallbackUserId));
+      console.error("Failing payload:", buildPayload(s, authUserId));
       failed.push(s);
     }
   }
@@ -438,3 +441,4 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
   }
   return { synced, remaining: failed.length };
 }
+
