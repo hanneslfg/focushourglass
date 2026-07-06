@@ -6,8 +6,8 @@ import {
   removeSession,
   hydrateFromRemote,
 } from "./sessions";
-import { projectIdFromName, colorForProjectName, ingestRemoteDeletion } from "./projects";
-import { ingestRemoteGoals, type ProjectGoal } from "./goals";
+import { projectIdFromName, colorForProjectName } from "./projects";
+
 
 interface RemoteRow {
   id?: string;
