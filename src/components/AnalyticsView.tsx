@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Check } from "lucide-react";
-import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
+import { Check, Trash2 } from "lucide-react";
+import { getSessions, hydrateFromRemote, dayKey, removeSession, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { getProjectGoals, findGoalByText, isGoalAchieved } from "@/lib/goals";
-import { supabase } from "@/lib/supabase";
+import { supabase, deleteSessionRemote } from "@/lib/supabase";
 import {
   effectiveDayKey,
   effectiveToday,
@@ -481,7 +481,7 @@ function Sparkline({
 
 /* =================== Timer block card =================== */
 
-function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => void }) {
+function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Session) => void; onDelete?: (s: Session) => void }) {
   return (
     <article
       role={onClick ? "button" : undefined}
@@ -534,19 +534,36 @@ function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => 
         </div>
       </div>
 
-      <div className="shrink-0 text-right">
-        <div
-          className="text-2xl md:text-3xl text-amber-200 tabular-nums tracking-tight"
-          style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
-        >
-          {fmtDuration(s.focusedMinutes)}
+      <div className="shrink-0 text-right flex items-start gap-3">
+        <div>
+          <div
+            className="text-2xl md:text-3xl text-amber-200 tabular-nums tracking-tight"
+            style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
+          >
+            {fmtDuration(s.focusedMinutes)}
+          </div>
+          <div
+            className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 tabular-nums"
+            style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
+          >
+            {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
+          </div>
         </div>
-        <div
-          className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 tabular-nums"
-          style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
-        >
-          {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
-        </div>
+        {onDelete && (
+          <button
+            type="button"
+            aria-label="Delete session"
+            title="Delete session"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(s);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="opacity-0 group-hover:opacity-60 focus:opacity-90 hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-destructive p-1 -mr-1 rounded"
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </button>
+        )}
       </div>
     </article>
   );
@@ -593,6 +610,16 @@ export function AnalyticsView({
   onActivityViewChange: (v: ActivityView) => void;
 }) {
   const sessions = useSessions();
+  const handleDelete = (s: Session) => {
+    // Optimistic local remove — updates goal bars, daily totals, and charts instantly
+    // through the "hourglass:sessions" event dispatched by `removeSession`.
+    removeSession(s.id);
+    void deleteSessionRemote({ id: s.id, startedAt: s.startedAt, taskName: s.task }).then((res) => {
+      if (!res.ok) {
+        console.warn("[analytics] deleteSessionRemote did not confirm; local removal stands.");
+      }
+    });
+  };
   const [mode, setMode] = useState<RangeMode>("month");
   const [weekOffset, setWeekOffset] = useState(0);
   const today = useMemo(() => effectiveToday(), []);
@@ -1143,7 +1170,7 @@ export function AnalyticsView({
           </div>
         ) : (
           <div className="space-y-3">
-            {inRange.slice(0, visibleBlocks).map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)}
+            {inRange.slice(0, visibleBlocks).map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} onDelete={handleDelete} />)}
             {visibleBlocks < inRange.length ? (
               <div className="pt-2 flex flex-col items-center gap-2">
                 <button
@@ -1186,7 +1213,7 @@ export function AnalyticsView({
                 No focus blocks recorded yet. Time to start the hourglass.
               </p>
             ) : (
-              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)
+              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} onDelete={handleDelete} />)
             )}
           </div>
         </DialogContent>

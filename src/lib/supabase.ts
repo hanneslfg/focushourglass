@@ -391,6 +391,53 @@ export async function updateSessionMinutesRemote(opts: {
 }
 
 /**
+ * Delete a previously saved session. Matches by row id first, then falls
+ * back to (user_id, started_at, task_name) for rows whose local id hasn't
+ * been reconciled with Supabase yet. Requires an authenticated user; RLS
+ * scopes the DELETE to `auth.uid() = user_id`.
+ */
+export async function deleteSessionRemote(opts: {
+  id?: string;
+  startedAt: string;
+  taskName: string;
+}): Promise<{ ok: boolean }> {
+  let authUserId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
+  } catch (e) {
+    console.error("[supabase] deleteSession: auth threw:", e);
+  }
+  if (!authUserId) return { ok: false };
+
+  try {
+    if (opts.id) {
+      const { data, error } = await supabase
+        .from("sessions")
+        .delete()
+        .eq("id", opts.id)
+        .eq("user_id", authUserId)
+        .select();
+      if (!error && data && data.length > 0) return { ok: true };
+    }
+    const { error: err2 } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("user_id", authUserId)
+      .eq("started_at", opts.startedAt)
+      .eq("task_name", opts.taskName);
+    if (err2) {
+      console.error("[supabase] deleteSession fallback failed:", err2.message);
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[supabase] deleteSession threw:", e);
+    return { ok: false };
+  }
+}
+
+/**
  * Push any sessions queued in localStorage to Supabase. Safe to call on
  * component mount or after sign-in. Falls back to the public client for
  * anon-writable deployments and keeps unsynced rows queued if writes fail.

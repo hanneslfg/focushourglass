@@ -415,6 +415,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
 
 
   const abort = useCallback(() => {
+    // Credit any ticking time the interval hasn't picked up yet so the
+    // saved `actual_duration` reflects the true focused seconds, not
+    // whatever the last tick happened to land on.
+    if (currentKindRef.current !== "break" && startedAtRef.current) {
+      const now = Date.now();
+      const delta = Math.max(0, Math.round((now - lastCheckRef.current) / 1000));
+      focusedRef.current += delta;
+      lastCheckRef.current = now;
+    }
     setEndAt(null);
     const wasBreak = currentKindRef.current === "break";
     currentKindRef.current = null;
@@ -423,7 +432,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       const startedAt = startedAtRef.current;
       const completedAt = new Date().toISOString();
       const plannedMinutes = Math.round(total / 60);
-      const focusedMinutes = Math.round(focusedRef.current / 60);
+      const focusedMinutes = Math.max(0, Math.round(focusedRef.current / 60));
       const localId = crypto.randomUUID();
       addSession({
         id: localId,
