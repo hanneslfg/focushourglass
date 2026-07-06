@@ -481,7 +481,7 @@ function Sparkline({
 
 /* =================== Timer block card =================== */
 
-function TimerBlockCard({ s, onClick }: { s: Session; onClick?: (s: Session) => void }) {
+function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Session) => void; onDelete?: (s: Session) => void }) {
   return (
     <article
       role={onClick ? "button" : undefined}
