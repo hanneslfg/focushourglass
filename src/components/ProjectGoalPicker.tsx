@@ -57,54 +57,50 @@ export function ProjectGoalPicker({ project, goalText, onChange, disabled }: Pro
   }
 
   return (
-    <div className="w-full -mt-2 flex flex-col items-center gap-2 animate-in fade-in duration-300">
-      <div className="text-[9px] uppercase tracking-[0.28em] text-muted-foreground/60">
-        Goal · optional
-      </div>
-      <div className="flex flex-wrap justify-center gap-1.5 max-w-md">
-        {goals.map((g) => {
-          const on = activeLower === g.text.toLowerCase();
-          const focused = focusedByGoal.get(g.text.toLowerCase()) ?? 0;
-          const achieved = isGoalAchieved(g, focused);
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => toggle(g.text)}
-              disabled={disabled}
-              className="group inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] tracking-wide transition-all duration-150 disabled:opacity-60"
-              style={
-                on
-                  ? {
-                      background: `${g.color}26`,
-                      border: `1px solid ${g.color}`,
-                      color: g.color,
-                      boxShadow: `0 0 12px ${g.color}33`,
-                    }
-                  : {
-                      background: "transparent",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      color: "rgba(255,255,255,0.60)",
-                    }
-              }
-              title={achieved ? "Goal achieved" : g.text}
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full shrink-0"
-                style={{ background: g.color, opacity: on ? 1 : 0.7 }}
+    <div className="flex flex-wrap items-center gap-1.5 animate-in fade-in duration-300">
+      {goals.map((g) => {
+        const on = activeLower === g.text.toLowerCase();
+        const focused = focusedByGoal.get(g.text.toLowerCase()) ?? 0;
+        const achieved = isGoalAchieved(g, focused);
+        return (
+          <button
+            key={g.id}
+            type="button"
+            onClick={() => toggle(g.text)}
+            disabled={disabled}
+            className="group inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] tracking-wide transition-all duration-150 disabled:opacity-60"
+            style={
+              on
+                ? {
+                    background: `${g.color}26`,
+                    border: `1px solid ${g.color}`,
+                    color: g.color,
+                    boxShadow: `0 0 12px ${g.color}33`,
+                  }
+                : {
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "rgba(255,255,255,0.60)",
+                  }
+            }
+            title={achieved ? "Goal achieved" : g.text}
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ background: g.color, opacity: on ? 1 : 0.7 }}
+            />
+            <span className="truncate max-w-[10rem]">{g.text}</span>
+            {achieved && (
+              <Check
+                className="h-3 w-3 shrink-0"
+                strokeWidth={2.5}
+                style={{ color: on ? g.color : "rgba(163,177,138,0.9)" }}
               />
-              <span className="truncate max-w-[10rem]">{g.text}</span>
-              {achieved && (
-                <Check
-                  className="h-3 w-3 shrink-0"
-                  strokeWidth={2.5}
-                  style={{ color: on ? g.color : "rgba(163,177,138,0.9)" }}
-                />
-              )}
-            </button>
-          );
-        })}
-      </div>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
+
