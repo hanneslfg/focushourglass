@@ -145,16 +145,14 @@ export function TimerView() {
           </div>
         </div>
 
-        {/* Project tag */}
-        <div className="flex justify-center">
+        {/* Project + Goal — inline horizontal row, wraps on narrow widths */}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
           <ProjectPickerCompact
             selectedId={project?.id ?? null}
             onSelect={setProject}
           />
+          <ProjectGoalPicker project={project} goalText={goalText} onChange={setGoalText} disabled={locked} />
         </div>
-
-        {/* Project goal picker — expands under the project when one is selected */}
-        <ProjectGoalPicker project={project} goalText={goalText} onChange={setGoalText} disabled={locked} />
 
         {/* Ambient sound selector */}
         <AmbientSound running={phase === "running"} />
