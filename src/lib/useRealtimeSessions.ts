@@ -84,9 +84,8 @@ async function refresh() {
 export function useRealtimeSessions() {
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
-    let projectsChannel: ReturnType<typeof supabase.channel> | null = null;
-    let goalsChannel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
+
 
     async function subscribe() {
       const uid = await getActiveSyncUserId();
