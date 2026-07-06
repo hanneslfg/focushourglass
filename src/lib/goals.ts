@@ -10,7 +10,7 @@
  * dedicated table.
  */
 import { safeStorage } from "./safeStorage";
-import { supabase, getActiveSyncUserId } from "./supabase";
+
 
 export interface ProjectGoal {
   id: string;
