@@ -1170,7 +1170,7 @@ export function AnalyticsView({
           </div>
         ) : (
           <div className="space-y-3">
-            {inRange.slice(0, visibleBlocks).map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)}
+            {inRange.slice(0, visibleBlocks).map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} onDelete={handleDelete} />)}
             {visibleBlocks < inRange.length ? (
               <div className="pt-2 flex flex-col items-center gap-2">
                 <button
