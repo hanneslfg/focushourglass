@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Check } from "lucide-react";
-import { getSessions, hydrateFromRemote, dayKey, type Session } from "@/lib/sessions";
+import { Check, Trash2 } from "lucide-react";
+import { getSessions, hydrateFromRemote, dayKey, removeSession, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { getProjectGoals, findGoalByText, isGoalAchieved } from "@/lib/goals";
-import { supabase } from "@/lib/supabase";
+import { supabase, deleteSessionRemote } from "@/lib/supabase";
 import {
   effectiveDayKey,
   effectiveToday,
