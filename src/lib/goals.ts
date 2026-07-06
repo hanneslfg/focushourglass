@@ -10,7 +10,7 @@
  * dedicated table.
  */
 import { safeStorage } from "./safeStorage";
-import { supabase, getActiveSyncUserId } from "./supabase";
+
 
 export interface ProjectGoal {
   id: string;
@@ -102,7 +102,6 @@ export function addGoal(projectId: string, text: string, opts?: { targetMinutes?
   };
   bag[projectId] = [...(bag[projectId] ?? []), goal];
   writeAll(bag);
-  broadcastGoals(projectId, bag[projectId]).catch(() => {});
   return goal;
 }
 
@@ -124,7 +123,6 @@ export function updateGoal(projectId: string, id: string, patch: Partial<Omit<Pr
   );
   bag[projectId] = next;
   writeAll(bag);
-  broadcastGoals(projectId, next).catch(() => {});
 }
 
 export function deleteGoal(projectId: string, id: string) {
@@ -132,42 +130,14 @@ export function deleteGoal(projectId: string, id: string) {
   const next = (bag[projectId] ?? []).filter((g) => g.id !== id);
   bag[projectId] = next;
   writeAll(bag);
-  broadcastGoals(projectId, next).catch(() => {});
 }
 
-/** Merge a peer's goal list for a project into local storage. */
-export function ingestRemoteGoals(projectId: string, goals: ProjectGoal[]) {
-  if (!projectId || !Array.isArray(goals)) return;
-  const bag = readAll();
-  const clean = goals
-    .filter((g) => g && typeof g.id === "string" && typeof g.text === "string")
-    .map((g) => ({
-      id: String(g.id),
-      projectId,
-      text: String(g.text).slice(0, 140),
-      targetMinutes: Math.max(0, Math.round(Number(g.targetMinutes) || 0)),
-      color: typeof g.color === "string" ? g.color : GOAL_COLORS[0],
-      done: Boolean(g.done),
-      createdAt: Number(g.createdAt) || Date.now(),
-    }));
-  bag[projectId] = clean;
-  writeAll(bag);
+/**
+ * @deprecated No-op. Goal sync via unsigned anon Realtime broadcasts was
+ * removed because payloads on `hg:goals:${uid}` channels were forgeable
+ * by anyone holding the public anon key.
+ */
+export function ingestRemoteGoals(_projectId: string, _goals: ProjectGoal[]) {
+  // no-op: do not trust unauthenticated broadcast payloads.
 }
 
-async function broadcastGoals(projectId: string, goals: ProjectGoal[]) {
-  if (typeof window === "undefined") return;
-  const uid = await getActiveSyncUserId();
-  if (!uid) return;
-  const channel = supabase.channel(`hg:goals:${uid}`);
-  await new Promise<void>((resolve) => {
-    channel.subscribe((status) => {
-      if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") resolve();
-    });
-  });
-  await channel.send({
-    type: "broadcast",
-    event: "goals_updated",
-    payload: { projectId, goals, at: Date.now() },
-  });
-  window.setTimeout(() => supabase.removeChannel(channel), 400);
-}

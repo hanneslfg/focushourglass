@@ -124,18 +124,22 @@ function remoteRowToSession(r: RemoteRow): Session {
  */
 export async function hydrateFromRemote(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const { supabase, publicSupabase, getActiveSyncUserId } = await import("./supabase");
-  const { data: sessionData } = await supabase.auth.getSession().catch(() => ({
-    data: { session: null },
+  const { supabase } = await import("./supabase");
+  const { data: userData } = await supabase.auth.getUser().catch(() => ({
+    data: { user: null },
   }));
-  const uid = await getActiveSyncUserId();
-  if (!uid) return false;
+  const authUid = userData?.user?.id;
+  if (!authUid) {
+    // Without a verified session we cannot safely query by a client-picked
+    // user_id via the anon client, so skip remote hydration entirely and
+    // let the local cache stand.
+    return false;
+  }
 
-  const client = sessionData.session ? supabase : publicSupabase;
-  const { data, error } = await client
+  const { data, error } = await supabase
     .from("sessions")
     .select("*")
-    .eq("user_id", uid)
+    .eq("user_id", authUid)
     .order("completed_at", { ascending: false });
   if (error) {
     console.error("[sessions] hydrateFromRemote failed:", error.message);
@@ -150,6 +154,7 @@ export async function hydrateFromRemote(): Promise<boolean> {
   write(merged);
   return true;
 }
+
 
 export function sessionsByDay(): Map<string, Session[]> {
   const map = new Map<string, Session[]>();

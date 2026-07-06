@@ -296,26 +296,25 @@ export async function getActiveSyncUserId(): Promise<string> {
 export async function saveSessionRemote(s: RemoteSession) {
   let authUserId: string | null = null;
   try {
-    const { data } = await supabase.auth.getSession();
-    authUserId = data.session?.user?.id ?? null;
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
   } catch {
-    // Public insert fallback below keeps guest/offline sessions from blocking.
+    // fall through — treat as unauthenticated
   }
 
-  const syncUserId = authUserId ?? s.user_id ?? getUserId();
-  const client = authUserId ? supabase : publicSupabase;
+  if (!authUserId) {
+    // Anonymous / signed-out users no longer write to Supabase. The public
+    // anon client would let anyone pick a `user_id` and insert rows for it,
+    // so queue locally and flush after real sign-in when auth.uid() ==
+    // user_id is enforced by RLS.
+    queuePending(s);
+    return { ok: false, queued: true, error: "not-authenticated" } as const;
+  }
+
   try {
-    const { data, error, payload } = await insertSessionPayload(client, s, syncUserId, { select: true });
+    const { data, error, payload } = await insertSessionPayload(supabase, s, authUserId, { select: true });
     if (error) {
       console.error("Failing payload:", payload);
-      if (!authUserId) {
-        if (!isPermanentBadPayloadError(error)) {
-          queuePending(s);
-          return { ok: false, queued: true, error: error.message } as const;
-        }
-        console.error("[supabase] Dropping invalid anonymous session payload from retry queue:", error);
-        return { ok: false, queued: false, error: error.message } as const;
-      }
       console.error("[supabase] saveSession failed:", error.message, error);
       if (
         error.message?.toLowerCase().includes("row-level security") ||
@@ -340,6 +339,7 @@ export async function saveSessionRemote(s: RemoteSession) {
     return { ok: false, queued: true, error: String(e) } as const;
   }
 }
+
 
 /**
  * Update a previously saved session's `actual_duration`. Matches by row id
@@ -401,21 +401,24 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
 
   let authUserId: string | null = null;
   try {
-    const { data } = await supabase.auth.getSession();
-    authUserId = data.session?.user?.id ?? null;
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
   } catch {
-    // Continue with the public client. If the table is not public-writable,
-    // items remain queued without blocking the UI or clearing local work.
+    // treat as unauthenticated
   }
 
-  const fallbackUserId = authUserId ?? getUserId();
-  const client = authUserId ? supabase : publicSupabase;
+  if (!authUserId) {
+    // No verified identity — do not push queued rows through the anon client
+    // under a client-picked user_id. Keep them queued for a real sign-in.
+    return { synced: 0, remaining: pending.length };
+  }
+
   const failed: RemoteSession[] = [];
   let synced = 0;
   let dropped = 0;
   for (const s of pending) {
     try {
-      const { error, payload } = await insertSessionPayload(client, s, authUserId ?? s.user_id ?? fallbackUserId);
+      const { error, payload } = await insertSessionPayload(supabase, s, authUserId);
       if (error) {
         console.error("Failing payload:", payload);
         if (isPermanentBadPayloadError(error)) {
@@ -428,7 +431,7 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
         synced += 1;
       }
     } catch (e) {
-      console.error("Failing payload:", buildPayload(s, authUserId ?? s.user_id ?? fallbackUserId));
+      console.error("Failing payload:", buildPayload(s, authUserId));
       failed.push(s);
     }
   }
@@ -438,3 +441,4 @@ export async function syncPendingSessions(): Promise<{ synced: number; remaining
   }
   return { synced, remaining: failed.length };
 }
+

@@ -6,8 +6,8 @@ import {
   removeSession,
   hydrateFromRemote,
 } from "./sessions";
-import { projectIdFromName, colorForProjectName, ingestRemoteDeletion } from "./projects";
-import { ingestRemoteGoals, type ProjectGoal } from "./goals";
+import { projectIdFromName, colorForProjectName } from "./projects";
+
 
 interface RemoteRow {
   id?: string;
@@ -84,9 +84,8 @@ async function refresh() {
 export function useRealtimeSessions() {
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
-    let projectsChannel: ReturnType<typeof supabase.channel> | null = null;
-    let goalsChannel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
+
 
     async function subscribe() {
       const uid = await getActiveSyncUserId();
@@ -160,49 +159,10 @@ export function useRealtimeSessions() {
         });
     }
 
-    async function subscribeProjects() {
-      const uid = await getActiveSyncUserId();
-      if (!uid || cancelled) return;
-      projectsChannel = supabase
-        .channel(`hg:projects:${uid}`)
-        .on(
-          "broadcast",
-          { event: "project_deleted" },
-          (msg: { payload?: { id?: string } }) => {
-            const id = msg.payload?.id;
-            if (id) {
-              ingestRemoteDeletion(id);
-            }
-          },
-        )
-        .subscribe();
-    }
-
-    async function subscribeGoals() {
-      const uid = await getActiveSyncUserId();
-      if (!uid || cancelled) return;
-      goalsChannel = supabase
-        .channel(`hg:goals:${uid}`)
-        .on(
-          "broadcast",
-          { event: "goals_updated" },
-          (msg: { payload?: { projectId?: string; goals?: ProjectGoal[] } }) => {
-            const pid = msg.payload?.projectId;
-            const goals = msg.payload?.goals;
-            if (pid && Array.isArray(goals)) {
-              ingestRemoteGoals(pid, goals);
-            }
-          },
-        )
-        .subscribe();
-    }
-
     // Kick off an immediate refresh so we don't wait for the channel to
     // subscribe before the UI shows fresh cloud data.
     refresh();
     subscribe();
-    subscribeProjects();
-    subscribeGoals();
 
     const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
@@ -210,19 +170,10 @@ export function useRealtimeSessions() {
           supabase.removeChannel(channel);
           channel = null;
         }
-        if (projectsChannel) {
-          supabase.removeChannel(projectsChannel);
-          projectsChannel = null;
-        }
-        if (goalsChannel) {
-          supabase.removeChannel(goalsChannel);
-          goalsChannel = null;
-        }
         subscribe();
-        subscribeProjects();
-        subscribeGoals();
       }
     });
+
 
     const onOnline = () => {
       refresh();
@@ -237,8 +188,7 @@ export function useRealtimeSessions() {
       cancelled = true;
       authSub.subscription.unsubscribe();
       if (channel) supabase.removeChannel(channel);
-      if (projectsChannel) supabase.removeChannel(projectsChannel);
-      if (goalsChannel) supabase.removeChannel(goalsChannel);
+
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("focus", onFocus);
