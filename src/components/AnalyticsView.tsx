@@ -534,19 +534,36 @@ function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Se
         </div>
       </div>
 
-      <div className="shrink-0 text-right">
-        <div
-          className="text-2xl md:text-3xl text-amber-200 tabular-nums tracking-tight"
-          style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
-        >
-          {fmtDuration(s.focusedMinutes)}
+      <div className="shrink-0 text-right flex items-start gap-3">
+        <div>
+          <div
+            className="text-2xl md:text-3xl text-amber-200 tabular-nums tracking-tight"
+            style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
+          >
+            {fmtDuration(s.focusedMinutes)}
+          </div>
+          <div
+            className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 tabular-nums"
+            style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
+          >
+            {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
+          </div>
         </div>
-        <div
-          className="mt-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/70 tabular-nums"
-          style={{ fontFamily: "'JetBrains Mono','SF Mono',ui-monospace,monospace" }}
-        >
-          {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
-        </div>
+        {onDelete && (
+          <button
+            type="button"
+            aria-label="Delete session"
+            title="Delete session"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(s);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="opacity-0 group-hover:opacity-60 focus:opacity-90 hover:opacity-100 transition-opacity text-muted-foreground/70 hover:text-destructive p-1 -mr-1 rounded"
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </button>
+        )}
       </div>
     </article>
   );
