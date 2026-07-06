@@ -1213,7 +1213,7 @@ export function AnalyticsView({
                 No focus blocks recorded yet. Time to start the hourglass.
               </p>
             ) : (
-              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} />)
+              openDayBlocks.map((s) => <TimerBlockCard key={s.id} s={s} onClick={setOpenSession} onDelete={handleDelete} />)
             )}
           </div>
         </DialogContent>
