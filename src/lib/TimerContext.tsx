@@ -299,14 +299,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       const r = Math.max(0, Math.ceil((endAtRef.current! - now) / 1000));
       setRemaining(r);
       setEndAt(null);
+      pausedAtRef.current = now;
       setPhase("paused");
     } else if (phase === "paused") {
       const now = Date.now();
       setEndAt(now + remaining * 1000);
       lastCheckRef.current = now;
+      pausedAtRef.current = null;
       setPhase("running");
     }
   }, [phase, remaining, setEndAt]);
+
 
   const resetIdle = useCallback(() => {
     setPhase("idle");
