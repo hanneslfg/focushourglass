@@ -30,8 +30,8 @@ export function TimerView() {
     project,
     setProject,
     goalId,
-    goalId,
     setGoal,
+
 
     minutes,
     setMinutes,
