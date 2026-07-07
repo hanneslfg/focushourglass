@@ -114,6 +114,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
       projectName: project?.name,
       projectColor: project?.color,
       goalText: goalText || undefined,
+      goalId: goalId || undefined,
       tags: goalText ? [goalText] : undefined,
     });
 
@@ -127,7 +128,9 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
       completed_at: completedAt,
       was_aborted: false,
       tags: goalText ? [goalText] : undefined,
+      goal_id: goalId || null,
     }).catch(() => ({ ok: false as const, queued: true as const }));
+
 
     if (res && !res.ok && !("queued" in res && res.queued)) {
       toast.error("Session saved locally", {
