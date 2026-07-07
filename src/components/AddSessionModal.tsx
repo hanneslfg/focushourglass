@@ -54,6 +54,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   const [projects, setProjects] = useState<ProjectTag[]>([]);
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [projectId, setProjectId] = useState<string>("");
+  const [goalId, setGoalId] = useState<string>("");
   const [goalText, setGoalText] = useState<string>("");
   const [task, setTask] = useState("");
   const [start, setStart] = useState(defaultStart());
@@ -66,6 +67,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
     setProjects(getProjects());
     setTask("");
     setProjectId("");
+    setGoalId("");
     setGoalText("");
     setStart(defaultStart());
     setEnd(defaultEnd());
@@ -75,8 +77,10 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     setGoals(projectId ? getProjectGoals(projectId) : []);
+    setGoalId("");
     setGoalText("");
   }, [projectId]);
+
 
   const windowMinutes = useMemo(() => Math.max(1, diffMinutes(start, end)), [start, end]);
 
