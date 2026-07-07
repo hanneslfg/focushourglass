@@ -473,6 +473,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectName: project?.name,
         projectColor: project?.color,
         goalText: goalText ?? undefined,
+        goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
       });
       saveSessionRemote({
@@ -485,9 +486,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         completed_at: completedAt,
         was_aborted: true,
         tags: goalText ? [goalText] : undefined,
+        goal_id: goalId ?? null,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
+
             toast.error("Saved locally", {
               description: "This session was kept locally, but the cloud row was rejected.",
             });
