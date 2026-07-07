@@ -93,6 +93,7 @@ interface RemoteRow {
   completed_at: string;
   was_aborted: boolean;
   tags?: string[] | null;
+  goal_id?: string | null;
 }
 
 function remoteRowToSession(r: RemoteRow): Session {
@@ -102,6 +103,7 @@ function remoteRowToSession(r: RemoteRow): Session {
 
   const cleanTags = Array.isArray(r.tags) ? r.tags.filter(Boolean) : undefined;
   const goalText = cleanTags && cleanTags.length > 0 ? String(cleanTags[0]) : undefined;
+  const goalId = typeof r.goal_id === "string" && r.goal_id ? r.goal_id : undefined;
 
   return {
     id: r.id ?? crypto.randomUUID(),
@@ -114,9 +116,11 @@ function remoteRowToSession(r: RemoteRow): Session {
     projectName: name,
     projectColor,
     goalText,
+    goalId,
     tags: cleanTags,
   };
 }
+
 
 /**
  * Hydrate the local sessions cache from Supabase when authenticated.
