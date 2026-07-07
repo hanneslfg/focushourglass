@@ -279,6 +279,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       focusedRef.current = 0;
       savedRef.current = false;
+      pausedAtRef.current = null;
+
       startedAtRef.current = new Date().toISOString();
       currentKindRef.current = kind;
       setEndAt(now + mins * 60 * 1000);
