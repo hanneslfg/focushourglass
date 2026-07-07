@@ -227,6 +227,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       });
     }
     if (Array.isArray(a.tags) && a.tags.length > 0) setGoalTextState(String(a.tags[0]));
+    if (a.goalId) setGoalIdState(a.goalId);
+
     setMinutesState(planned);
     setTotal(plannedSec);
     setRemaining(remainingSec);
