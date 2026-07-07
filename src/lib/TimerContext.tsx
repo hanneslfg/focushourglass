@@ -111,6 +111,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const endAtRef = useRef<number | null>(null);
   const lastCheckRef = useRef<number>(0);
   const savedRef = useRef(false);
+  /** Wall-clock ms when the timer entered the paused phase (null when not paused). */
+  const pausedAtRef = useRef<number | null>(null);
+
+  /** Auto-complete a session that stayed paused this long (3 hours). */
+  const PAUSE_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+
 
   // Keep "ends-at" mirror state in sync with the ref so consumers re-render.
   const setEndAt = useCallback((v: number | null) => {
@@ -247,8 +253,22 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       setPhase("running");
     } else {
       setEndAt(null);
+      pausedAtRef.current = a.lastTickAt;
+      // If the session sat paused for >3h while we were away, auto-complete
+      // it with the exact focus time accumulated up to the pause point.
+      if (Date.now() - a.lastTickAt > PAUSE_TIMEOUT_MS) {
+        // Defer so state has committed before abort() reads it.
+        window.setTimeout(() => {
+          abortRef.current?.();
+          toast("Session auto-completed", {
+            description: "Paused for over 3 hours — saved the focus time so far.",
+          });
+        }, 0);
+        return;
+      }
       setPhase("paused");
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -259,6 +279,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       focusedRef.current = 0;
       savedRef.current = false;
+      pausedAtRef.current = null;
+
       startedAtRef.current = new Date().toISOString();
       currentKindRef.current = kind;
       setEndAt(now + mins * 60 * 1000);
@@ -293,14 +315,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       const r = Math.max(0, Math.ceil((endAtRef.current! - now) / 1000));
       setRemaining(r);
       setEndAt(null);
+      pausedAtRef.current = now;
       setPhase("paused");
     } else if (phase === "paused") {
       const now = Date.now();
       setEndAt(now + remaining * 1000);
       lastCheckRef.current = now;
+      pausedAtRef.current = null;
       setPhase("running");
     }
   }, [phase, remaining, setEndAt]);
+
 
   const resetIdle = useCallback(() => {
     setPhase("idle");
@@ -313,6 +338,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setTotal(90 * 60);
     focusedRef.current = 0;
     startedAtRef.current = null;
+    pausedAtRef.current = null;
+
     setEndAt(null);
   }, [setEndAt]);
 
@@ -499,8 +526,46 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         .catch((e) => console.error("saveSessionRemote threw:", e));
     }
     clearActive();
+    pausedAtRef.current = null;
     resetIdle();
   }, [task, project, goalText, goalId, total, resetIdle, setEndAt]);
+
+  // Mirror `abort` into a ref so effects (cold-start recovery, paused
+  // auto-complete watchdog) can call the latest version without depending
+  // on it and re-subscribing every render.
+  const abortRef = useRef(abort);
+  useEffect(() => {
+    abortRef.current = abort;
+  }, [abort]);
+
+  // ---- Paused auto-complete watchdog --------------------------------------
+  // If a session stays paused for >3h, save the exact focus time captured
+  // up to the pause point and clear the active timer. Also re-checks when
+  // the tab becomes visible again after a long background pause.
+  useEffect(() => {
+    if (phase !== "paused") return;
+    if (pausedAtRef.current == null) pausedAtRef.current = Date.now();
+    const check = () => {
+      const startedAt = pausedAtRef.current;
+      if (startedAt == null) return;
+      if (Date.now() - startedAt > PAUSE_TIMEOUT_MS) {
+        abortRef.current?.();
+        toast("Session auto-completed", {
+          description: "Paused for over 3 hours — saved the focus time so far.",
+        });
+      }
+    };
+    const id = window.setInterval(check, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [phase, PAUSE_TIMEOUT_MS]);
+
 
   const addExtra = useCallback(
     (mins: number) => {
