@@ -29,7 +29,7 @@ export function TimerView() {
     setTask,
     project,
     setProject,
-    goalText,
+    goalId,
     goalId,
     setGoal,
 
