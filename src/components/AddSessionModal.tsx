@@ -54,6 +54,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   const [projects, setProjects] = useState<ProjectTag[]>([]);
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [projectId, setProjectId] = useState<string>("");
+  const [goalId, setGoalId] = useState<string>("");
   const [goalText, setGoalText] = useState<string>("");
   const [task, setTask] = useState("");
   const [start, setStart] = useState(defaultStart());
@@ -66,6 +67,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
     setProjects(getProjects());
     setTask("");
     setProjectId("");
+    setGoalId("");
     setGoalText("");
     setStart(defaultStart());
     setEnd(defaultEnd());
@@ -75,8 +77,10 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     setGoals(projectId ? getProjectGoals(projectId) : []);
+    setGoalId("");
     setGoalText("");
   }, [projectId]);
+
 
   const windowMinutes = useMemo(() => Math.max(1, diffMinutes(start, end)), [start, end]);
 
@@ -110,6 +114,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
       projectName: project?.name,
       projectColor: project?.color,
       goalText: goalText || undefined,
+      goalId: goalId || undefined,
       tags: goalText ? [goalText] : undefined,
     });
 
@@ -123,7 +128,9 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
       completed_at: completedAt,
       was_aborted: false,
       tags: goalText ? [goalText] : undefined,
+      goal_id: goalId || null,
     }).catch(() => ({ ok: false as const, queued: true as const }));
+
 
     if (res && !res.ok && !("queued" in res && res.queued)) {
       toast.error("Session saved locally", {
@@ -215,13 +222,17 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {goals.map((g) => {
-                  const on = goalText.trim().toLowerCase() === g.text.trim().toLowerCase();
+                  const on = goalId === g.id;
                   return (
                     <button
                       key={g.id}
                       type="button"
-                      onClick={() => setGoalText(on ? "" : g.text)}
+                      onClick={() => {
+                        if (on) { setGoalId(""); setGoalText(""); }
+                        else { setGoalId(g.id); setGoalText(g.text); }
+                      }}
                       className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] tracking-wide transition-all"
+
                       style={
                         on
                           ? {

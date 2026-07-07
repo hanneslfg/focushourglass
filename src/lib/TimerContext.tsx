@@ -47,9 +47,14 @@ interface TimerCtx {
   setProject: (p: ProjectTag | null) => void;
   /** Selected goal text for this session (denormalized). */
   goalText: string | null;
+  /** UUID of the selected goal (or null). Persisted to Supabase as goal_id. */
+  goalId: string | null;
   setGoalText: (t: string | null) => void;
+  /** Set the active goal by id + text in one atomic update. */
+  setGoal: (goal: { id: string; text: string } | null) => void;
   minutes: number;
   setMinutes: (m: number) => void;
+
 
   // live runtime state
   phase: Phase;
@@ -85,6 +90,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
   const [goalText, setGoalTextState] = useState<string | null>(null);
+  const [goalId, setGoalIdState] = useState<string | null>(null);
+
   const [minutes, setMinutesState] = useState(90);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -147,6 +154,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectName: project?.name,
         projectColor: project?.color,
         tags: goalText ? [goalText] : undefined,
+        goalId: goalId ?? undefined,
         plannedMinutes: Math.round(total / 60),
         startedAt: startedAtRef.current,
         focusedSeconds: focusedRef.current,
@@ -155,8 +163,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       };
       saveActive(state);
     },
-    [task, project, goalText, total],
+    [task, project, goalText, goalId, total],
   );
+
 
   // ---- Tick loop ----------------------------------------------------------
   useEffect(() => {
@@ -218,6 +227,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       });
     }
     if (Array.isArray(a.tags) && a.tags.length > 0) setGoalTextState(String(a.tags[0]));
+    if (a.goalId) setGoalIdState(a.goalId);
+
     setMinutesState(planned);
     setTotal(plannedSec);
     setRemaining(remainingSec);
@@ -296,6 +307,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setTaskState("");
     setProjectState(null);
     setGoalTextState(null);
+    setGoalIdState(null);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
@@ -303,6 +315,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     startedAtRef.current = null;
     setEndAt(null);
   }, [setEndAt]);
+
+  const setGoal = useCallback((goal: { id: string; text: string } | null) => {
+    if (!goal) {
+      setGoalIdState(null);
+      setGoalTextState(null);
+      return;
+    }
+    setGoalIdState(goal.id);
+    setGoalTextState(goal.text);
+  }, []);
+
 
   /**
    * Finalize the session: persist immediately to local + remote and show the
@@ -338,6 +361,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectName: project?.name,
         projectColor: project?.color,
         goalText: goalText ?? undefined,
+        goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
       });
       maybeNotifyGoalReached();
@@ -351,7 +375,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         completed_at: completedAt,
         was_aborted: false,
         tags: goalText ? [goalText] : undefined,
+        goal_id: goalId ?? null,
       })
+
         .then((res) => {
           if (res && !res.ok && !res.queued) {
             toast.error("Saved locally", {
@@ -390,6 +416,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           startedAtRef.current = null;
           setTaskState("");
           setGoalTextState(null);
+          setGoalIdState(null);
+
           setMinutesState(next.block.minutes);
           setTotal(next.block.minutes * 60);
           setRemaining(next.block.minutes * 60);
@@ -401,7 +429,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       currentKindRef.current = null;
       window.setTimeout(resetIdle, 1800);
     }
-  }, [phase, task, project, goalText, total, resetIdle, setEndAt, startWith]);
+  }, [phase, task, project, goalText, goalId, total, resetIdle, setEndAt, startWith]);
 
 
   // Rhythm-driven auto-advance: skip the "asking" prompt when the current
@@ -445,6 +473,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectName: project?.name,
         projectColor: project?.color,
         goalText: goalText ?? undefined,
+        goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
       });
       saveSessionRemote({
@@ -457,9 +486,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         completed_at: completedAt,
         was_aborted: true,
         tags: goalText ? [goalText] : undefined,
+        goal_id: goalId ?? null,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
+
             toast.error("Saved locally", {
               description: "This session was kept locally, but the cloud row was rejected.",
             });
@@ -469,7 +500,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     resetIdle();
-  }, [task, project, goalText, total, resetIdle, setEndAt]);
+  }, [task, project, goalText, goalId, total, resetIdle, setEndAt]);
 
   const addExtra = useCallback(
     (mins: number) => {
@@ -518,7 +549,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       }
       setProjectState(p);
       // Active session goal is scoped to a project; clear on switch.
-      if (changed) setGoalTextState(null);
+      if (changed) {
+        setGoalTextState(null);
+        setGoalIdState(null);
+      }
     },
     [phase, project, setEndAt],
   );
@@ -535,7 +569,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         project,
         setProject,
         goalText,
+        goalId,
         setGoalText: setGoalTextState,
+        setGoal,
+
         minutes,
         setMinutes,
         phase,

@@ -122,10 +122,13 @@ export interface RemoteSession {
   was_aborted: boolean;
   /** Free-form multi-tags for this session. Stored as text[] in Supabase. */
   tags?: string[];
+  /** UUID of the selected ProjectGoal, or null if none. */
+  goal_id?: string | null;
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
+const GOAL_ID_COLUMN_DISABLED_KEY = "hourglass.sessions.goal_id_column_disabled.v1";
 
 type SessionInsertPayload = {
   user_id: string;
@@ -137,7 +140,9 @@ type SessionInsertPayload = {
   completed_at: string;
   was_aborted: boolean;
   tags?: string[];
+  goal_id?: string | null;
 };
+
 
 function cleanText(value: unknown, fallback = "Untitled session"): string {
   const text = String(value ?? "").trim();
@@ -179,15 +184,28 @@ function disableTagsColumn() {
   safeStorage.setItem(TAGS_COLUMN_DISABLED_KEY, "1");
 }
 
-function isMissingTagsColumnError(error: { code?: string; message?: string } | null | undefined) {
+function goalIdColumnDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return safeStorage.getItem(GOAL_ID_COLUMN_DISABLED_KEY) === "1";
+}
+
+function disableGoalIdColumn() {
+  if (typeof window === "undefined") return;
+  safeStorage.setItem(GOAL_ID_COLUMN_DISABLED_KEY, "1");
+}
+
+function isMissingColumnError(
+  error: { code?: string; message?: string } | null | undefined,
+  column: string,
+) {
   const message = error?.message?.toLowerCase() ?? "";
-  return error?.code === "PGRST204" && message.includes("tags") && message.includes("column");
+  return error?.code === "PGRST204" && message.includes(column) && message.includes("column");
 }
 
 function isPermanentBadPayloadError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return false;
-  // These indicate the row shape does not match the current table schema and
-  // retrying the same queued object would freeze the sync loop forever.
+  // Missing-column errors are handled by retry-without-column, so exclude them here.
+  if (isMissingColumnError(error, "tags") || isMissingColumnError(error, "goal_id")) return false;
   return error.code === "PGRST204" || error.code === "22P02" || error.code === "23502";
 }
 
@@ -220,7 +238,13 @@ function queuePending(s: RemoteSession) {
   );
 }
 
-function buildPayload(s: RemoteSession, userId: string, includeTags = !tagsColumnDisabled()): SessionInsertPayload {
+function buildPayload(
+  s: RemoteSession,
+  userId: string,
+  opts: { includeTags?: boolean; includeGoalId?: boolean } = {},
+): SessionInsertPayload {
+  const includeTags = opts.includeTags ?? !tagsColumnDisabled();
+  const includeGoalId = opts.includeGoalId ?? !goalIdColumnDisabled();
   const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
     ? s.project_tag.trim().slice(0, 120)
     : null;
@@ -238,6 +262,11 @@ function buildPayload(s: RemoteSession, userId: string, includeTags = !tagsColum
   };
   const tags = cleanTags(s.tags);
   if (includeTags && tags) payload.tags = tags;
+  if (includeGoalId) {
+    // Explicit null when no goal is selected — never undefined or "".
+    const raw = typeof s.goal_id === "string" ? s.goal_id.trim() : "";
+    payload.goal_id = raw.length > 0 ? raw : null;
+  }
   return payload;
 }
 
@@ -254,16 +283,24 @@ async function insertSessionPayload(
   };
 
   let { data, error } = await query();
-  if (isMissingTagsColumnError(error) && "tags" in payload) {
-    console.error("Failing payload:", payload);
-    console.error("[supabase] sessions.tags column missing; retrying without tags.", error);
+  // Gracefully degrade if the sessions table hasn't been migrated to include
+  // one or both of the optional columns yet. Retry once per missing column.
+  if (isMissingColumnError(error, "goal_id") && "goal_id" in payload) {
+    console.warn("[supabase] sessions.goal_id column missing; retrying without goal_id.", error);
+    disableGoalIdColumn();
+    payload = buildPayload(session, userId, { includeGoalId: false });
+    ({ data, error } = await query());
+  }
+  if (isMissingColumnError(error, "tags") && "tags" in payload) {
+    console.warn("[supabase] sessions.tags column missing; retrying without tags.", error);
     disableTagsColumn();
-    payload = buildPayload(session, userId, false);
+    payload = buildPayload(session, userId, { includeTags: false, includeGoalId: !goalIdColumnDisabled() });
     ({ data, error } = await query());
   }
 
   return { data, error, payload };
 }
+
 
 export async function getActiveSyncUserId(): Promise<string> {
   try {
