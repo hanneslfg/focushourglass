@@ -11,6 +11,8 @@ export interface ActiveTimerState {
   projectColor?: string;
   /** Free-form multi-tags chosen for this session. */
   tags?: string[];
+  /** UUID of the selected ProjectGoal (persisted across refresh). */
+  goalId?: string;
   plannedMinutes: number;
   startedAt: string; // ISO
   /** Seconds actually focused so far (running time). */
@@ -20,6 +22,7 @@ export interface ActiveTimerState {
   /** Whether the timer was running at the time of persistence. */
   running: boolean;
 }
+
 
 export function saveActive(state: ActiveTimerState) {
   if (typeof window === "undefined") return;
