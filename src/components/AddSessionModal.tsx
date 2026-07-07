@@ -222,13 +222,17 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {goals.map((g) => {
-                  const on = goalText.trim().toLowerCase() === g.text.trim().toLowerCase();
+                  const on = goalId === g.id;
                   return (
                     <button
                       key={g.id}
                       type="button"
-                      onClick={() => setGoalText(on ? "" : g.text)}
+                      onClick={() => {
+                        if (on) { setGoalId(""); setGoalText(""); }
+                        else { setGoalId(g.id); setGoalText(g.text); }
+                      }}
                       className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] tracking-wide transition-all"
+
                       style={
                         on
                           ? {
