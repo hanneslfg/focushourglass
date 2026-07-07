@@ -90,6 +90,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
   const [goalText, setGoalTextState] = useState<string | null>(null);
+  const [goalId, setGoalIdState] = useState<string | null>(null);
+
   const [minutes, setMinutesState] = useState(90);
 
   const [phase, setPhase] = useState<Phase>("idle");
