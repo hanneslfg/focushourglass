@@ -47,9 +47,14 @@ interface TimerCtx {
   setProject: (p: ProjectTag | null) => void;
   /** Selected goal text for this session (denormalized). */
   goalText: string | null;
+  /** UUID of the selected goal (or null). Persisted to Supabase as goal_id. */
+  goalId: string | null;
   setGoalText: (t: string | null) => void;
+  /** Set the active goal by id + text in one atomic update. */
+  setGoal: (goal: { id: string; text: string } | null) => void;
   minutes: number;
   setMinutes: (m: number) => void;
+
 
   // live runtime state
   phase: Phase;
