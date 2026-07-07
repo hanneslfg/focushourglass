@@ -307,6 +307,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setTaskState("");
     setProjectState(null);
     setGoalTextState(null);
+    setGoalIdState(null);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
@@ -314,6 +315,17 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     startedAtRef.current = null;
     setEndAt(null);
   }, [setEndAt]);
+
+  const setGoal = useCallback((goal: { id: string; text: string } | null) => {
+    if (!goal) {
+      setGoalIdState(null);
+      setGoalTextState(null);
+      return;
+    }
+    setGoalIdState(goal.id);
+    setGoalTextState(goal.text);
+  }, []);
+
 
   /**
    * Finalize the session: persist immediately to local + remote and show the
