@@ -22,9 +22,12 @@ export interface Session {
    * for backward compatibility.
    */
   goalText?: string;
+  /** UUID of the selected ProjectGoal at save time. Stable across renames. */
+  goalId?: string;
   /** @deprecated Legacy multi-tag storage. Use `goalText`. */
   tags?: string[];
 }
+
 
 const KEY = "hourglass.sessions.v1";
 
