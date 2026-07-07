@@ -122,10 +122,13 @@ export interface RemoteSession {
   was_aborted: boolean;
   /** Free-form multi-tags for this session. Stored as text[] in Supabase. */
   tags?: string[];
+  /** UUID of the selected ProjectGoal, or null if none. */
+  goal_id?: string | null;
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
+const GOAL_ID_COLUMN_DISABLED_KEY = "hourglass.sessions.goal_id_column_disabled.v1";
 
 type SessionInsertPayload = {
   user_id: string;
@@ -137,7 +140,9 @@ type SessionInsertPayload = {
   completed_at: string;
   was_aborted: boolean;
   tags?: string[];
+  goal_id?: string | null;
 };
+
 
 function cleanText(value: unknown, fallback = "Untitled session"): string {
   const text = String(value ?? "").trim();
