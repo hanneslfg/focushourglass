@@ -253,8 +253,22 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       setPhase("running");
     } else {
       setEndAt(null);
+      pausedAtRef.current = a.lastTickAt;
+      // If the session sat paused for >3h while we were away, auto-complete
+      // it with the exact focus time accumulated up to the pause point.
+      if (Date.now() - a.lastTickAt > PAUSE_TIMEOUT_MS) {
+        // Defer so state has committed before abort() reads it.
+        window.setTimeout(() => {
+          abortRef.current?.();
+          toast("Session auto-completed", {
+            description: "Paused for over 3 hours — saved the focus time so far.",
+          });
+        }, 0);
+        return;
+      }
       setPhase("paused");
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
