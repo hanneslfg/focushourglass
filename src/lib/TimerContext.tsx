@@ -111,6 +111,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const endAtRef = useRef<number | null>(null);
   const lastCheckRef = useRef<number>(0);
   const savedRef = useRef(false);
+  /** Wall-clock ms when the timer entered the paused phase (null when not paused). */
+  const pausedAtRef = useRef<number | null>(null);
+
+  /** Auto-complete a session that stayed paused this long (3 hours). */
+  const PAUSE_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+
 
   // Keep "ends-at" mirror state in sync with the ref so consumers re-render.
   const setEndAt = useCallback((v: number | null) => {
