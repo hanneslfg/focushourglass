@@ -522,8 +522,46 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         .catch((e) => console.error("saveSessionRemote threw:", e));
     }
     clearActive();
+    pausedAtRef.current = null;
     resetIdle();
   }, [task, project, goalText, goalId, total, resetIdle, setEndAt]);
+
+  // Mirror `abort` into a ref so effects (cold-start recovery, paused
+  // auto-complete watchdog) can call the latest version without depending
+  // on it and re-subscribing every render.
+  const abortRef = useRef(abort);
+  useEffect(() => {
+    abortRef.current = abort;
+  }, [abort]);
+
+  // ---- Paused auto-complete watchdog --------------------------------------
+  // If a session stays paused for >3h, save the exact focus time captured
+  // up to the pause point and clear the active timer. Also re-checks when
+  // the tab becomes visible again after a long background pause.
+  useEffect(() => {
+    if (phase !== "paused") return;
+    if (pausedAtRef.current == null) pausedAtRef.current = Date.now();
+    const check = () => {
+      const startedAt = pausedAtRef.current;
+      if (startedAt == null) return;
+      if (Date.now() - startedAt > PAUSE_TIMEOUT_MS) {
+        abortRef.current?.();
+        toast("Session auto-completed", {
+          description: "Paused for over 3 hours — saved the focus time so far.",
+        });
+      }
+    };
+    const id = window.setInterval(check, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [phase, PAUSE_TIMEOUT_MS]);
+
 
   const addExtra = useCallback(
     (mins: number) => {
