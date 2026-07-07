@@ -20,10 +20,14 @@ interface RemoteRow {
   completed_at: string;
   was_aborted: boolean;
   tags?: string[] | null;
+  goal_id?: string | null;
 }
 
 function toLocal(row: RemoteRow) {
   const name = row.project_tag?.trim() || undefined;
+  const tags = Array.isArray(row.tags) ? row.tags.filter(Boolean) : undefined;
+  const goalText = tags && tags.length > 0 ? String(tags[0]) : undefined;
+  const goalId = typeof row.goal_id === "string" && row.goal_id ? row.goal_id : undefined;
   return {
     id: row.id ?? crypto.randomUUID(),
     task: row.task_name,
@@ -34,9 +38,12 @@ function toLocal(row: RemoteRow) {
     projectId: name ? projectIdFromName(name) : undefined,
     projectName: name,
     projectColor: name ? colorForProjectName(name) : undefined,
-    tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : undefined,
+    goalText,
+    goalId,
+    tags,
   };
 }
+
 
 export type SyncState = "idle" | "syncing" | "offline" | "error";
 
