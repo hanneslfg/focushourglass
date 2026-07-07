@@ -429,7 +429,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       currentKindRef.current = null;
       window.setTimeout(resetIdle, 1800);
     }
-  }, [phase, task, project, goalText, total, resetIdle, setEndAt, startWith]);
+  }, [phase, task, project, goalText, goalId, total, resetIdle, setEndAt, startWith]);
 
 
   // Rhythm-driven auto-advance: skip the "asking" prompt when the current
