@@ -500,7 +500,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     resetIdle();
-  }, [task, project, goalText, total, resetIdle, setEndAt]);
+  }, [task, project, goalText, goalId, total, resetIdle, setEndAt]);
 
   const addExtra = useCallback(
     (mins: number) => {
