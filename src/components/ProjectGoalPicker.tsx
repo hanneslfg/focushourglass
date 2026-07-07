@@ -12,12 +12,12 @@ import { getSessions } from "@/lib/sessions";
 
 interface Props {
   project: ProjectTag | null;
-  goalText: string | null;
-  onChange: (next: string | null) => void;
+  goalId: string | null;
+  onChange: (goal: { id: string; text: string } | null) => void;
   disabled?: boolean;
 }
 
-export function ProjectGoalPicker({ project, goalText, onChange, disabled }: Props) {
+export function ProjectGoalPicker({ project, goalId, onChange, disabled }: Props) {
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [tick, setTick] = useState(0);
 
@@ -32,12 +32,15 @@ export function ProjectGoalPicker({ project, goalText, onChange, disabled }: Pro
   }, [project?.id]);
 
   // Compute focused minutes per goal for this project (used for achievement).
+  // Prefer goalId match; fall back to legacy text match for historical rows.
   const focusedByGoal = useMemo(() => {
     if (!project) return new Map<string, number>();
     const map = new Map<string, number>();
     for (const s of getSessions()) {
       if (s.projectId !== project.id) continue;
-      const key = (s.goalText ?? s.tags?.[0] ?? "").trim().toLowerCase();
+      const key =
+        s.goalId ??
+        (s.goalText ?? s.tags?.[0] ?? "").trim().toLowerCase();
       if (!key) continue;
       map.set(key, (map.get(key) ?? 0) + (s.focusedMinutes || 0));
     }
@@ -48,13 +51,12 @@ export function ProjectGoalPicker({ project, goalText, onChange, disabled }: Pro
   if (!project) return null;
   if (goals.length === 0) return null;
 
-  const activeLower = goalText?.trim().toLowerCase() ?? "";
-
-  function toggle(text: string) {
+  function toggle(g: ProjectGoal) {
     if (disabled) return;
-    const same = activeLower === text.trim().toLowerCase();
-    onChange(same ? null : text);
+    const same = goalId === g.id;
+    onChange(same ? null : { id: g.id, text: g.text });
   }
+
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 animate-in fade-in duration-300">
