@@ -61,15 +61,18 @@ export function ProjectGoalPicker({ project, goalId, onChange, disabled }: Props
   return (
     <div className="flex flex-wrap items-center gap-1.5 animate-in fade-in duration-300">
       {goals.map((g) => {
-        const on = activeLower === g.text.toLowerCase();
-        const focused = focusedByGoal.get(g.text.toLowerCase()) ?? 0;
+        const on = goalId === g.id;
+        const focused =
+          (focusedByGoal.get(g.id) ?? 0) +
+          (focusedByGoal.get(g.text.toLowerCase()) ?? 0);
         const achieved = isGoalAchieved(g, focused);
         return (
           <button
             key={g.id}
             type="button"
-            onClick={() => toggle(g.text)}
+            onClick={() => toggle(g)}
             disabled={disabled}
+
             className="group inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] tracking-wide transition-all duration-150 disabled:opacity-60"
             style={
               on
