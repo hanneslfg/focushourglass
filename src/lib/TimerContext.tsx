@@ -416,6 +416,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           startedAtRef.current = null;
           setTaskState("");
           setGoalTextState(null);
+          setGoalIdState(null);
+
           setMinutesState(next.block.minutes);
           setTotal(next.block.minutes * 60);
           setRemaining(next.block.minutes * 60);
