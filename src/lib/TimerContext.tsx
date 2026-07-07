@@ -154,6 +154,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectName: project?.name,
         projectColor: project?.color,
         tags: goalText ? [goalText] : undefined,
+        goalId: goalId ?? undefined,
         plannedMinutes: Math.round(total / 60),
         startedAt: startedAtRef.current,
         focusedSeconds: focusedRef.current,
@@ -162,8 +163,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       };
       saveActive(state);
     },
-    [task, project, goalText, total],
+    [task, project, goalText, goalId, total],
   );
+
 
   // ---- Tick loop ----------------------------------------------------------
   useEffect(() => {
