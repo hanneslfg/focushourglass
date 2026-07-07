@@ -549,7 +549,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       }
       setProjectState(p);
       // Active session goal is scoped to a project; clear on switch.
-      if (changed) setGoalTextState(null);
+      if (changed) {
+        setGoalTextState(null);
+        setGoalIdState(null);
+      }
     },
     [phase, project, setEndAt],
   );
@@ -566,7 +569,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         project,
         setProject,
         goalText,
+        goalId,
         setGoalText: setGoalTextState,
+        setGoal,
+
         minutes,
         setMinutes,
         phase,
