@@ -389,12 +389,33 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       focusedRef.current += delta;
       lastCheckRef.current = now;
     }
+    // If finalized straight from the paused phase, credit the ongoing pause
+    // interval towards total pause time so the focus score is fair.
+    if (phase === "paused" && pausedAtRef.current != null) {
+      pauseSecondsRef.current += Math.max(
+        0,
+        Math.round((Date.now() - pausedAtRef.current) / 1000),
+      );
+      pausedAtRef.current = null;
+    }
     savedRef.current = true;
     const wasBreak = currentKindRef.current === "break";
     const startedAt = startedAtRef.current ?? new Date().toISOString();
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.max(1, Math.round(focusedRef.current / 60));
+    const pauseCount = pauseCountRef.current;
+    const totalPauseSeconds = pauseSecondsRef.current;
+    // Successful completion = user pressed Complete (phase !== "asking"),
+    // or the timer ran out naturally (phase === "asking" implies target hit).
+    const isCompletedSuccessfully = phase !== "asking" || focusedRef.current > 0;
+    const focusScore = calculateFocusScore(
+      plannedMinutes,
+      focusedMinutes,
+      totalPauseSeconds / 60,
+      pauseCount,
+      isCompletedSuccessfully,
+    );
 
     if (!wasBreak) {
       const localId = crypto.randomUUID();
@@ -411,8 +432,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         goalText: goalText ?? undefined,
         goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
+        focusScore,
+        pauseCount,
+        totalPauseSeconds,
       });
       maybeNotifyGoalReached();
+      // Stoic completion notification.
+      toast("Block done. Rest completely. Prepare for the next sprint.", {
+        description: `Focus Score ${focusScore}/100`,
+      });
       saveSessionRemote({
         user_id: getUserId(),
         task_name: task.trim(),
@@ -424,6 +452,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         was_aborted: false,
         tags: goalText ? [goalText] : undefined,
         goal_id: goalId ?? null,
+        focus_score: focusScore,
+        pause_count: pauseCount,
+        total_pause_seconds: totalPauseSeconds,
       })
 
         .then((res) => {
@@ -438,10 +469,13 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch((e) => console.error("saveSessionRemote threw:", e));
+    } else {
+      toast("Break over. Reset your mind. Enter the hourglass.");
     }
     setPhase("complete");
     setEndAt(null);
     clearActive();
+
 
     // Focus Blocks: cue up the next block. Break blocks auto-start; Focus
     // blocks HALT on the task input so each work block is dedicated to its
