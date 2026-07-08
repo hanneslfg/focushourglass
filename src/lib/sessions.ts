@@ -129,6 +129,10 @@ function remoteRowToSession(r: RemoteRow): Session {
     goalText,
     goalId,
     tags: cleanTags,
+    focusScore: typeof r.focus_score === "number" ? r.focus_score : undefined,
+    pauseCount: typeof r.pause_count === "number" ? r.pause_count : undefined,
+    totalPauseSeconds:
+      typeof r.total_pause_seconds === "number" ? r.total_pause_seconds : undefined,
   };
 }
 
