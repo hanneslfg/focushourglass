@@ -101,7 +101,11 @@ interface RemoteRow {
   was_aborted: boolean;
   tags?: string[] | null;
   goal_id?: string | null;
+  focus_score?: number | null;
+  pause_count?: number | null;
+  total_pause_seconds?: number | null;
 }
+
 
 function remoteRowToSession(r: RemoteRow): Session {
   const name = r.project_tag?.trim() || undefined;
