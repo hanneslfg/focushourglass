@@ -287,6 +287,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       focusedRef.current = 0;
       savedRef.current = false;
       pausedAtRef.current = null;
+      pauseCountRef.current = 0;
+      pauseSecondsRef.current = 0;
 
       startedAtRef.current = new Date().toISOString();
       currentKindRef.current = kind;
@@ -299,6 +301,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     },
     [setEndAt],
   );
+
 
   const start = useCallback(() => {
     if (phase !== "idle") return;
