@@ -206,6 +206,16 @@ function disableGoalIdColumn() {
   safeStorage.setItem(GOAL_ID_COLUMN_DISABLED_KEY, "1");
 }
 
+function focusScoreColumnDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return safeStorage.getItem(FOCUS_SCORE_COLUMN_DISABLED_KEY) === "1";
+}
+
+function disableFocusScoreColumn() {
+  if (typeof window === "undefined") return;
+  safeStorage.setItem(FOCUS_SCORE_COLUMN_DISABLED_KEY, "1");
+}
+
 function isMissingColumnError(
   error: { code?: string; message?: string } | null | undefined,
   column: string,
@@ -217,9 +227,17 @@ function isMissingColumnError(
 function isPermanentBadPayloadError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return false;
   // Missing-column errors are handled by retry-without-column, so exclude them here.
-  if (isMissingColumnError(error, "tags") || isMissingColumnError(error, "goal_id")) return false;
+  if (
+    isMissingColumnError(error, "tags") ||
+    isMissingColumnError(error, "goal_id") ||
+    isMissingColumnError(error, "focus_score") ||
+    isMissingColumnError(error, "pause_count") ||
+    isMissingColumnError(error, "total_pause_seconds")
+  )
+    return false;
   return error.code === "PGRST204" || error.code === "22P02" || error.code === "23502";
 }
+
 
 function readPending(): RemoteSession[] {
   if (typeof window === "undefined") return [];
