@@ -11,6 +11,7 @@ import {
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
+import { SessionGoalToggler } from "./SessionGoalToggler";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
 
 function fmtHours(mins: number) {
@@ -445,11 +446,10 @@ function ProjectDetailFull({
                           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
                             {formatTime(new Date(s.startedAt || s.completedAt))}
                           </div>
-                          {(s.goalText ?? s.tags?.[0]) && (
-                            <div className="mt-1.5">
-                              <GoalChip goalText={s.goalText ?? s.tags?.[0] ?? ""} projectId={s.projectId} />
-                            </div>
-                          )}
+                          <div className="mt-1.5">
+                            <SessionGoalToggler session={s} projectId={project.id} />
+                          </div>
+
                         </div>
                         <div className="text-sm tabular-nums text-muted-foreground shrink-0">
                           {s.focusedMinutes}m

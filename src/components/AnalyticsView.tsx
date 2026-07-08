@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
+import { SessionGoalToggler } from "./SessionGoalToggler";
 
 /* =================== Helpers =================== */
 
@@ -521,15 +522,10 @@ function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Se
             {s.projectName}
           </div>
         )}
-        {(s.goalText ?? s.tags?.[0]) && (
-          <div className="mt-2">
-            <GoalMiniChip
-              goalText={s.goalText ?? s.tags?.[0] ?? ""}
-              projectId={s.projectId}
-              focusedMinutes={s.focusedMinutes}
-            />
-          </div>
-        )}
+        <div className="mt-2">
+          <SessionGoalToggler session={s} />
+        </div>
+
         <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/55 tabular-nums">
           <span>{effectiveDayKey(s.completedAt)}</span>
           <FocusScoreBadge score={s.focusScore} size="xs" />
