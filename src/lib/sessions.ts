@@ -26,7 +26,14 @@ export interface Session {
   goalId?: string;
   /** @deprecated Legacy multi-tag storage. Use `goalText`. */
   tags?: string[];
+  /** Focus Score 1–100 computed at the moment the session finalized. */
+  focusScore?: number;
+  /** Number of times the user paused during this session. */
+  pauseCount?: number;
+  /** Total seconds spent paused during this session. */
+  totalPauseSeconds?: number;
 }
+
 
 
 const KEY = "hourglass.sessions.v1";
