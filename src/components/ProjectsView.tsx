@@ -11,6 +11,7 @@ import {
 import { getSessions, dayKey, type Session } from "@/lib/sessions";
 import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
+import { SessionGoalToggler } from "./SessionGoalToggler";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
 
 function fmtHours(mins: number) {
