@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SessionDetailModal } from "./SessionDetailModal";
+import { FocusScoreBadge } from "./FocusScoreBadge";
 
 /* =================== Helpers =================== */
 
