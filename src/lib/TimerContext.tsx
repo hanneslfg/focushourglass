@@ -326,15 +326,23 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       setRemaining(r);
       setEndAt(null);
       pausedAtRef.current = now;
+      pauseCountRef.current += 1;
       setPhase("paused");
     } else if (phase === "paused") {
       const now = Date.now();
+      if (pausedAtRef.current != null) {
+        pauseSecondsRef.current += Math.max(
+          0,
+          Math.round((now - pausedAtRef.current) / 1000),
+        );
+      }
       setEndAt(now + remaining * 1000);
       lastCheckRef.current = now;
       pausedAtRef.current = null;
       setPhase("running");
     }
   }, [phase, remaining, setEndAt]);
+
 
 
   const resetIdle = useCallback(() => {
