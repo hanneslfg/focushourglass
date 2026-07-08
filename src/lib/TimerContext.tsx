@@ -36,6 +36,8 @@ import {
   type ActiveRhythmState,
   type BlockKind,
 } from "./rhythms";
+import { calculateFocusScore } from "./focusScore";
+
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
