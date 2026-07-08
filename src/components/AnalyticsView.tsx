@@ -530,10 +530,12 @@ function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Se
             />
           </div>
         )}
-        <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/55 tabular-nums">
-          {effectiveDayKey(s.completedAt)}
+        <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/55 tabular-nums">
+          <span>{effectiveDayKey(s.completedAt)}</span>
+          <FocusScoreBadge score={s.focusScore} size="xs" />
         </div>
       </div>
+
 
       <div className="shrink-0 text-right flex items-start gap-3">
         <div>
