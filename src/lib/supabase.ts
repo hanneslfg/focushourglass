@@ -487,6 +487,93 @@ export async function updateSessionMinutesRemote(opts: {
 }
 
 /**
+ * Assign / unassign a goal on a previously saved session. Sets both the
+ * canonical `goal_id` column (when the schema has it) and the legacy `tags`
+ * text[] mirror so historical rows and older clients stay in sync. Passing
+ * `goalId: null` (with `goalText: null`) clears the goal. Match strategy
+ * mirrors `updateSessionMinutesRemote`.
+ */
+export async function updateSessionGoalRemote(opts: {
+  id?: string;
+  startedAt: string;
+  taskName: string;
+  goalId: string | null;
+  goalText: string | null;
+}): Promise<{ ok: boolean }> {
+  let authUserId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
+  } catch (e) {
+    console.error("[supabase] updateSessionGoal: auth threw:", e);
+  }
+  if (!authUserId) return { ok: false };
+
+  const cleanText =
+    typeof opts.goalText === "string" && opts.goalText.trim()
+      ? opts.goalText.trim().slice(0, 140)
+      : null;
+  const cleanId =
+    typeof opts.goalId === "string" && opts.goalId.trim() ? opts.goalId.trim() : null;
+
+  const buildPatch = (includeGoalId: boolean, includeTags: boolean) => {
+    const patch: Record<string, unknown> = {};
+    if (includeGoalId && !goalIdColumnDisabled()) patch.goal_id = cleanId;
+    if (includeTags && !tagsColumnDisabled()) patch.tags = cleanText ? [cleanText] : [];
+    return patch;
+  };
+
+  const runUpdate = async (patch: Record<string, unknown>) => {
+    if (opts.id) {
+      const { data, error } = await supabase
+        .from("sessions")
+        .update(patch)
+        .eq("id", opts.id)
+        .eq("user_id", authUserId!)
+        .select();
+      if (error) return { error, data: null };
+      if (data && data.length > 0) return { error: null, data };
+    }
+    const { data, error } = await supabase
+      .from("sessions")
+      .update(patch)
+      .eq("user_id", authUserId!)
+      .eq("started_at", opts.startedAt)
+      .eq("task_name", opts.taskName)
+      .select();
+    return { data, error };
+  };
+
+  try {
+    let patch = buildPatch(true, true);
+    if (Object.keys(patch).length === 0) return { ok: true };
+    let { error } = await runUpdate(patch);
+    if (isMissingColumnError(error, "goal_id")) {
+      console.warn("[supabase] sessions.goal_id missing; retrying goal update without it.", error);
+      disableGoalIdColumn();
+      patch = buildPatch(false, true);
+      if (Object.keys(patch).length === 0) return { ok: true };
+      ({ error } = await runUpdate(patch));
+    }
+    if (isMissingColumnError(error, "tags")) {
+      console.warn("[supabase] sessions.tags missing; retrying goal update without it.", error);
+      disableTagsColumn();
+      patch = buildPatch(true, false);
+      if (Object.keys(patch).length === 0) return { ok: true };
+      ({ error } = await runUpdate(patch));
+    }
+    if (error) {
+      console.error("[supabase] updateSessionGoal failed:", error.message);
+      return { ok: false };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("[supabase] updateSessionGoal threw:", e);
+    return { ok: false };
+  }
+}
+
+/**
  * Delete a previously saved session. Matches by row id first, then falls
  * back to (user_id, started_at, task_name) for rows whose local id hasn't
  * been reconciled with Supabase yet. Requires an authenticated user; RLS
