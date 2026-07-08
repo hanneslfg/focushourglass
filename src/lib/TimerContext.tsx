@@ -539,10 +539,26 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     currentKindRef.current = null;
     if (!wasBreak && startedAtRef.current && task.trim() && !savedRef.current) {
       savedRef.current = true;
+      // Credit any ongoing pause interval towards total pause time.
+      if (pausedAtRef.current != null) {
+        pauseSecondsRef.current += Math.max(
+          0,
+          Math.round((Date.now() - pausedAtRef.current) / 1000),
+        );
+      }
       const startedAt = startedAtRef.current;
       const completedAt = new Date().toISOString();
       const plannedMinutes = Math.round(total / 60);
       const focusedMinutes = Math.max(0, Math.round(focusedRef.current / 60));
+      const pauseCount = pauseCountRef.current;
+      const totalPauseSeconds = pauseSecondsRef.current;
+      const focusScore = calculateFocusScore(
+        plannedMinutes,
+        focusedMinutes,
+        totalPauseSeconds / 60,
+        pauseCount,
+        false,
+      );
       const localId = crypto.randomUUID();
       addSession({
         id: localId,
@@ -557,6 +573,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         goalText: goalText ?? undefined,
         goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
+        focusScore,
+        pauseCount,
+        totalPauseSeconds,
       });
       saveSessionRemote({
         user_id: getUserId(),
@@ -569,6 +588,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         was_aborted: true,
         tags: goalText ? [goalText] : undefined,
         goal_id: goalId ?? null,
+        focus_score: focusScore,
+        pause_count: pauseCount,
+        total_pause_seconds: totalPauseSeconds,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -582,8 +604,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     pausedAtRef.current = null;
+    pauseCountRef.current = 0;
+    pauseSecondsRef.current = 0;
     resetIdle();
   }, [task, project, goalText, goalId, total, resetIdle, setEndAt]);
+
 
   // Mirror `abort` into a ref so effects (cold-start recovery, paused
   // auto-complete watchdog) can call the latest version without depending
