@@ -357,6 +357,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     focusedRef.current = 0;
     startedAtRef.current = null;
     pausedAtRef.current = null;
+    pauseCountRef.current = 0;
+    pauseSecondsRef.current = 0;
+
 
     setEndAt(null);
   }, [setEndAt]);
