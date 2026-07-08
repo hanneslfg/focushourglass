@@ -124,11 +124,18 @@ export interface RemoteSession {
   tags?: string[];
   /** UUID of the selected ProjectGoal, or null if none. */
   goal_id?: string | null;
+  /** Focus Score 1–100 computed at finalize time. */
+  focus_score?: number | null;
+  /** Number of pauses during the session. */
+  pause_count?: number | null;
+  /** Total seconds spent paused. */
+  total_pause_seconds?: number | null;
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
 const GOAL_ID_COLUMN_DISABLED_KEY = "hourglass.sessions.goal_id_column_disabled.v1";
+const FOCUS_SCORE_COLUMN_DISABLED_KEY = "hourglass.sessions.focus_score_column_disabled.v1";
 
 type SessionInsertPayload = {
   user_id: string;
@@ -141,7 +148,12 @@ type SessionInsertPayload = {
   was_aborted: boolean;
   tags?: string[];
   goal_id?: string | null;
+  focus_score?: number | null;
+  pause_count?: number | null;
+  total_pause_seconds?: number | null;
 };
+
+
 
 
 function cleanText(value: unknown, fallback = "Untitled session"): string {
