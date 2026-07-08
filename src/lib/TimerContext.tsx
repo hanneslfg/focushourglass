@@ -113,6 +113,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const endAtRef = useRef<number | null>(null);
   const lastCheckRef = useRef<number>(0);
   const savedRef = useRef(false);
+  /** How many times the user paused this session. */
+  const pauseCountRef = useRef(0);
+  /** Cumulative seconds spent paused this session. */
+  const pauseSecondsRef = useRef(0);
+
   /** Wall-clock ms when the timer entered the paused phase (null when not paused). */
   const pausedAtRef = useRef<number | null>(null);
 
