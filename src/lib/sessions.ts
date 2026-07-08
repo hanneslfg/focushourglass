@@ -26,7 +26,14 @@ export interface Session {
   goalId?: string;
   /** @deprecated Legacy multi-tag storage. Use `goalText`. */
   tags?: string[];
+  /** Focus Score 1–100 computed at the moment the session finalized. */
+  focusScore?: number;
+  /** Number of times the user paused during this session. */
+  pauseCount?: number;
+  /** Total seconds spent paused during this session. */
+  totalPauseSeconds?: number;
 }
+
 
 
 const KEY = "hourglass.sessions.v1";
@@ -94,7 +101,11 @@ interface RemoteRow {
   was_aborted: boolean;
   tags?: string[] | null;
   goal_id?: string | null;
+  focus_score?: number | null;
+  pause_count?: number | null;
+  total_pause_seconds?: number | null;
 }
+
 
 function remoteRowToSession(r: RemoteRow): Session {
   const name = r.project_tag?.trim() || undefined;
@@ -118,6 +129,10 @@ function remoteRowToSession(r: RemoteRow): Session {
     goalText,
     goalId,
     tags: cleanTags,
+    focusScore: typeof r.focus_score === "number" ? r.focus_score : undefined,
+    pauseCount: typeof r.pause_count === "number" ? r.pause_count : undefined,
+    totalPauseSeconds:
+      typeof r.total_pause_seconds === "number" ? r.total_pause_seconds : undefined,
   };
 }
 

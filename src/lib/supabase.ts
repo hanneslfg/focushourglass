@@ -124,11 +124,18 @@ export interface RemoteSession {
   tags?: string[];
   /** UUID of the selected ProjectGoal, or null if none. */
   goal_id?: string | null;
+  /** Focus Score 1–100 computed at finalize time. */
+  focus_score?: number | null;
+  /** Number of pauses during the session. */
+  pause_count?: number | null;
+  /** Total seconds spent paused. */
+  total_pause_seconds?: number | null;
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
 const GOAL_ID_COLUMN_DISABLED_KEY = "hourglass.sessions.goal_id_column_disabled.v1";
+const FOCUS_SCORE_COLUMN_DISABLED_KEY = "hourglass.sessions.focus_score_column_disabled.v1";
 
 type SessionInsertPayload = {
   user_id: string;
@@ -141,7 +148,12 @@ type SessionInsertPayload = {
   was_aborted: boolean;
   tags?: string[];
   goal_id?: string | null;
+  focus_score?: number | null;
+  pause_count?: number | null;
+  total_pause_seconds?: number | null;
 };
+
+
 
 
 function cleanText(value: unknown, fallback = "Untitled session"): string {
@@ -194,6 +206,16 @@ function disableGoalIdColumn() {
   safeStorage.setItem(GOAL_ID_COLUMN_DISABLED_KEY, "1");
 }
 
+function focusScoreColumnDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return safeStorage.getItem(FOCUS_SCORE_COLUMN_DISABLED_KEY) === "1";
+}
+
+function disableFocusScoreColumn() {
+  if (typeof window === "undefined") return;
+  safeStorage.setItem(FOCUS_SCORE_COLUMN_DISABLED_KEY, "1");
+}
+
 function isMissingColumnError(
   error: { code?: string; message?: string } | null | undefined,
   column: string,
@@ -205,9 +227,17 @@ function isMissingColumnError(
 function isPermanentBadPayloadError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) return false;
   // Missing-column errors are handled by retry-without-column, so exclude them here.
-  if (isMissingColumnError(error, "tags") || isMissingColumnError(error, "goal_id")) return false;
+  if (
+    isMissingColumnError(error, "tags") ||
+    isMissingColumnError(error, "goal_id") ||
+    isMissingColumnError(error, "focus_score") ||
+    isMissingColumnError(error, "pause_count") ||
+    isMissingColumnError(error, "total_pause_seconds")
+  )
+    return false;
   return error.code === "PGRST204" || error.code === "22P02" || error.code === "23502";
 }
+
 
 function readPending(): RemoteSession[] {
   if (typeof window === "undefined") return [];
@@ -241,10 +271,11 @@ function queuePending(s: RemoteSession) {
 function buildPayload(
   s: RemoteSession,
   userId: string,
-  opts: { includeTags?: boolean; includeGoalId?: boolean } = {},
+  opts: { includeTags?: boolean; includeGoalId?: boolean; includeFocusScore?: boolean } = {},
 ): SessionInsertPayload {
   const includeTags = opts.includeTags ?? !tagsColumnDisabled();
   const includeGoalId = opts.includeGoalId ?? !goalIdColumnDisabled();
+  const includeFocusScore = opts.includeFocusScore ?? !focusScoreColumnDisabled();
   const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
     ? s.project_tag.trim().slice(0, 120)
     : null;
@@ -267,6 +298,20 @@ function buildPayload(
     const raw = typeof s.goal_id === "string" ? s.goal_id.trim() : "";
     payload.goal_id = raw.length > 0 ? raw : null;
   }
+  if (includeFocusScore) {
+    payload.focus_score =
+      typeof s.focus_score === "number" && Number.isFinite(s.focus_score)
+        ? Math.max(1, Math.min(100, Math.round(s.focus_score)))
+        : null;
+    payload.pause_count =
+      typeof s.pause_count === "number" && Number.isFinite(s.pause_count)
+        ? Math.max(0, Math.round(s.pause_count))
+        : null;
+    payload.total_pause_seconds =
+      typeof s.total_pause_seconds === "number" && Number.isFinite(s.total_pause_seconds)
+        ? Math.max(0, Math.round(s.total_pause_seconds))
+        : null;
+  }
   return payload;
 }
 
@@ -284,7 +329,16 @@ async function insertSessionPayload(
 
   let { data, error } = await query();
   // Gracefully degrade if the sessions table hasn't been migrated to include
-  // one or both of the optional columns yet. Retry once per missing column.
+  // one or more of the optional columns yet. Retry per missing column.
+  for (const col of ["focus_score", "pause_count", "total_pause_seconds"] as const) {
+    if (isMissingColumnError(error, col) && col in payload) {
+      console.warn(`[supabase] sessions.${col} column missing; retrying without focus-score columns.`, error);
+      disableFocusScoreColumn();
+      payload = buildPayload(session, userId, { includeFocusScore: false });
+      ({ data, error } = await query());
+      break;
+    }
+  }
   if (isMissingColumnError(error, "goal_id") && "goal_id" in payload) {
     console.warn("[supabase] sessions.goal_id column missing; retrying without goal_id.", error);
     disableGoalIdColumn();
@@ -294,12 +348,17 @@ async function insertSessionPayload(
   if (isMissingColumnError(error, "tags") && "tags" in payload) {
     console.warn("[supabase] sessions.tags column missing; retrying without tags.", error);
     disableTagsColumn();
-    payload = buildPayload(session, userId, { includeTags: false, includeGoalId: !goalIdColumnDisabled() });
+    payload = buildPayload(session, userId, {
+      includeTags: false,
+      includeGoalId: !goalIdColumnDisabled(),
+      includeFocusScore: !focusScoreColumnDisabled(),
+    });
     ({ data, error } = await query());
   }
 
   return { data, error, payload };
 }
+
 
 
 export async function getActiveSyncUserId(): Promise<string> {

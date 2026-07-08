@@ -12,6 +12,7 @@ import { getDailyStreak } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
 import { AddSessionModal } from "./AddSessionModal";
 import { SessionDetailModal } from "./SessionDetailModal";
+import { FocusScoreBadge } from "./FocusScoreBadge";
 
 
 
@@ -259,15 +260,17 @@ export function DailyLogSidebar() {
                           <div className="text-sm text-foreground truncate">
                             {s.task || "Untitled"}
                           </div>
-                          {s.projectName && (
-                            <div className="mt-0.5 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                              <span>[{s.projectName}]</span>
+                          {(s.projectName || typeof s.focusScore === "number") && (
+                            <div className="mt-0.5 inline-flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                              {s.projectName && <span>[{s.projectName}]</span>}
+                              <FocusScoreBadge score={s.focusScore} size="xs" />
                             </div>
                           )}
                         </div>
                         <div className="text-xs tabular-nums text-muted-foreground shrink-0">
                           {s.focusedMinutes} min
                         </div>
+
                       </button>
                     </li>
                   ))}

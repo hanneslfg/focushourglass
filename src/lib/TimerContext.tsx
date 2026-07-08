@@ -36,6 +36,8 @@ import {
   type ActiveRhythmState,
   type BlockKind,
 } from "./rhythms";
+import { calculateFocusScore } from "./focusScore";
+
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
@@ -111,6 +113,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const endAtRef = useRef<number | null>(null);
   const lastCheckRef = useRef<number>(0);
   const savedRef = useRef(false);
+  /** How many times the user paused this session. */
+  const pauseCountRef = useRef(0);
+  /** Cumulative seconds spent paused this session. */
+  const pauseSecondsRef = useRef(0);
+
   /** Wall-clock ms when the timer entered the paused phase (null when not paused). */
   const pausedAtRef = useRef<number | null>(null);
 
@@ -280,6 +287,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       focusedRef.current = 0;
       savedRef.current = false;
       pausedAtRef.current = null;
+      pauseCountRef.current = 0;
+      pauseSecondsRef.current = 0;
 
       startedAtRef.current = new Date().toISOString();
       currentKindRef.current = kind;
@@ -292,6 +301,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     },
     [setEndAt],
   );
+
 
   const start = useCallback(() => {
     if (phase !== "idle") return;
@@ -316,15 +326,23 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       setRemaining(r);
       setEndAt(null);
       pausedAtRef.current = now;
+      pauseCountRef.current += 1;
       setPhase("paused");
     } else if (phase === "paused") {
       const now = Date.now();
+      if (pausedAtRef.current != null) {
+        pauseSecondsRef.current += Math.max(
+          0,
+          Math.round((now - pausedAtRef.current) / 1000),
+        );
+      }
       setEndAt(now + remaining * 1000);
       lastCheckRef.current = now;
       pausedAtRef.current = null;
       setPhase("running");
     }
   }, [phase, remaining, setEndAt]);
+
 
 
   const resetIdle = useCallback(() => {
@@ -339,6 +357,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     focusedRef.current = 0;
     startedAtRef.current = null;
     pausedAtRef.current = null;
+    pauseCountRef.current = 0;
+    pauseSecondsRef.current = 0;
+
 
     setEndAt(null);
   }, [setEndAt]);
@@ -368,12 +389,33 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       focusedRef.current += delta;
       lastCheckRef.current = now;
     }
+    // If finalized straight from the paused phase, credit the ongoing pause
+    // interval towards total pause time so the focus score is fair.
+    if (phase === "paused" && pausedAtRef.current != null) {
+      pauseSecondsRef.current += Math.max(
+        0,
+        Math.round((Date.now() - pausedAtRef.current) / 1000),
+      );
+      pausedAtRef.current = null;
+    }
     savedRef.current = true;
     const wasBreak = currentKindRef.current === "break";
     const startedAt = startedAtRef.current ?? new Date().toISOString();
     const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.max(1, Math.round(focusedRef.current / 60));
+    const pauseCount = pauseCountRef.current;
+    const totalPauseSeconds = pauseSecondsRef.current;
+    // Successful completion = user pressed Complete (phase !== "asking"),
+    // or the timer ran out naturally (phase === "asking" implies target hit).
+    const isCompletedSuccessfully = phase !== "asking" || focusedRef.current > 0;
+    const focusScore = calculateFocusScore(
+      plannedMinutes,
+      focusedMinutes,
+      totalPauseSeconds / 60,
+      pauseCount,
+      isCompletedSuccessfully,
+    );
 
     if (!wasBreak) {
       const localId = crypto.randomUUID();
@@ -390,8 +432,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         goalText: goalText ?? undefined,
         goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
+        focusScore,
+        pauseCount,
+        totalPauseSeconds,
       });
       maybeNotifyGoalReached();
+      // Stoic completion notification.
+      toast("Block done. Rest completely. Prepare for the next sprint.", {
+        description: `Focus Score ${focusScore}/100`,
+      });
       saveSessionRemote({
         user_id: getUserId(),
         task_name: task.trim(),
@@ -403,6 +452,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         was_aborted: false,
         tags: goalText ? [goalText] : undefined,
         goal_id: goalId ?? null,
+        focus_score: focusScore,
+        pause_count: pauseCount,
+        total_pause_seconds: totalPauseSeconds,
       })
 
         .then((res) => {
@@ -417,10 +469,13 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           }
         })
         .catch((e) => console.error("saveSessionRemote threw:", e));
+    } else {
+      toast("Break over. Reset your mind. Enter the hourglass.");
     }
     setPhase("complete");
     setEndAt(null);
     clearActive();
+
 
     // Focus Blocks: cue up the next block. Break blocks auto-start; Focus
     // blocks HALT on the task input so each work block is dedicated to its
@@ -484,10 +539,26 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     currentKindRef.current = null;
     if (!wasBreak && startedAtRef.current && task.trim() && !savedRef.current) {
       savedRef.current = true;
+      // Credit any ongoing pause interval towards total pause time.
+      if (pausedAtRef.current != null) {
+        pauseSecondsRef.current += Math.max(
+          0,
+          Math.round((Date.now() - pausedAtRef.current) / 1000),
+        );
+      }
       const startedAt = startedAtRef.current;
       const completedAt = new Date().toISOString();
       const plannedMinutes = Math.round(total / 60);
       const focusedMinutes = Math.max(0, Math.round(focusedRef.current / 60));
+      const pauseCount = pauseCountRef.current;
+      const totalPauseSeconds = pauseSecondsRef.current;
+      const focusScore = calculateFocusScore(
+        plannedMinutes,
+        focusedMinutes,
+        totalPauseSeconds / 60,
+        pauseCount,
+        false,
+      );
       const localId = crypto.randomUUID();
       addSession({
         id: localId,
@@ -502,6 +573,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         goalText: goalText ?? undefined,
         goalId: goalId ?? undefined,
         tags: goalText ? [goalText] : undefined,
+        focusScore,
+        pauseCount,
+        totalPauseSeconds,
       });
       saveSessionRemote({
         user_id: getUserId(),
@@ -514,6 +588,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         was_aborted: true,
         tags: goalText ? [goalText] : undefined,
         goal_id: goalId ?? null,
+        focus_score: focusScore,
+        pause_count: pauseCount,
+        total_pause_seconds: totalPauseSeconds,
       })
         .then((res) => {
           if (res && !res.ok && !res.queued) {
@@ -527,8 +604,11 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     }
     clearActive();
     pausedAtRef.current = null;
+    pauseCountRef.current = 0;
+    pauseSecondsRef.current = 0;
     resetIdle();
   }, [task, project, goalText, goalId, total, resetIdle, setEndAt]);
+
 
   // Mirror `abort` into a ref so effects (cold-start recovery, paused
   // auto-complete watchdog) can call the latest version without depending
