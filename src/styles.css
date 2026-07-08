@@ -104,3 +104,17 @@
   transform-origin: 50% 50%;
 }
 
+
+@keyframes focus-score-perfect-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.55), 0 0 10px rgba(251, 191, 36, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.9), 0 0 18px rgba(251, 191, 36, 0.55);
+  }
+}
+
+.focus-score-perfect {
+  background: linear-gradient(180deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06));
+  animation: focus-score-perfect-glow 3.2s ease-in-out infinite;
+}
