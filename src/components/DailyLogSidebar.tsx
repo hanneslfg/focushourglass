@@ -12,6 +12,7 @@ import { getDailyStreak } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
 import { AddSessionModal } from "./AddSessionModal";
 import { SessionDetailModal } from "./SessionDetailModal";
+import { FocusScoreBadge } from "./FocusScoreBadge";
 
 
 
