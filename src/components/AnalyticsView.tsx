@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
+import { SessionGoalToggler } from "./SessionGoalToggler";
 
 /* =================== Helpers =================== */
 
