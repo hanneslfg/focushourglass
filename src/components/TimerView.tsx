@@ -213,23 +213,30 @@ export function TimerView() {
                 value={minuteInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
+                  // Allow empty string while user is actively editing.
                   const val = e.target.value;
                   if (val === "") {
                     setMinuteInput("");
                     return;
                   }
-                  const num = Number(val);
-                  if (!isNaN(num)) {
-                    setMinuteInput(val);
-                    setMinutes(Math.max(1, Math.min(600, num)));
-                  }
+                  // Strictly parse as a number; ignore non-numeric input.
+                  const num = e.currentTarget.valueAsNumber;
+                  if (Number.isNaN(num)) return;
+                  setMinuteInput(val);
+                  // Cap at max only; do NOT clamp min during typing (would turn 0 → 1
+                  // and cause subsequent digits to concatenate onto "1").
+                  setMinutes(Math.min(600, Math.max(0, Math.floor(num))));
                 }}
                 onBlur={(e) => {
-                  if (e.target.value === "") {
-                    setMinutes(90);
+                  // Smart fallback: only when the field is left empty or below 1.
+                  const num = e.currentTarget.valueAsNumber;
+                  if (e.target.value === "" || Number.isNaN(num) || num < 1) {
+                    setMinutes(1);
+                    setMinuteInput("1");
                   } else {
-                    const num = Math.max(1, Math.min(600, Number(e.target.value) || 90));
-                    setMinutes(num);
+                    const clamped = Math.min(600, Math.max(1, Math.floor(num)));
+                    setMinutes(clamped);
+                    setMinuteInput(String(clamped));
                   }
                 }}
                 className="w-16 bg-transparent text-center text-base md:text-sm tabular-nums outline-none border-b border-border focus:border-foreground/60 py-1"
