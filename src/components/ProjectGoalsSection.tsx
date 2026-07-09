@@ -65,11 +65,20 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
   const [newColor, setNewColor] = useState(GOAL_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Force-refresh whenever goals OR sessions change so the low-opacity
+  // progress fill (driven by focusedMinutesByGoal) always re-renders even
+  // if the parent memoizes the prop reference.
+  const [, forceTick] = useState(0);
   useEffect(() => {
     const sync = () => setGoals(getProjectGoals(projectId));
+    const bump = () => forceTick((t) => t + 1);
     sync();
     window.addEventListener("hourglass:goals", sync);
-    return () => window.removeEventListener("hourglass:goals", sync);
+    window.addEventListener("hourglass:sessions", bump);
+    return () => {
+      window.removeEventListener("hourglass:goals", sync);
+      window.removeEventListener("hourglass:sessions", bump);
+    };
   }, [projectId]);
 
   const sorted = useMemo(() => goals, [goals]);
