@@ -702,25 +702,25 @@ export function AnalyticsView({
     }
     // Fold in goals seen on sessions but not defined in the goal store.
     for (const s of sessions) {
-      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-      if (!gt || !s.projectId) continue;
-      const key = `${s.projectId}::${gt.toLowerCase()}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          projectId: s.projectId,
-          projectName: s.projectName ?? "Project",
-          projectColor: s.projectColor ?? "#94a3b8",
-          text: gt,
-          color: s.projectColor ?? "#94a3b8",
-          targetMinutes: 0,
-        });
+      if (!s.projectId) continue;
+      for (const gt of sessionGoalTexts(s)) {
+        const key = `${s.projectId}::${gt.toLowerCase()}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            projectId: s.projectId,
+            projectName: s.projectName ?? "Project",
+            projectColor: s.projectColor ?? "#94a3b8",
+            text: gt,
+            color: s.projectColor ?? "#94a3b8",
+            targetMinutes: 0,
+          });
+        }
       }
     }
     let hasNoGoal = false;
     for (const s of rawInRange) {
-      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-      if (!gt) { hasNoGoal = true; break; }
+      if (sessionGoalTexts(s).length === 0) { hasNoGoal = true; break; }
     }
     const list = [...map.values()].sort((a, b) =>
       a.projectName.localeCompare(b.projectName) || a.text.localeCompare(b.text),
@@ -736,10 +736,11 @@ export function AnalyticsView({
   };
   const sessionMatchesGoal = (s: Session, sel: Set<string>) => {
     if (sel.size === 0) return true;
-    const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-    if (!gt || !s.projectId) return sel.has("__none");
-    return sel.has(`${s.projectId}::${gt.toLowerCase()}`);
+    const texts = sessionGoalTexts(s);
+    if (texts.length === 0 || !s.projectId) return sel.has("__none");
+    return texts.some((t) => sel.has(`${s.projectId}::${t.toLowerCase()}`));
   };
+
 
   const inRange = useMemo(() => {
     return rawInRange
