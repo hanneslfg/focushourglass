@@ -19,6 +19,7 @@ import {
   setTodayOverride,
 } from "@/lib/settings";
 import { playClick } from "@/lib/click";
+import { LegalFooter } from "@/components/LegalFooter";
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
@@ -76,6 +77,7 @@ export function SettingsSidebar() {
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 1.25rem)" }}
           >
             <SettingsPanel />
+            <LegalFooter className="mt-10 pt-6 border-t border-border/40" />
           </div>
         </div>
       </aside>
