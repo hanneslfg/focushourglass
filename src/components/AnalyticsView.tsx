@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Check, Trash2 } from "lucide-react";
-import { getSessions, hydrateFromRemote, dayKey, removeSession, type Session } from "@/lib/sessions";
+import { getSessions, hydrateFromRemote, dayKey, removeSession, sessionGoalTexts, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { getProjectGoals, findGoalByText, isGoalAchieved } from "@/lib/goals";
 import { supabase, deleteSessionRemote } from "@/lib/supabase";
@@ -702,25 +702,25 @@ export function AnalyticsView({
     }
     // Fold in goals seen on sessions but not defined in the goal store.
     for (const s of sessions) {
-      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-      if (!gt || !s.projectId) continue;
-      const key = `${s.projectId}::${gt.toLowerCase()}`;
-      if (!map.has(key)) {
-        map.set(key, {
-          key,
-          projectId: s.projectId,
-          projectName: s.projectName ?? "Project",
-          projectColor: s.projectColor ?? "#94a3b8",
-          text: gt,
-          color: s.projectColor ?? "#94a3b8",
-          targetMinutes: 0,
-        });
+      if (!s.projectId) continue;
+      for (const gt of sessionGoalTexts(s)) {
+        const key = `${s.projectId}::${gt.toLowerCase()}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            projectId: s.projectId,
+            projectName: s.projectName ?? "Project",
+            projectColor: s.projectColor ?? "#94a3b8",
+            text: gt,
+            color: s.projectColor ?? "#94a3b8",
+            targetMinutes: 0,
+          });
+        }
       }
     }
     let hasNoGoal = false;
     for (const s of rawInRange) {
-      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-      if (!gt) { hasNoGoal = true; break; }
+      if (sessionGoalTexts(s).length === 0) { hasNoGoal = true; break; }
     }
     const list = [...map.values()].sort((a, b) =>
       a.projectName.localeCompare(b.projectName) || a.text.localeCompare(b.text),
@@ -736,10 +736,11 @@ export function AnalyticsView({
   };
   const sessionMatchesGoal = (s: Session, sel: Set<string>) => {
     if (sel.size === 0) return true;
-    const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-    if (!gt || !s.projectId) return sel.has("__none");
-    return sel.has(`${s.projectId}::${gt.toLowerCase()}`);
+    const texts = sessionGoalTexts(s);
+    if (texts.length === 0 || !s.projectId) return sel.has("__none");
+    return texts.some((t) => sel.has(`${s.projectId}::${t.toLowerCase()}`));
   };
+
 
   const inRange = useMemo(() => {
     return rawInRange
@@ -756,23 +757,28 @@ export function AnalyticsView({
     for (const s of rawInRange) {
       if (!sessionMatchesProject(s, selectedProjects)) continue;
       const mins = s.focusedMinutes || 0;
-      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-      if (!gt || !s.projectId) { untracked += mins; continue; }
-      const key = `${s.projectId}::${gt.toLowerCase()}`;
-      const goal = findGoalByText(s.projectId, gt);
-      const cur = totals.get(key) ?? {
-        key,
-        text: gt,
-        projectId: s.projectId,
-        projectName: s.projectName ?? "Project",
-        projectColor: s.projectColor ?? "#94a3b8",
-        color: goal?.color ?? s.projectColor ?? "#94a3b8",
-        min: 0,
-        targetMinutes: goal?.targetMinutes ?? 0,
-      };
-      cur.min += mins;
-      totals.set(key, cur);
+      const texts = sessionGoalTexts(s);
+      if (texts.length === 0 || !s.projectId) { untracked += mins; continue; }
+      // Multi-goal: each selected goal receives the FULL session minutes
+      // so progress toward each independent goal reflects reality.
+      for (const gt of texts) {
+        const key = `${s.projectId}::${gt.toLowerCase()}`;
+        const goal = findGoalByText(s.projectId, gt);
+        const cur = totals.get(key) ?? {
+          key,
+          text: gt,
+          projectId: s.projectId,
+          projectName: s.projectName ?? "Project",
+          projectColor: s.projectColor ?? "#94a3b8",
+          color: goal?.color ?? s.projectColor ?? "#94a3b8",
+          min: 0,
+          targetMinutes: goal?.targetMinutes ?? 0,
+        };
+        cur.min += mins;
+        totals.set(key, cur);
+      }
     }
+
     const rows = [...totals.values()]
       .map((v) => ({ ...v, min: Math.round(v.min) }))
       .sort((a, b) => b.min - a.min);

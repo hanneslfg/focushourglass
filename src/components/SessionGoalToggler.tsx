@@ -1,12 +1,14 @@
 /**
- * Inline goal pills rendered on a completed session row. Tapping a pill
- * assigns that goal (single-select). Tapping the active pill clears it.
+ * Inline goal pills rendered on a completed session row. Supports
+ * multi-select: tapping an inactive pill adds that goal to the session;
+ * tapping an active pill removes it. All selected goals share the full
+ * focused-minutes of the session for progress aggregation.
  * Updates both the local cache (instant UI + goal-progress recalculation)
- * and Supabase (`goal_id` + legacy `tags[]` mirror).
+ * and Supabase (`goal_id` primary + `tags[]` full multi-goal mirror).
  */
 import { useEffect, useState } from "react";
 import { getProjectGoals, type ProjectGoal } from "@/lib/goals";
-import { getSessions, updateSession, type Session } from "@/lib/sessions";
+import { getSessions, sessionGoalTexts, updateSession, type Session } from "@/lib/sessions";
 import { updateSessionGoalRemote } from "@/lib/supabase";
 
 interface Props {
@@ -19,10 +21,6 @@ interface Props {
 export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs" }: Props) {
   const pid = projectId ?? sessionProp.projectId;
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
-  // Track the live session from storage so `activeId` reflects the latest
-  // goalId immediately, regardless of whether the parent re-renders with a
-  // fresh session object. This is what guarantees instant pill swap +
-  // instant progress-bar re-render across all consumers.
   const [session, setSession] = useState<Session>(sessionProp);
   const [busy, setBusy] = useState(false);
 
@@ -45,35 +43,48 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
 
   if (!pid || goals.length === 0) return null;
 
-  const activeId =
-    session.goalId ??
-    goals.find(
-      (g) =>
-        g.text.trim().toLowerCase() ===
-        (session.goalText ?? session.tags?.[0] ?? "").trim().toLowerCase(),
-    )?.id ??
-    null;
+  // Compute currently active goal IDs from the session. Match by goal id
+  // first (primary), then by each text in `tags` (multi), then legacy
+  // `goalText`.
+  const activeIds = new Set<string>();
+  const texts = sessionGoalTexts(session);
+  for (const t of texts) {
+    const g = goals.find((x) => x.text.trim().toLowerCase() === t.toLowerCase());
+    if (g) activeIds.add(g.id);
+  }
+  if (session.goalId && goals.some((g) => g.id === session.goalId)) {
+    activeIds.add(session.goalId);
+  }
 
   const toggle = (g: ProjectGoal, e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     if (busy) return;
     setBusy(true);
-    const isActive = activeId === g.id;
-    const nextId = isActive ? null : g.id;
-    const nextText = isActive ? undefined : g.text;
-    // Optimistic local update — instantly refreshes progress bars, daily
-    // totals, and analytics via the "hourglass:sessions" event.
+    const isActive = activeIds.has(g.id);
+    const nextIds = new Set(activeIds);
+    if (isActive) nextIds.delete(g.id);
+    else nextIds.add(g.id);
+
+    // Resolve to ordered arrays following the current `goals` order for
+    // stable text/id sequencing.
+    const orderedIds = goals.filter((x) => nextIds.has(x.id)).map((x) => x.id);
+    const orderedTexts = goals.filter((x) => nextIds.has(x.id)).map((x) => x.text);
+    const primaryId = orderedIds[0];
+    const primaryText = orderedTexts[0];
+
+    // Optimistic local update — refreshes progress bars, daily totals and
+    // analytics via the "hourglass:sessions" event.
     updateSession(session.id, {
-      goalId: nextId ?? undefined,
-      goalText: nextText,
-      tags: nextText ? [nextText] : [],
+      goalId: primaryId ?? undefined,
+      goalText: primaryText ?? undefined,
+      tags: orderedTexts,
     });
     void updateSessionGoalRemote({
       id: session.id,
       startedAt: session.startedAt,
       taskName: session.task,
-      goalId: nextId,
-      goalText: nextText ?? null,
+      goalIds: orderedIds,
+      goalTexts: orderedTexts,
     }).finally(() => setBusy(false));
   };
 
@@ -88,7 +99,7 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
       onClick={(e) => e.stopPropagation()}
     >
       {goals.map((g) => {
-        const on = activeId === g.id;
+        const on = activeIds.has(g.id);
         return (
           <button
             key={g.id}

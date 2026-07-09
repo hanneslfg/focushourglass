@@ -70,6 +70,31 @@ export function updateSession(id: string, patch: Partial<Session>) {
   write(read().map((s) => (s.id === id ? { ...s, ...patch } : s)));
 }
 
+/**
+ * All goal texts attributed to a session (may be multi-goal). Falls back to
+ * the legacy single `goalText` when `tags` is empty. Deduplicated,
+ * case-insensitive.
+ */
+export function sessionGoalTexts(s: Session): string[] {
+  const source = (s.tags && s.tags.length > 0
+    ? s.tags
+    : s.goalText
+      ? [s.goalText]
+      : []) as string[];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of source) {
+    const clean = String(t ?? "").trim();
+    if (!clean) continue;
+    const key = clean.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(clean);
+  }
+  return out;
+}
+
+
 function remoteKey(task: string, startedAt: string, completedAt: string): string {
   return `${task}|${startedAt.slice(0, 19)}|${completedAt.slice(0, 19)}`;
 }
