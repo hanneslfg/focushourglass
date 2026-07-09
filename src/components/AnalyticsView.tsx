@@ -757,23 +757,28 @@ export function AnalyticsView({
     for (const s of rawInRange) {
       if (!sessionMatchesProject(s, selectedProjects)) continue;
       const mins = s.focusedMinutes || 0;
-      const gt = (s.goalText ?? s.tags?.[0] ?? "").trim();
-      if (!gt || !s.projectId) { untracked += mins; continue; }
-      const key = `${s.projectId}::${gt.toLowerCase()}`;
-      const goal = findGoalByText(s.projectId, gt);
-      const cur = totals.get(key) ?? {
-        key,
-        text: gt,
-        projectId: s.projectId,
-        projectName: s.projectName ?? "Project",
-        projectColor: s.projectColor ?? "#94a3b8",
-        color: goal?.color ?? s.projectColor ?? "#94a3b8",
-        min: 0,
-        targetMinutes: goal?.targetMinutes ?? 0,
-      };
-      cur.min += mins;
-      totals.set(key, cur);
+      const texts = sessionGoalTexts(s);
+      if (texts.length === 0 || !s.projectId) { untracked += mins; continue; }
+      // Multi-goal: each selected goal receives the FULL session minutes
+      // so progress toward each independent goal reflects reality.
+      for (const gt of texts) {
+        const key = `${s.projectId}::${gt.toLowerCase()}`;
+        const goal = findGoalByText(s.projectId, gt);
+        const cur = totals.get(key) ?? {
+          key,
+          text: gt,
+          projectId: s.projectId,
+          projectName: s.projectName ?? "Project",
+          projectColor: s.projectColor ?? "#94a3b8",
+          color: goal?.color ?? s.projectColor ?? "#94a3b8",
+          min: 0,
+          targetMinutes: goal?.targetMinutes ?? 0,
+        };
+        cur.min += mins;
+        totals.set(key, cur);
+      }
     }
+
     const rows = [...totals.values()]
       .map((v) => ({ ...v, min: Math.round(v.min) }))
       .sort((a, b) => b.min - a.min);
