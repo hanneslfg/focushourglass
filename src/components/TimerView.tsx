@@ -401,10 +401,27 @@ function AskingControls({
             inputMode="numeric"
             min={1}
             max={240}
-            value={extra}
-            onChange={(e) =>
-              setExtra(Math.max(1, Math.min(240, Number(e.target.value) || 1)))
-            }
+            value={extraInput}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "") { setExtraInput(""); return; }
+              const num = e.currentTarget.valueAsNumber;
+              if (Number.isNaN(num)) return;
+              setExtraInput(val);
+              setExtra(Math.min(240, Math.max(0, Math.floor(num))));
+            }}
+            onBlur={(e) => {
+              const num = e.currentTarget.valueAsNumber;
+              if (e.target.value === "" || Number.isNaN(num) || num < 1) {
+                setExtra(1);
+                setExtraInput("1");
+              } else {
+                const clamped = Math.min(240, Math.max(1, Math.floor(num)));
+                setExtra(clamped);
+                setExtraInput(String(clamped));
+              }
+            }}
             className="w-14 bg-transparent text-center text-base md:text-sm tabular-nums outline-none border-b border-border focus:border-foreground/60 py-1"
           />
           <span className="text-xs uppercase tracking-[0.18em]">min</span>
