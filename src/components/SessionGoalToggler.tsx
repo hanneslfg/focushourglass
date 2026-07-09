@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { getProjectGoals, type ProjectGoal } from "@/lib/goals";
-import { updateSession, type Session } from "@/lib/sessions";
+import { getSessions, updateSession, type Session } from "@/lib/sessions";
 import { updateSessionGoalRemote } from "@/lib/supabase";
 
 interface Props {
@@ -16,17 +16,32 @@ interface Props {
   size?: "xs" | "sm";
 }
 
-export function SessionGoalToggler({ session, projectId, size = "xs" }: Props) {
-  const pid = projectId ?? session.projectId;
+export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs" }: Props) {
+  const pid = projectId ?? sessionProp.projectId;
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
+  // Track the live session from storage so `activeId` reflects the latest
+  // goalId immediately, regardless of whether the parent re-renders with a
+  // fresh session object. This is what guarantees instant pill swap +
+  // instant progress-bar re-render across all consumers.
+  const [session, setSession] = useState<Session>(sessionProp);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => setSession(sessionProp), [sessionProp]);
+
   useEffect(() => {
-    const sync = () => setGoals(pid ? getProjectGoals(pid) : []);
-    sync();
-    window.addEventListener("hourglass:goals", sync);
-    return () => window.removeEventListener("hourglass:goals", sync);
-  }, [pid]);
+    const syncGoals = () => setGoals(pid ? getProjectGoals(pid) : []);
+    const syncSession = () => {
+      const latest = getSessions().find((s) => s.id === sessionProp.id);
+      if (latest) setSession(latest);
+    };
+    syncGoals();
+    window.addEventListener("hourglass:goals", syncGoals);
+    window.addEventListener("hourglass:sessions", syncSession);
+    return () => {
+      window.removeEventListener("hourglass:goals", syncGoals);
+      window.removeEventListener("hourglass:sessions", syncSession);
+    };
+  }, [pid, sessionProp.id]);
 
   if (!pid || goals.length === 0) return null;
 
