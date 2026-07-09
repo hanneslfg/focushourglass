@@ -371,6 +371,8 @@ function AskingControls({
   onAddExtra: (mins: number) => void;
 }) {
   const [extra, setExtra] = useState(10);
+  const [extraInput, setExtraInput] = useState("10");
+  useEffect(() => { setExtraInput(String(extra)); }, [extra]);
   return (
     <div className="flex flex-col items-center gap-5 w-full">
       <div className="text-sm text-muted-foreground text-center">
