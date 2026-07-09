@@ -426,17 +426,9 @@ function RhythmEditor({
               ) : (
                 <Coffee className="h-3.5 w-3.5 text-sky-400/80" strokeWidth={1.75} />
               )}
-              <input
-                type="number"
-                min={1}
-                max={600}
+              <BlockMinutesInput
                 value={b.minutes}
-                onChange={(e) =>
-                  updateBlock(b.id, {
-                    minutes: Math.max(1, Math.min(600, Number(e.target.value) || 1)),
-                  })
-                }
-                className="w-16 bg-background border border-border rounded-md px-2 py-1 text-xs tabular-nums text-center"
+                onCommit={(m) => updateBlock(b.id, { minutes: m })}
               />
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 min
