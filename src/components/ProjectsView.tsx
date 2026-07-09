@@ -8,7 +8,7 @@ import {
   TAG_COLORS,
   type ProjectTag,
 } from "@/lib/projects";
-import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { getSessions, dayKey, sessionGoalTexts, type Session } from "@/lib/sessions";
 import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { SessionGoalToggler } from "./SessionGoalToggler";
