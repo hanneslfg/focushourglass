@@ -354,12 +354,18 @@ function ProjectDetailFull({
         focusedMinutesByGoal={(() => {
           const m = new Map<string, number>();
           for (const s of sessions) {
-            const gt = (s.goalText ?? s.tags?.[0] ?? "").trim().toLowerCase();
-            if (!gt) continue;
-            m.set(gt, (m.get(gt) ?? 0) + (s.focusedMinutes || 0));
+            const texts = sessionGoalTexts(s);
+            if (texts.length === 0) continue;
+            const mins = s.focusedMinutes || 0;
+            for (const t of texts) {
+              const key = t.trim().toLowerCase();
+              if (!key) continue;
+              m.set(key, (m.get(key) ?? 0) + mins);
+            }
           }
           return m;
         })()}
+
       />
 
 
