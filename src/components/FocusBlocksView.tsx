@@ -426,17 +426,9 @@ function RhythmEditor({
               ) : (
                 <Coffee className="h-3.5 w-3.5 text-sky-400/80" strokeWidth={1.75} />
               )}
-              <input
-                type="number"
-                min={1}
-                max={600}
+              <BlockMinutesInput
                 value={b.minutes}
-                onChange={(e) =>
-                  updateBlock(b.id, {
-                    minutes: Math.max(1, Math.min(600, Number(e.target.value) || 1)),
-                  })
-                }
-                className="w-16 bg-background border border-border rounded-md px-2 py-1 text-xs tabular-nums text-center"
+                onCommit={(m) => updateBlock(b.id, { minutes: m })}
               />
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 min
@@ -517,3 +509,45 @@ function RhythmEditor({
 
 // keep imports referenced (silence unused for preset builtins access)
 void BUILTIN_RHYTHMS;
+
+function BlockMinutesInput({
+  value,
+  onCommit,
+}: {
+  value: number;
+  onCommit: (minutes: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => { setDraft(String(value)); }, [value]);
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={1}
+      max={600}
+      value={draft}
+      onFocus={(e) => e.target.select()}
+      onChange={(e) => {
+        const val = e.target.value;
+        if (val === "") { setDraft(""); return; }
+        const num = e.currentTarget.valueAsNumber;
+        if (Number.isNaN(num)) return;
+        setDraft(val);
+        const capped = Math.min(600, Math.max(0, Math.floor(num)));
+        if (capped >= 1) onCommit(capped);
+      }}
+      onBlur={(e) => {
+        const num = e.currentTarget.valueAsNumber;
+        if (e.target.value === "" || Number.isNaN(num) || num < 1) {
+          setDraft("1");
+          onCommit(1);
+        } else {
+          const clamped = Math.min(600, Math.max(1, Math.floor(num)));
+          setDraft(String(clamped));
+          onCommit(clamped);
+        }
+      }}
+      className="w-16 bg-background border border-border rounded-md px-2 py-1 text-xs tabular-nums text-center"
+    />
+  );
+}
