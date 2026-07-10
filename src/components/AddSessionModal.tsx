@@ -128,7 +128,6 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
       completed_at: completedAt,
       was_aborted: false,
       tags: goalText ? [goalText] : undefined,
-      goal_id: goalId || null,
     }).catch(() => ({ ok: false as const, queued: true as const }));
 
 
