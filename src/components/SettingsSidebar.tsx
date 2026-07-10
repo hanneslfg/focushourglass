@@ -26,6 +26,7 @@ import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
