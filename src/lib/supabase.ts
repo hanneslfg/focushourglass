@@ -120,10 +120,12 @@ export interface RemoteSession {
   started_at: string; // ISO
   completed_at: string; // ISO
   was_aborted: boolean;
-  /** Free-form multi-tags for this session. Stored as text[] in Supabase. */
+  /**
+   * Goal-to-Tag bridge: UI Goals are stored here as their exact text names.
+   * The `sessions.tags` text[] column is the SOLE source of truth for
+   * multi-goal selection. There is no `goal_id` column on the live table.
+   */
   tags?: string[];
-  /** UUID of the selected ProjectGoal, or null if none. */
-  goal_id?: string | null;
   /** Focus Score 1–100 computed at finalize time. */
   focus_score?: number | null;
   /** Number of pauses during the session. */
@@ -134,7 +136,6 @@ export interface RemoteSession {
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
-const GOAL_ID_COLUMN_DISABLED_KEY = "hourglass.sessions.goal_id_column_disabled.v1";
 const FOCUS_SCORE_COLUMN_DISABLED_KEY = "hourglass.sessions.focus_score_column_disabled.v1";
 
 type SessionInsertPayload = {
@@ -147,11 +148,11 @@ type SessionInsertPayload = {
   completed_at: string;
   was_aborted: boolean;
   tags?: string[];
-  goal_id?: string | null;
   focus_score?: number | null;
   pause_count?: number | null;
   total_pause_seconds?: number | null;
 };
+
 
 
 
@@ -196,15 +197,6 @@ function disableTagsColumn() {
   safeStorage.setItem(TAGS_COLUMN_DISABLED_KEY, "1");
 }
 
-function goalIdColumnDisabled(): boolean {
-  if (typeof window === "undefined") return false;
-  return safeStorage.getItem(GOAL_ID_COLUMN_DISABLED_KEY) === "1";
-}
-
-function disableGoalIdColumn() {
-  if (typeof window === "undefined") return;
-  safeStorage.setItem(GOAL_ID_COLUMN_DISABLED_KEY, "1");
-}
 
 function focusScoreColumnDisabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -271,10 +263,9 @@ function queuePending(s: RemoteSession) {
 function buildPayload(
   s: RemoteSession,
   userId: string,
-  opts: { includeTags?: boolean; includeGoalId?: boolean; includeFocusScore?: boolean } = {},
+  opts: { includeTags?: boolean; includeFocusScore?: boolean } = {},
 ): SessionInsertPayload {
   const includeTags = opts.includeTags ?? !tagsColumnDisabled();
-  const includeGoalId = opts.includeGoalId ?? !goalIdColumnDisabled();
   const includeFocusScore = opts.includeFocusScore ?? !focusScoreColumnDisabled();
   const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
     ? s.project_tag.trim().slice(0, 120)
@@ -292,12 +283,9 @@ function buildPayload(
     was_aborted: Boolean(s.was_aborted),
   };
   const tags = cleanTags(s.tags);
-  if (includeTags && tags) payload.tags = tags;
-  if (includeGoalId) {
-    // Explicit null when no goal is selected — never undefined or "".
-    const raw = typeof s.goal_id === "string" ? s.goal_id.trim() : "";
-    payload.goal_id = raw.length > 0 ? raw : null;
-  }
+  // Goal-to-Tag bridge: always send an ARRAY (empty when no goals selected)
+  // so a toggle-off actually clears the column instead of leaving stale tags.
+  if (includeTags) payload.tags = tags ?? [];
   if (includeFocusScore) {
     payload.focus_score =
       typeof s.focus_score === "number" && Number.isFinite(s.focus_score)
@@ -339,18 +327,11 @@ async function insertSessionPayload(
       break;
     }
   }
-  if (isMissingColumnError(error, "goal_id") && "goal_id" in payload) {
-    console.warn("[supabase] sessions.goal_id column missing; retrying without goal_id.", error);
-    disableGoalIdColumn();
-    payload = buildPayload(session, userId, { includeGoalId: false });
-    ({ data, error } = await query());
-  }
   if (isMissingColumnError(error, "tags") && "tags" in payload) {
     console.warn("[supabase] sessions.tags column missing; retrying without tags.", error);
     disableTagsColumn();
     payload = buildPayload(session, userId, {
       includeTags: false,
-      includeGoalId: !goalIdColumnDisabled(),
       includeFocusScore: !focusScoreColumnDisabled(),
     });
     ({ data, error } = await query());
@@ -358,6 +339,7 @@ async function insertSessionPayload(
 
   return { data, error, payload };
 }
+
 
 
 
@@ -487,20 +469,23 @@ export async function updateSessionMinutesRemote(opts: {
 }
 
 /**
- * Assign / unassign one or more goals on a previously saved session. Writes
- * the full array to the legacy `tags` text[] column (multi-goal mirror) and
- * the primary/first goal id to the `goal_id` column for older clients.
- * Passing empty arrays clears all goals. Match strategy mirrors
- * `updateSessionMinutesRemote`. Backward-compatible with the previous
- * single-goal signature via optional `goalId` / `goalText`.
+ * Assign / unassign one or more goals on a previously saved session.
+ *
+ * Goal-to-Tag Bridge: The live `public.sessions` table has a single
+ * `tags text[]` column and NO `goal_id` column. UI Goals are matched to
+ * sessions by their exact TEXT name inside the `tags` array. This function
+ * writes the full ordered array of goal names to `tags` (empty array clears
+ * all selections). Passing legacy `goalIds` is accepted for backward compat
+ * but IGNORED — only the text names are persisted.
  */
 export async function updateSessionGoalRemote(opts: {
   id?: string;
   startedAt: string;
   taskName: string;
+  /** Present for legacy call sites; ignored — the bridge is text-only. */
   goalIds?: (string | null)[];
   goalTexts?: (string | null)[];
-  /** @deprecated use goalIds */
+  /** @deprecated use goalTexts */
   goalId?: string | null;
   /** @deprecated use goalTexts */
   goalText?: string | null;
@@ -529,23 +514,20 @@ export async function updateSessionGoalRemote(opts: {
     return out;
   };
 
-  const idList = cleanArr(
-    opts.goalIds ?? (opts.goalId !== undefined ? [opts.goalId] : []),
-  );
   const textList = cleanArr(
     opts.goalTexts ?? (opts.goalText !== undefined ? [opts.goalText] : []),
   );
-  const primaryId = idList[0] ?? null;
 
-  const buildPatch = (includeGoalId: boolean, includeTags: boolean) => {
-    const patch: Record<string, unknown> = {};
-    if (includeGoalId && !goalIdColumnDisabled()) patch.goal_id = primaryId;
-    if (includeTags && !tagsColumnDisabled()) patch.tags = textList;
-    return patch;
-  };
+  if (tagsColumnDisabled()) {
+    // Column missing on this deployment — nothing to write.
+    return { ok: true };
+  }
 
+  // Always send an array (empty = "clear all goals"). This is the whole
+  // persistence contract for multi-goal now that goal_id is gone.
+  const patch: Record<string, unknown> = { tags: textList };
 
-  const runUpdate = async (patch: Record<string, unknown>) => {
+  const runUpdate = async () => {
     if (opts.id) {
       const { data, error } = await supabase
         .from("sessions")
@@ -567,22 +549,11 @@ export async function updateSessionGoalRemote(opts: {
   };
 
   try {
-    let patch = buildPatch(true, true);
-    if (Object.keys(patch).length === 0) return { ok: true };
-    let { error } = await runUpdate(patch);
-    if (isMissingColumnError(error, "goal_id")) {
-      console.warn("[supabase] sessions.goal_id missing; retrying goal update without it.", error);
-      disableGoalIdColumn();
-      patch = buildPatch(false, true);
-      if (Object.keys(patch).length === 0) return { ok: true };
-      ({ error } = await runUpdate(patch));
-    }
+    const { error } = await runUpdate();
     if (isMissingColumnError(error, "tags")) {
-      console.warn("[supabase] sessions.tags missing; retrying goal update without it.", error);
+      console.warn("[supabase] sessions.tags missing; multi-goal disabled locally.", error);
       disableTagsColumn();
-      patch = buildPatch(true, false);
-      if (Object.keys(patch).length === 0) return { ok: true };
-      ({ error } = await runUpdate(patch));
+      return { ok: false };
     }
     if (error) {
       console.error("[supabase] updateSessionGoal failed:", error.message);
@@ -594,6 +565,7 @@ export async function updateSessionGoalRemote(opts: {
     return { ok: false };
   }
 }
+
 
 /**
  * Delete a previously saved session. Matches by row id first, then falls
