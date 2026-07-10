@@ -263,10 +263,9 @@ function queuePending(s: RemoteSession) {
 function buildPayload(
   s: RemoteSession,
   userId: string,
-  opts: { includeTags?: boolean; includeGoalId?: boolean; includeFocusScore?: boolean } = {},
+  opts: { includeTags?: boolean; includeFocusScore?: boolean } = {},
 ): SessionInsertPayload {
   const includeTags = opts.includeTags ?? !tagsColumnDisabled();
-  const includeGoalId = opts.includeGoalId ?? !goalIdColumnDisabled();
   const includeFocusScore = opts.includeFocusScore ?? !focusScoreColumnDisabled();
   const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
     ? s.project_tag.trim().slice(0, 120)
@@ -284,12 +283,9 @@ function buildPayload(
     was_aborted: Boolean(s.was_aborted),
   };
   const tags = cleanTags(s.tags);
-  if (includeTags && tags) payload.tags = tags;
-  if (includeGoalId) {
-    // Explicit null when no goal is selected — never undefined or "".
-    const raw = typeof s.goal_id === "string" ? s.goal_id.trim() : "";
-    payload.goal_id = raw.length > 0 ? raw : null;
-  }
+  // Goal-to-Tag bridge: always send an ARRAY (empty when no goals selected)
+  // so a toggle-off actually clears the column instead of leaving stale tags.
+  if (includeTags) payload.tags = tags ?? [];
   if (includeFocusScore) {
     payload.focus_score =
       typeof s.focus_score === "number" && Number.isFinite(s.focus_score)
@@ -331,18 +327,11 @@ async function insertSessionPayload(
       break;
     }
   }
-  if (isMissingColumnError(error, "goal_id") && "goal_id" in payload) {
-    console.warn("[supabase] sessions.goal_id column missing; retrying without goal_id.", error);
-    disableGoalIdColumn();
-    payload = buildPayload(session, userId, { includeGoalId: false });
-    ({ data, error } = await query());
-  }
   if (isMissingColumnError(error, "tags") && "tags" in payload) {
     console.warn("[supabase] sessions.tags column missing; retrying without tags.", error);
     disableTagsColumn();
     payload = buildPayload(session, userId, {
       includeTags: false,
-      includeGoalId: !goalIdColumnDisabled(),
       includeFocusScore: !focusScoreColumnDisabled(),
     });
     ({ data, error } = await query());
@@ -350,6 +339,7 @@ async function insertSessionPayload(
 
   return { data, error, payload };
 }
+
 
 
 
