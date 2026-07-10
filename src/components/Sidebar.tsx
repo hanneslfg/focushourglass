@@ -105,7 +105,7 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
       <button
         onClick={() => setOpen((v) => !v)}
         className="h-10 w-10 rounded-full overflow-hidden border border-border hover:border-foreground/60 transition-colors flex items-center justify-center bg-card"
-        aria-label="Account"
+        aria-label={t("nav.account")}
         title={user.name}
       >
         {user.avatar ? (
