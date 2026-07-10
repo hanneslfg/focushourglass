@@ -62,16 +62,16 @@ export function SettingsSidebar() {
           <header className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div>
               <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Preferences
+                {t("settings.preferences")}
               </div>
               <h2 className="font-display text-2xl tracking-tight mt-0.5 flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" strokeWidth={1.5} /> Settings
+                <SettingsIcon className="h-5 w-5" strokeWidth={1.5} /> {t("settings.title")}
               </h2>
             </div>
             <button
               onClick={() => setOpen(false)}
               className="h-10 w-10 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center touch-manipulation"
-              aria-label="Close"
+              aria-label={t("common.close")}
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
