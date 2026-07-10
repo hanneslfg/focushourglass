@@ -120,10 +120,12 @@ export interface RemoteSession {
   started_at: string; // ISO
   completed_at: string; // ISO
   was_aborted: boolean;
-  /** Free-form multi-tags for this session. Stored as text[] in Supabase. */
+  /**
+   * Goal-to-Tag bridge: UI Goals are stored here as their exact text names.
+   * The `sessions.tags` text[] column is the SOLE source of truth for
+   * multi-goal selection. There is no `goal_id` column on the live table.
+   */
   tags?: string[];
-  /** UUID of the selected ProjectGoal, or null if none. */
-  goal_id?: string | null;
   /** Focus Score 1–100 computed at finalize time. */
   focus_score?: number | null;
   /** Number of pauses during the session. */
@@ -134,7 +136,6 @@ export interface RemoteSession {
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
-const GOAL_ID_COLUMN_DISABLED_KEY = "hourglass.sessions.goal_id_column_disabled.v1";
 const FOCUS_SCORE_COLUMN_DISABLED_KEY = "hourglass.sessions.focus_score_column_disabled.v1";
 
 type SessionInsertPayload = {
@@ -147,11 +148,11 @@ type SessionInsertPayload = {
   completed_at: string;
   was_aborted: boolean;
   tags?: string[];
-  goal_id?: string | null;
   focus_score?: number | null;
   pause_count?: number | null;
   total_pause_seconds?: number | null;
 };
+
 
 
 
