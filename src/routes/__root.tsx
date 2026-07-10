@@ -17,6 +17,7 @@ import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
+import "@/lib/i18n";
 
 function NotFoundComponent() {
   return (
