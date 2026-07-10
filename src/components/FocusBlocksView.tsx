@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 import {
   Play,
   Plus,
@@ -39,6 +40,7 @@ function fmtHM(mins: number) {
 }
 
 export function FocusBlocksView() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [rhythms, setRhythms] = useState<Rhythm[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -63,22 +65,22 @@ export function FocusBlocksView() {
 
   function handleActivate(r: Rhythm) {
     activateRhythm(r.id, 0);
-    toast(`${r.name} activated`, {
-      description: "The main timer will run through this rhythm.",
+    toast(t("focusBlocks.activatedToast", { name: r.name }), {
+      description: t("focusBlocks.activatedDesc"),
     });
     navigate({ to: "/" });
   }
 
   function handleDeactivate() {
     deactivateRhythm();
-    toast("Rhythm deactivated");
+    toast(t("focusBlocks.deactivatedToast"));
   }
 
   function handleNewCustom() {
     const id = `custom.${crypto.randomUUID()}`;
     setEditing({
       id,
-      name: "Custom rhythm",
+      name: t("focusBlocks.customRhythmName"),
       builtin: false,
       blocks: [
         { id: crypto.randomUUID(), kind: "focus", minutes: 50 },
@@ -94,21 +96,19 @@ export function FocusBlocksView() {
     <div className="w-full max-w-4xl mx-auto px-6 md:px-10 py-10 md:py-14">
       <header className="mb-10">
         <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-          Custom rhythms
+          {t("focusBlocks.eyebrow")}
         </div>
         <h1 className="font-display text-4xl md:text-5xl tracking-tight mt-1">
-          Focus Blocks
+          {t("focusBlocks.title")}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground max-w-xl">
-          Chain focus and break intervals into a rhythm. When activated, the
-          main timer flows through every block back-to-back — no re-configuring
-          between rounds.
+          {t("focusBlocks.subtitle")}
         </p>
       </header>
 
       {/* Built-ins */}
       <section className="mb-10">
-        <SectionLabel>Presets</SectionLabel>
+        <SectionLabel>{t("focusBlocks.presets")}</SectionLabel>
         <div className="grid gap-3 md:grid-cols-2">
           {builtins.map((r) => (
             <RhythmCard
@@ -128,21 +128,21 @@ export function FocusBlocksView() {
       {/* Custom */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <SectionLabel>Your rhythms</SectionLabel>
+          <SectionLabel>{t("focusBlocks.yourRhythms")}</SectionLabel>
           <button
             onClick={handleNewCustom}
             className="inline-flex items-center gap-1.5 text-xs px-3 min-h-9 rounded-md border border-border hover:border-foreground/60 transition-colors"
           >
-            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> New rhythm
+            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("focusBlocks.newRhythm")}
           </button>
         </div>
         {customs.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/70 bg-background/30 px-6 py-10 text-center">
             <p className="text-sm text-muted-foreground">
-              No custom rhythms yet.
+              {t("focusBlocks.noCustomYet")}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground/60">
-              Build one by chaining focus and break blocks in any order.
+              {t("focusBlocks.buildOneHint")}
             </p>
           </div>
         ) : (
@@ -158,7 +158,7 @@ export function FocusBlocksView() {
                 onEdit={() => setEditing(r)}
                 onDelete={() => {
                   deleteCustomRhythm(r.id);
-                  toast(`${r.name} deleted`);
+                  toast(t("focusBlocks.deletedToast", { name: r.name }));
                 }}
               />
             ))}
@@ -173,7 +173,7 @@ export function FocusBlocksView() {
           onSave={(r) => {
             saveCustomRhythm(r);
             setEditing(null);
-            toast(`${r.name} saved`);
+            toast(t("focusBlocks.savedToast", { name: r.name }));
           }}
         />
       )}
@@ -206,6 +206,7 @@ function RhythmCard({
   onEdit: (() => void) | null;
   onDelete: (() => void) | null;
 }) {
+  const { t } = useTranslation();
   const total = totalMinutes(rhythm.blocks);
   const focusCount = rhythm.blocks.filter((b) => b.kind === "focus").length;
   return (
@@ -225,7 +226,7 @@ function RhythmCard({
         </div>
         {isActive && (
           <span className="shrink-0 text-[9px] uppercase tracking-[0.24em] text-primary border border-primary/40 rounded-full px-2 py-0.5">
-            Active
+            {t("focusBlocks.active")}
           </span>
         )}
       </div>
@@ -239,7 +240,10 @@ function RhythmCard({
 
       <div className="mt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70">
         <span>
-          {focusCount} focus · {rhythm.blocks.length - focusCount} break
+          {t("focusBlocks.focusCount", {
+            focus: focusCount,
+            break: rhythm.blocks.length - focusCount,
+          })}
         </span>
         <span className="tabular-nums">{fmtHM(total)}</span>
       </div>
@@ -250,14 +254,14 @@ function RhythmCard({
             onClick={onDeactivate}
             className="inline-flex items-center gap-1.5 px-3 min-h-9 rounded-md border border-border text-xs hover:border-foreground/60 transition-colors"
           >
-            <Pause className="h-3.5 w-3.5" strokeWidth={1.75} /> Deactivate
+            <Pause className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("focusBlocks.deactivate")}
           </button>
         ) : (
           <button
             onClick={onActivate}
             className="inline-flex items-center gap-1.5 px-3 min-h-9 rounded-md bg-foreground text-background text-xs font-medium hover:opacity-90 transition-opacity"
           >
-            <Play className="h-3.5 w-3.5" strokeWidth={2} /> Activate
+            <Play className="h-3.5 w-3.5" strokeWidth={2} /> {t("focusBlocks.activate")}
           </button>
         )}
         {onEdit && (
@@ -265,14 +269,14 @@ function RhythmCard({
             onClick={onEdit}
             className="inline-flex items-center gap-1.5 px-3 min-h-9 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:border-foreground/60 transition-colors"
           >
-            <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} /> Edit
+            <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("focusBlocks.edit")}
           </button>
         )}
         {onDelete && (
           <button
             onClick={onDelete}
             className="ml-auto inline-flex items-center gap-1.5 px-2.5 min-h-9 rounded-md text-xs text-muted-foreground/70 hover:text-destructive transition-colors"
-            aria-label="Delete"
+            aria-label={t("focusBlocks.delete")}
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
@@ -290,6 +294,7 @@ export function BlockTimeline({
   blocks: RhythmBlock[];
   currentIndex: number;
 }) {
+  const { t } = useTranslation();
   const total = totalMinutes(blocks) || 1;
   return (
     <div className="flex h-2 w-full gap-[3px] overflow-hidden rounded-full">
@@ -321,7 +326,7 @@ export function BlockTimeline({
                   : "0 0 8px hsl(200 70% 55% / 0.5)"
                 : "none",
             }}
-            title={`${isFocus ? "Focus" : "Break"} · ${b.minutes} min`}
+            title={`${isFocus ? t("focusBlocks.focus") : t("focusBlocks.break")} · ${b.minutes} ${t("focusBlocks.min")}`}
           />
         );
       })}
@@ -340,6 +345,7 @@ function RhythmEditor({
   onClose: () => void;
   onSave: (r: Rhythm) => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(initial.name);
   const [blocks, setBlocks] = useState<RhythmBlock[]>(initial.blocks);
 
@@ -384,19 +390,19 @@ function RhythmEditor({
         <header className="flex items-center justify-between mb-5">
           <div>
             <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-              Rhythm builder
+              {t("focusBlocks.rhythmBuilder")}
             </div>
             <input
               value={name}
               onChange={(e) => setName(e.target.value.slice(0, 40))}
               className="mt-1 font-display text-2xl tracking-tight bg-transparent outline-none border-b border-border focus:border-foreground/60 w-full"
-              placeholder="Rhythm name"
+              placeholder={t("focusBlocks.rhythmName")}
             />
           </div>
           <button
             onClick={onClose}
             className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center shrink-0 ml-3"
-            aria-label="Close"
+            aria-label={t("focusBlocks.close")}
           >
             <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -418,8 +424,8 @@ function RhythmEditor({
                 }
                 className="bg-background border border-border rounded-md px-2 py-1 text-xs"
               >
-                <option value="focus">Focus</option>
-                <option value="break">Break</option>
+                <option value="focus">{t("focusBlocks.focus")}</option>
+                <option value="break">{t("focusBlocks.break")}</option>
               </select>
               {b.kind === "focus" ? (
                 <Focus className="h-3.5 w-3.5 text-amber-400/80" strokeWidth={1.75} />
@@ -431,14 +437,14 @@ function RhythmEditor({
                 onCommit={(m) => updateBlock(b.id, { minutes: m })}
               />
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                min
+                {t("focusBlocks.min")}
               </span>
               <div className="ml-auto flex items-center gap-1">
                 <button
                   onClick={() => move(b.id, -1)}
                   disabled={i === 0}
                   className="h-7 w-7 rounded-md border border-border hover:border-foreground/60 flex items-center justify-center disabled:opacity-30"
-                  aria-label="Move up"
+                  aria-label={t("focusBlocks.moveUp")}
                 >
                   <ArrowUp className="h-3 w-3" strokeWidth={1.75} />
                 </button>
@@ -446,14 +452,14 @@ function RhythmEditor({
                   onClick={() => move(b.id, 1)}
                   disabled={i === blocks.length - 1}
                   className="h-7 w-7 rounded-md border border-border hover:border-foreground/60 flex items-center justify-center disabled:opacity-30"
-                  aria-label="Move down"
+                  aria-label={t("focusBlocks.moveDown")}
                 >
                   <ArrowDown className="h-3 w-3" strokeWidth={1.75} />
                 </button>
                 <button
                   onClick={() => removeBlock(b.id)}
                   className="h-7 w-7 rounded-md text-muted-foreground/70 hover:text-destructive flex items-center justify-center"
-                  aria-label="Remove"
+                  aria-label={t("focusBlocks.remove")}
                 >
                   <Trash2 className="h-3 w-3" strokeWidth={1.75} />
                 </button>
@@ -467,16 +473,16 @@ function RhythmEditor({
             onClick={() => addBlock("focus")}
             className="inline-flex items-center gap-1.5 text-xs px-3 min-h-9 rounded-md border border-border hover:border-foreground/60"
           >
-            <Plus className="h-3.5 w-3.5" /> Focus block
+            <Plus className="h-3.5 w-3.5" /> {t("focusBlocks.focusBlock")}
           </button>
           <button
             onClick={() => addBlock("break")}
             className="inline-flex items-center gap-1.5 text-xs px-3 min-h-9 rounded-md border border-border hover:border-foreground/60"
           >
-            <Plus className="h-3.5 w-3.5" /> Break block
+            <Plus className="h-3.5 w-3.5" /> {t("focusBlocks.breakBlock")}
           </button>
           <span className="ml-auto text-[10px] uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
-            Total {fmtHM(totalMinutes(blocks))}
+            {t("focusBlocks.total", { time: fmtHM(totalMinutes(blocks)) })}
           </span>
         </div>
 
@@ -485,13 +491,13 @@ function RhythmEditor({
             onClick={onClose}
             className="px-4 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60"
           >
-            Cancel
+            {t("focusBlocks.cancel")}
           </button>
           <button
             onClick={() =>
               onSave({
                 ...initial,
-                name: name.trim() || "Untitled rhythm",
+                name: name.trim() || t("focusBlocks.untitledRhythm"),
                 blocks,
                 builtin: false,
               })
@@ -499,7 +505,7 @@ function RhythmEditor({
             disabled={!canSave}
             className="inline-flex items-center gap-1.5 px-4 min-h-10 rounded-md bg-foreground text-background text-sm font-medium disabled:opacity-40 hover:opacity-90"
           >
-            <Check className="h-3.5 w-3.5" strokeWidth={2} /> Save rhythm
+            <Check className="h-3.5 w-3.5" strokeWidth={2} /> {t("focusBlocks.saveRhythm")}
           </button>
         </div>
       </div>
