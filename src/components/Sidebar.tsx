@@ -193,8 +193,8 @@ export function Sidebar() {
           <button
             onClick={openSettings}
             className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            aria-label="Settings"
-            title="Settings"
+            aria-label={t("nav.settings")}
+            title={t("nav.settings")}
           >
             <SettingsIcon className="h-4 w-4" strokeWidth={1.5} />
           </button>
