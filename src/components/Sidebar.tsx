@@ -155,11 +155,12 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
 
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { t } = useI18n();
   const items = [
-    { to: "/", label: "Timer", icon: HourglassIcon },
-    { to: "/projects", label: "Projects", icon: FolderKanban },
-    { to: "/analytics", label: "Analytics", icon: BarChart3 },
-    { to: "/focus-blocks", label: "Focus Blocks", icon: Layers },
+    { to: "/", label: t("nav.timer"), icon: HourglassIcon },
+    { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
+    { to: "/analytics", label: t("nav.analytics"), icon: BarChart3 },
+    { to: "/focus-blocks", label: t("nav.focusBlocks"), icon: Layers },
   ];
   return (
     <>
