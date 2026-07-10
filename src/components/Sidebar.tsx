@@ -156,7 +156,7 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
 
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const items = [
     { to: "/", label: t("nav.timer"), icon: HourglassIcon },
     { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
