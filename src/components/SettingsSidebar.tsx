@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Settings as SettingsIcon,
   X,
@@ -9,6 +10,7 @@ import {
   Plus,
   Target,
   Eye,
+  Languages,
 } from "lucide-react";
 import {
   getSettings,
@@ -20,6 +22,7 @@ import {
 } from "@/lib/settings";
 import { playClick } from "@/lib/click";
 import { LegalFooter } from "@/components/LegalFooter";
+import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from "@/lib/i18n";
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
