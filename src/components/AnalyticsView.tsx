@@ -20,6 +20,7 @@ import {
 import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
 import { SessionGoalToggler } from "./SessionGoalToggler";
+import { SessionTimeBreakdown } from "./SessionTimeBreakdown";
 
 /* =================== Helpers =================== */
 
