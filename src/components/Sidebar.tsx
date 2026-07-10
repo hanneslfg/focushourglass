@@ -74,6 +74,7 @@ function useAuthUser(): AuthUser | null {
 
 function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
   const user = useAuthUser();
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
 
