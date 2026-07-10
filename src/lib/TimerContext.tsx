@@ -451,7 +451,6 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         completed_at: completedAt,
         was_aborted: false,
         tags: goalText ? [goalText] : undefined,
-        goal_id: goalId ?? null,
         focus_score: focusScore,
         pause_count: pauseCount,
         total_pause_seconds: totalPauseSeconds,
