@@ -1,10 +1,12 @@
 /**
  * Inline goal pills rendered on a completed session row. Supports
- * multi-select: tapping an inactive pill adds that goal to the session;
- * tapping an active pill removes it. All selected goals share the full
- * focused-minutes of the session for progress aggregation.
- * Updates both the local cache (instant UI + goal-progress recalculation)
- * and Supabase (`goal_id` primary + `tags[]` full multi-goal mirror).
+ * multi-select: tapping an inactive pill adds that goal's TEXT NAME to the
+ * session's `tags` array; tapping an active pill removes it.
+ *
+ * Goal-to-Tag Bridge: There is no `goal_id` column on the live sessions
+ * table. A Goal in the UI is considered "on" for a session iff its exact
+ * text name (case-insensitive) appears in `session.tags`. All selected
+ * goals share the full focused-minutes of the session in aggregation.
  */
 import { useEffect, useState } from "react";
 import { getProjectGoals, type ProjectGoal } from "@/lib/goals";
@@ -43,17 +45,14 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
 
   if (!pid || goals.length === 0) return null;
 
-  // Compute currently active goal IDs from the session. Match by goal id
-  // first (primary), then by each text in `tags` (multi), then legacy
-  // `goalText`.
+  // Match Goal (UI object) ↔ tags (text[] in DB) purely by lowercased
+  // goal.text — this is the ONLY bridge; goal_id is not persisted.
+  const activeTexts = new Set(
+    sessionGoalTexts(session).map((t) => t.toLowerCase()),
+  );
   const activeIds = new Set<string>();
-  const texts = sessionGoalTexts(session);
-  for (const t of texts) {
-    const g = goals.find((x) => x.text.trim().toLowerCase() === t.toLowerCase());
-    if (g) activeIds.add(g.id);
-  }
-  if (session.goalId && goals.some((g) => g.id === session.goalId)) {
-    activeIds.add(session.goalId);
+  for (const g of goals) {
+    if (activeTexts.has(g.text.trim().toLowerCase())) activeIds.add(g.id);
   }
 
   const toggle = (g: ProjectGoal, e: React.MouseEvent | React.KeyboardEvent) => {
@@ -65,17 +64,14 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
     if (isActive) nextIds.delete(g.id);
     else nextIds.add(g.id);
 
-    // Resolve to ordered arrays following the current `goals` order for
-    // stable text/id sequencing.
-    const orderedIds = goals.filter((x) => nextIds.has(x.id)).map((x) => x.id);
+    // Ordered text list following the current `goals` order for stability.
     const orderedTexts = goals.filter((x) => nextIds.has(x.id)).map((x) => x.text);
-    const primaryId = orderedIds[0];
     const primaryText = orderedTexts[0];
 
-    // Optimistic local update — refreshes progress bars, daily totals and
-    // analytics via the "hourglass:sessions" event.
+    // Optimistic local update — writes tags AND clears any stale goalId so
+    // toggling off actually rolls the pill back to muted immediately.
     updateSession(session.id, {
-      goalId: primaryId ?? undefined,
+      goalId: undefined,
       goalText: primaryText ?? undefined,
       tags: orderedTexts,
     });
@@ -83,10 +79,10 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
       id: session.id,
       startedAt: session.startedAt,
       taskName: session.task,
-      goalIds: orderedIds,
       goalTexts: orderedTexts,
     }).finally(() => setBusy(false));
   };
+
 
   const dims =
     size === "xs"
