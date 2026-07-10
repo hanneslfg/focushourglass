@@ -146,7 +146,7 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
               className="w-full inline-flex items-center gap-2 px-2.5 h-8 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors disabled:opacity-50"
             >
               <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
-              Sign out
+              {t("nav.signOut")}
             </button>
           </div>
         </>
