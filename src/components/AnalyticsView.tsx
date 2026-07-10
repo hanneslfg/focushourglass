@@ -548,6 +548,7 @@ function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Se
           >
             {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
           </div>
+          <SessionTimeBreakdown session={s} className="mt-1" />
         </div>
         {onDelete && (
           <button
