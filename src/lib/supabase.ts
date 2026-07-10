@@ -469,20 +469,23 @@ export async function updateSessionMinutesRemote(opts: {
 }
 
 /**
- * Assign / unassign one or more goals on a previously saved session. Writes
- * the full array to the legacy `tags` text[] column (multi-goal mirror) and
- * the primary/first goal id to the `goal_id` column for older clients.
- * Passing empty arrays clears all goals. Match strategy mirrors
- * `updateSessionMinutesRemote`. Backward-compatible with the previous
- * single-goal signature via optional `goalId` / `goalText`.
+ * Assign / unassign one or more goals on a previously saved session.
+ *
+ * Goal-to-Tag Bridge: The live `public.sessions` table has a single
+ * `tags text[]` column and NO `goal_id` column. UI Goals are matched to
+ * sessions by their exact TEXT name inside the `tags` array. This function
+ * writes the full ordered array of goal names to `tags` (empty array clears
+ * all selections). Passing legacy `goalIds` is accepted for backward compat
+ * but IGNORED — only the text names are persisted.
  */
 export async function updateSessionGoalRemote(opts: {
   id?: string;
   startedAt: string;
   taskName: string;
+  /** Present for legacy call sites; ignored — the bridge is text-only. */
   goalIds?: (string | null)[];
   goalTexts?: (string | null)[];
-  /** @deprecated use goalIds */
+  /** @deprecated use goalTexts */
   goalId?: string | null;
   /** @deprecated use goalTexts */
   goalText?: string | null;
@@ -511,23 +514,20 @@ export async function updateSessionGoalRemote(opts: {
     return out;
   };
 
-  const idList = cleanArr(
-    opts.goalIds ?? (opts.goalId !== undefined ? [opts.goalId] : []),
-  );
   const textList = cleanArr(
     opts.goalTexts ?? (opts.goalText !== undefined ? [opts.goalText] : []),
   );
-  const primaryId = idList[0] ?? null;
 
-  const buildPatch = (includeGoalId: boolean, includeTags: boolean) => {
-    const patch: Record<string, unknown> = {};
-    if (includeGoalId && !goalIdColumnDisabled()) patch.goal_id = primaryId;
-    if (includeTags && !tagsColumnDisabled()) patch.tags = textList;
-    return patch;
-  };
+  if (tagsColumnDisabled()) {
+    // Column missing on this deployment — nothing to write.
+    return { ok: true };
+  }
 
+  // Always send an array (empty = "clear all goals"). This is the whole
+  // persistence contract for multi-goal now that goal_id is gone.
+  const patch: Record<string, unknown> = { tags: textList };
 
-  const runUpdate = async (patch: Record<string, unknown>) => {
+  const runUpdate = async () => {
     if (opts.id) {
       const { data, error } = await supabase
         .from("sessions")
@@ -549,22 +549,11 @@ export async function updateSessionGoalRemote(opts: {
   };
 
   try {
-    let patch = buildPatch(true, true);
-    if (Object.keys(patch).length === 0) return { ok: true };
-    let { error } = await runUpdate(patch);
-    if (isMissingColumnError(error, "goal_id")) {
-      console.warn("[supabase] sessions.goal_id missing; retrying goal update without it.", error);
-      disableGoalIdColumn();
-      patch = buildPatch(false, true);
-      if (Object.keys(patch).length === 0) return { ok: true };
-      ({ error } = await runUpdate(patch));
-    }
+    const { error } = await runUpdate();
     if (isMissingColumnError(error, "tags")) {
-      console.warn("[supabase] sessions.tags missing; retrying goal update without it.", error);
+      console.warn("[supabase] sessions.tags missing; multi-goal disabled locally.", error);
       disableTagsColumn();
-      patch = buildPatch(true, false);
-      if (Object.keys(patch).length === 0) return { ok: true };
-      ({ error } = await runUpdate(patch));
+      return { ok: false };
     }
     if (error) {
       console.error("[supabase] updateSessionGoal failed:", error.message);
@@ -576,6 +565,7 @@ export async function updateSessionGoalRemote(opts: {
     return { ok: false };
   }
 }
+
 
 /**
  * Delete a previously saved session. Matches by row id first, then falls
