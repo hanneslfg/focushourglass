@@ -13,6 +13,7 @@ import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { SessionGoalToggler } from "./SessionGoalToggler";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
+import { SessionTimeBreakdown } from "./SessionTimeBreakdown";
 
 function fmtHours(mins: number) {
   if (mins < 60) return `${mins}m`;
