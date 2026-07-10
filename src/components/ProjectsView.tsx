@@ -13,6 +13,7 @@ import { findGoalByText } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { SessionGoalToggler } from "./SessionGoalToggler";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
+import { SessionTimeBreakdown } from "./SessionTimeBreakdown";
 
 function fmtHours(mins: number) {
   if (mins < 60) return `${mins}m`;
@@ -452,6 +453,7 @@ function ProjectDetailFull({
                           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
                             {formatTime(new Date(s.startedAt || s.completedAt))}
                           </div>
+                          <SessionTimeBreakdown session={s} className="mt-1" />
                           <div className="mt-1.5">
                             <SessionGoalToggler session={s} projectId={project.id} />
                           </div>

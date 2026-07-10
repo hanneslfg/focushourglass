@@ -20,6 +20,7 @@ import {
 import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
 import { SessionGoalToggler } from "./SessionGoalToggler";
+import { SessionTimeBreakdown } from "./SessionTimeBreakdown";
 
 /* =================== Helpers =================== */
 
@@ -547,6 +548,7 @@ function TimerBlockCard({ s, onClick, onDelete }: { s: Session; onClick?: (s: Se
           >
             {fmtClock(s.startedAt)} — {fmtClockFromStart(s.startedAt, s.focusedMinutes)}
           </div>
+          <SessionTimeBreakdown session={s} className="mt-1" />
         </div>
         {onDelete && (
           <button
