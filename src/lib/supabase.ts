@@ -197,15 +197,6 @@ function disableTagsColumn() {
   safeStorage.setItem(TAGS_COLUMN_DISABLED_KEY, "1");
 }
 
-function goalIdColumnDisabled(): boolean {
-  if (typeof window === "undefined") return false;
-  return safeStorage.getItem(GOAL_ID_COLUMN_DISABLED_KEY) === "1";
-}
-
-function disableGoalIdColumn() {
-  if (typeof window === "undefined") return;
-  safeStorage.setItem(GOAL_ID_COLUMN_DISABLED_KEY, "1");
-}
 
 function focusScoreColumnDisabled(): boolean {
   if (typeof window === "undefined") return false;
