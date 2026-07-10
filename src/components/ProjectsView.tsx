@@ -453,6 +453,7 @@ function ProjectDetailFull({
                           <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mt-0.5">
                             {formatTime(new Date(s.startedAt || s.completedAt))}
                           </div>
+                          <SessionTimeBreakdown session={s} className="mt-1" />
                           <div className="mt-1.5">
                             <SessionGoalToggler session={s} projectId={project.id} />
                           </div>
