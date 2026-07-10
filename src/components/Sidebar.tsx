@@ -90,8 +90,8 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
         className={`group flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/60 transition-colors disabled:opacity-50 ${
           collapsed ? "h-10 w-10" : "h-10 w-10"
         }`}
-        aria-label="Sign in"
-        title="Sign in with Google"
+        aria-label={t("nav.signIn")}
+        title={t("nav.signInWithGoogle")}
       >
         <UserIcon className="h-4 w-4" strokeWidth={1.5} />
       </button>
