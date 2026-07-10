@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Minus, Plus, Play, Pause, Check, X, Coffee, Focus as FocusIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Hourglass } from "./Hourglass";
