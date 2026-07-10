@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Minus, Plus, Play, Pause, Check, X, Coffee, Focus as FocusIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Hourglass } from "./Hourglass";
@@ -24,6 +25,7 @@ function fmt(seconds: number) {
 }
 
 export function TimerView() {
+  const { t } = useTranslation();
   const {
     task,
     setTask,
@@ -107,8 +109,8 @@ export function TimerView() {
               <span className="text-foreground/70">{rhythm.rhythm.name}</span>
               <span className="mx-1.5 opacity-40">•</span>
               <span>
-                Block {rhythm.index + 1}/{rhythm.rhythm.blocks.length}:{" "}
-                {blockKind === "break" ? "Break" : "Focus"}
+                {t("timer.block", { n: rhythm.index + 1, total: rhythm.rhythm.blocks.length })}:{" "}
+                {blockKind === "break" ? t("timer.break") : t("timer.focus")}
               </span>
             </span>
             <span className="ml-1 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -116,14 +118,14 @@ export function TimerView() {
                 to="/focus-blocks"
                 className="text-[10px] uppercase tracking-[0.18em] hover:text-foreground transition-colors"
               >
-                Edit
+                {t("common.edit")}
               </Link>
               <button
                 onClick={() => deactivateRhythm()}
                 className="text-[10px] uppercase tracking-[0.18em] hover:text-destructive transition-colors"
-                title="Stop this rhythm"
+                title={t("timer.stopRhythm")}
               >
-                End
+                {t("timer.end")}
               </button>
             </span>
           </div>
@@ -132,14 +134,14 @@ export function TimerView() {
         {/* Task */}
         <div className="w-full">
           <label className="block text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2 text-center">
-            One thing
+            {t("timer.oneThing")}
           </label>
           <input
             value={task}
             onChange={(e) => setTask(e.target.value.slice(0, 60))}
             disabled={locked}
             maxLength={60}
-            placeholder="What are you working on?"
+            placeholder={t("timer.placeholder")}
             className="w-full bg-transparent text-center font-display text-xl md:text-3xl tracking-tight placeholder:text-muted-foreground/50 border-b border-border focus:border-foreground/60 outline-none py-3 transition-colors disabled:opacity-90"
           />
           <div className="mt-1 text-[10px] text-right text-muted-foreground/60 tabular-nums">
@@ -201,7 +203,7 @@ export function TimerView() {
               <button
                 onClick={() => { playClick(); setMinutes(Math.max(1, minutes - 5)); }}
                 className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
-                aria-label="Decrease minutes"
+                aria-label={t("timer.decreaseMinutes")}
               >
                 <Minus className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.5} />
               </button>
@@ -213,22 +215,17 @@ export function TimerView() {
                 value={minuteInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
-                  // Allow empty string while user is actively editing.
                   const val = e.target.value;
                   if (val === "") {
                     setMinuteInput("");
                     return;
                   }
-                  // Strictly parse as a number; ignore non-numeric input.
                   const num = e.currentTarget.valueAsNumber;
                   if (Number.isNaN(num)) return;
                   setMinuteInput(val);
-                  // Cap at max only; do NOT clamp min during typing (would turn 0 → 1
-                  // and cause subsequent digits to concatenate onto "1").
                   setMinutes(Math.min(600, Math.max(0, Math.floor(num))));
                 }}
                 onBlur={(e) => {
-                  // Smart fallback: only when the field is left empty or below 1.
                   const num = e.currentTarget.valueAsNumber;
                   if (e.target.value === "" || Number.isNaN(num) || num < 1) {
                     setMinutes(1);
@@ -241,28 +238,28 @@ export function TimerView() {
                 }}
                 className="w-16 bg-transparent text-center text-base md:text-sm tabular-nums outline-none border-b border-border focus:border-foreground/60 py-1"
               />
-              <span className="text-xs uppercase tracking-[0.18em]">min</span>
+              <span className="text-xs uppercase tracking-[0.18em]">{t("common.min")}</span>
               <button
                 onClick={() => { playClick(); setMinutes(Math.min(600, minutes + 5)); }}
                 className="h-11 w-11 md:h-9 md:w-9 rounded-full border border-border active:bg-accent hover:text-foreground hover:border-foreground/60 transition-colors flex items-center justify-center touch-manipulation"
-                aria-label="Increase minutes"
+                aria-label={t("timer.increaseMinutes")}
               >
                 <Plus className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.5} />
               </button>
             </div>
           ) : (
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              {phase === "running" && (blockKind === "break" ? "Resting" : "Focusing")}
-              {phase === "paused" && "Paused"}
-              {phase === "asking" && "Time up"}
+              {phase === "running" && (blockKind === "break" ? t("timer.resting") : t("timer.focusing"))}
+              {phase === "paused" && t("timer.paused")}
+              {phase === "asking" && t("timer.timeUp")}
               
-              {phase === "complete" && "Done"}
+              {phase === "complete" && t("timer.done")}
             </div>
 
           )}
           {endTimeLabel && (
             <div className="text-[11px] text-muted-foreground/50 tracking-wide tabular-nums">
-              Ends at {endTimeLabel}
+              {t("timer.endsAt", { time: endTimeLabel })}
             </div>
           )}
         </div>
@@ -275,20 +272,20 @@ export function TimerView() {
         ) : showAbortConfirm ? (
           <div className="flex flex-col items-center gap-4 w-full rounded-lg border border-border bg-card p-5">
             <p className="text-sm text-center text-foreground">
-              Are you sure? This session will not be saved.
+              {t("timer.areYouSure")}
             </p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowAbortConfirm(false)}
                 className="px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => { setShowAbortConfirm(false); abort(); }}
                 className="px-5 min-h-10 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
               >
-                Confirm
+                {t("common.confirm")}
               </button>
             </div>
           </div>
@@ -299,19 +296,19 @@ export function TimerView() {
               className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md bg-foreground/80 text-background text-sm font-medium hover:bg-foreground active:opacity-80 transition-all touch-manipulation"
             >
               <Pause className="h-3.5 w-3.5" strokeWidth={2} />
-              {phase === "paused" ? "Resume" : "Pause"}
+              {phase === "paused" ? t("timer.resume") : t("timer.pause")}
             </button>
             <button
               onClick={finalize}
               className="inline-flex items-center justify-center gap-2 px-5 min-h-10 rounded-md border border-border text-sm hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
-              <Check className="h-4 w-4" strokeWidth={1.75} /> Complete
+              <Check className="h-4 w-4" strokeWidth={1.75} /> {t("timer.complete")}
             </button>
             <button
               onClick={() => setShowAbortConfirm(true)}
               className="inline-flex items-center justify-center gap-1.5 px-3 min-h-10 rounded-md border border-border/60 text-xs text-muted-foreground hover:border-foreground/40 active:bg-accent transition-colors touch-manipulation"
             >
-              <X className="h-3.5 w-3.5" strokeWidth={1.75} /> Abort
+              <X className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("timer.abort")}
             </button>
           </div>
         ) : (
@@ -324,27 +321,27 @@ export function TimerView() {
               disabled={!canStart}
               className="col-span-2 md:col-span-1 inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md bg-foreground text-background text-base md:text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:opacity-90 active:opacity-80 transition-opacity touch-manipulation"
             >
-              <Play className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={2} /> Start
+              <Play className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={2} /> {t("timer.start")}
             </button>
             <button
               disabled
               className="inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md border border-border text-base md:text-sm disabled:opacity-30 hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
               <Pause className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} />
-              Pause
+              {t("timer.pause")}
             </button>
             <button
               disabled
               className="inline-flex items-center justify-center gap-2 px-5 min-h-12 md:min-h-0 md:py-2.5 rounded-md border border-border text-base md:text-sm disabled:opacity-30 hover:border-foreground/60 active:bg-accent transition-colors touch-manipulation"
             >
-              <Check className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} /> Complete
+              <Check className="h-4 w-4 md:h-3.5 md:w-3.5" strokeWidth={1.75} /> {t("timer.complete")}
             </button>
           </div>
         )}
 
         {!canStart && phase === "idle" && (
           <p className="text-[11px] text-muted-foreground/70 -mt-4">
-            Name your one thing to begin.
+            {t("timer.nameYourThing")}
           </p>
         )}
       </div>

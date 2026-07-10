@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Hourglass as HourglassIcon,
   FolderKanban,
@@ -73,6 +74,7 @@ function useAuthUser(): AuthUser | null {
 
 function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
   const user = useAuthUser();
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -88,8 +90,8 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
         className={`group flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/60 transition-colors disabled:opacity-50 ${
           collapsed ? "h-10 w-10" : "h-10 w-10"
         }`}
-        aria-label="Sign in"
-        title="Sign in with Google"
+        aria-label={t("nav.signIn")}
+        title={t("nav.signInWithGoogle")}
       >
         <UserIcon className="h-4 w-4" strokeWidth={1.5} />
       </button>
@@ -103,7 +105,7 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
       <button
         onClick={() => setOpen((v) => !v)}
         className="h-10 w-10 rounded-full overflow-hidden border border-border hover:border-foreground/60 transition-colors flex items-center justify-center bg-card"
-        aria-label="Account"
+        aria-label={t("nav.account")}
         title={user.name}
       >
         {user.avatar ? (
@@ -144,7 +146,7 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
               className="w-full inline-flex items-center gap-2 px-2.5 h-8 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent/60 transition-colors disabled:opacity-50"
             >
               <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
-              Sign out
+              {t("nav.signOut")}
             </button>
           </div>
         </>
@@ -155,11 +157,12 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
 
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { t } = useTranslation();
   const items = [
-    { to: "/", label: "Timer", icon: HourglassIcon },
-    { to: "/projects", label: "Projects", icon: FolderKanban },
-    { to: "/analytics", label: "Analytics", icon: BarChart3 },
-    { to: "/focus-blocks", label: "Focus Blocks", icon: Layers },
+    { to: "/", label: t("nav.timer"), icon: HourglassIcon },
+    { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
+    { to: "/analytics", label: t("nav.analytics"), icon: BarChart3 },
+    { to: "/focus-blocks", label: t("nav.focusBlocks"), icon: Layers },
   ];
   return (
     <>
@@ -191,8 +194,8 @@ export function Sidebar() {
           <button
             onClick={openSettings}
             className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            aria-label="Settings"
-            title="Settings"
+            aria-label={t("nav.settings")}
+            title={t("nav.settings")}
           >
             <SettingsIcon className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -229,11 +232,11 @@ export function Sidebar() {
           <button
             onClick={openSettings}
             className="flex flex-1 flex-col items-center justify-center gap-1 min-h-11 touch-manipulation transition-colors active:bg-accent/60 text-muted-foreground"
-            aria-label="Settings"
+            aria-label={t("nav.settings")}
           >
             <SettingsIcon className="h-5 w-5" strokeWidth={1.5} />
             <span className="text-[10px] leading-none tracking-wide">
-              Settings
+              {t("nav.settings")}
             </span>
           </button>
           <div className="flex flex-1 items-center justify-center">
