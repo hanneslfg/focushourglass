@@ -231,11 +231,11 @@ export function Sidebar() {
           <button
             onClick={openSettings}
             className="flex flex-1 flex-col items-center justify-center gap-1 min-h-11 touch-manipulation transition-colors active:bg-accent/60 text-muted-foreground"
-            aria-label="Settings"
+            aria-label={t("nav.settings")}
           >
             <SettingsIcon className="h-5 w-5" strokeWidth={1.5} />
             <span className="text-[10px] leading-none tracking-wide">
-              Settings
+              {t("nav.settings")}
             </span>
           </button>
           <div className="flex flex-1 items-center justify-center">
