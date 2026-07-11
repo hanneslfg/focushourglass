@@ -1,4 +1,14 @@
+/**
+ * Focus / break rhythms — custom rhythms sync with public.custom_rhythms;
+ * the active-rhythm pointer (which rhythm is running + the current block
+ * index) stays local because it is ephemeral timer state, not app config.
+ */
 import { safeStorage } from "./safeStorage";
+import {
+  deleteRhythmRemote,
+  fetchCustomRhythmsRemote,
+  upsertRhythmRemote,
+} from "./remoteConfig";
 
 export type BlockKind = "focus" | "break";
 
@@ -13,7 +23,6 @@ export interface Rhythm {
   name: string;
   description?: string;
   blocks: RhythmBlock[];
-  /** True for the two shipped defaults; false for user-created. */
   builtin?: boolean;
 }
 
@@ -24,8 +33,6 @@ interface RhythmStore {
 }
 
 const KEY = "hourglass.rhythms.v1";
-
-/* -------------------- Built-in rhythms -------------------- */
 
 export const BUILTIN_RHYTHMS: Rhythm[] = [
   {
@@ -56,8 +63,6 @@ export const BUILTIN_RHYTHMS: Rhythm[] = [
   },
 ];
 
-/* -------------------- Store I/O -------------------- */
-
 function read(): RhythmStore {
   const empty: RhythmStore = { custom: [], activeId: null, activeIndex: 0 };
   if (typeof window === "undefined") return empty;
@@ -87,8 +92,6 @@ function write(s: RhythmStore) {
   }
 }
 
-/* -------------------- Public API -------------------- */
-
 export function getAllRhythms(): Rhythm[] {
   return [...BUILTIN_RHYTHMS, ...read().custom];
 }
@@ -107,6 +110,7 @@ export function saveCustomRhythm(rhythm: Rhythm) {
   if (idx >= 0) s.custom[idx] = rhythm;
   else s.custom.push(rhythm);
   write(s);
+  void upsertRhythmRemote(rhythm);
 }
 
 export function deleteCustomRhythm(id: string) {
@@ -117,6 +121,7 @@ export function deleteCustomRhythm(id: string) {
     s.activeIndex = 0;
   }
   write(s);
+  void deleteRhythmRemote(id);
 }
 
 export interface ActiveRhythmState {
@@ -148,10 +153,6 @@ export function deactivateRhythm() {
   write(s);
 }
 
-/**
- * Advance to the next block. Returns the new active state, or null if the
- * rhythm just completed its last block (which auto-deactivates).
- */
 export function advanceRhythm(): ActiveRhythmState | null {
   const s = read();
   if (!s.activeId) return null;
@@ -172,4 +173,22 @@ export function advanceRhythm(): ActiveRhythmState | null {
   s.activeIndex = next;
   write(s);
   return { rhythm: r, index: next, block: r.blocks[next] };
+}
+
+/**
+ * Replace the local custom-rhythm cache with the authoritative list from
+ * public.custom_rhythms. Preserves the local activeId / activeIndex.
+ */
+export async function hydrateRhythmsFromRemote(): Promise<void> {
+  const remote = await fetchCustomRhythmsRemote();
+  if (!remote) return;
+  const s = read();
+  s.custom = remote;
+  // If the currently-active rhythm was deleted server-side, clear it.
+  if (s.activeId && !BUILTIN_RHYTHMS.some((r) => r.id === s.activeId) &&
+      !remote.some((r) => r.id === s.activeId)) {
+    s.activeId = null;
+    s.activeIndex = 0;
+  }
+  write(s);
 }

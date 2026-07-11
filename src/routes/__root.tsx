@@ -17,6 +17,10 @@ import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
+import { supabase } from "@/lib/supabase";
+import { hydrateGoalsFromRemote } from "@/lib/goals";
+import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
+import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
 import "@/lib/i18n";
 
 function NotFoundComponent() {
@@ -144,6 +148,25 @@ function RootComponent() {
       window.removeEventListener("hourglass:settings", run);
     };
   }, []);
+
+  // Hydrate app-config tables (goals, custom_rhythms, project_settings) from
+  // Supabase whenever we have a signed-in session. DB is the source of truth;
+  // localStorage is just an offline cache used between hydrations.
+  useEffect(() => {
+    const hydrate = () => {
+      void hydrateGoalsFromRemote();
+      void hydrateRhythmsFromRemote();
+      void hydrateProjectSettingsFromRemote();
+    };
+    hydrate();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        hydrate();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>

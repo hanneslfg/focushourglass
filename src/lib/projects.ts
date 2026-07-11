@@ -1,42 +1,34 @@
+/**
+ * Project tags — colors and hidden (deleted) flags are Supabase-backed via
+ * public.project_settings keyed by (user_id, project_tag). The tag list
+ * itself is still derived from synced sessions + any explicit new tags the
+ * user creates, but visibility and color are authoritative in the DB.
+ */
 import { safeStorage } from "./safeStorage";
 import { getSessions } from "./sessions";
-
+import {
+  fetchProjectSettingsRemote,
+  upsertProjectSettingRemote,
+  type ProjectSetting,
+} from "./remoteConfig";
 
 export interface ProjectTag {
   id: string;
   name: string;
-  /** CSS color string (hex). */
   color: string;
 }
 
 const KEY = "hourglass.projects.v1";
-const DELETED_KEY = "hourglass.projects.deleted.v1";
+const SETTINGS_KEY = "hourglass.project_settings.v1";
 
 export const TAG_COLORS = [
-  "#e9c46a", // amber
-  "#f4a261", // orange
-  "#e76f51", // terracotta
-  "#d4a373", // sand
-  "#2dd4bf", // turquoise
-  "#5eead4", // mint
-  "#a3b18a", // sage
-  "#8ecae6", // sky
-  "#bc8cff", // lilac
-  "#e5989b", // rose
-  "#f472b6", // pink
-  "#94a3b8", // slate
+  "#e9c46a", "#f4a261", "#e76f51", "#d4a373", "#2dd4bf", "#5eead4",
+  "#a3b18a", "#8ecae6", "#bc8cff", "#e5989b", "#f472b6", "#94a3b8",
 ];
 
-/** Amber / gold accent palette used for auto-assigned project colors. */
 const AMBER_PALETTE = [
-  "#f4a261", // orange
-  "#e9c46a", // amber
-  "#d4a373", // sand
-  "#e76f51", // terracotta
-  "#c98a3c", // dark amber
-  "#f5b041", // saffron
-  "#b8860b", // dark gold
-  "#e0a458", // honey
+  "#f4a261", "#e9c46a", "#d4a373", "#e76f51",
+  "#c98a3c", "#f5b041", "#b8860b", "#e0a458",
 ];
 
 function hashString(s: string): number {
@@ -48,13 +40,11 @@ function hashString(s: string): number {
   return h >>> 0;
 }
 
-/** Stable id derived from project name so PC/mobile/remote rows agree. */
 export function projectIdFromName(name: string): string {
   const slug = name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9_-]/g, "");
   return slug || `p_${hashString(name).toString(36)}`;
 }
 
-/** Deterministic amber/gold color from name hash. */
 export function colorForProjectName(name: string): string {
   return AMBER_PALETTE[hashString(name.trim().toLowerCase()) % AMBER_PALETTE.length];
 }
@@ -74,119 +64,130 @@ function writeLocal(list: ProjectTag[]) {
   window.dispatchEvent(new Event("hourglass:projects"));
 }
 
-function readDeleted(): Set<string> {
-  if (typeof window === "undefined") return new Set();
+/** Local cache mirror of public.project_settings (keyed by project_tag id). */
+function readSettings(): Record<string, ProjectSetting> {
+  if (typeof window === "undefined") return {};
   try {
-    const raw = safeStorage.getItem(DELETED_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    const raw = safeStorage.getItem(SETTINGS_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, ProjectSetting>) : {};
   } catch {
-    return new Set();
+    return {};
   }
 }
 
-function writeDeleted(ids: Set<string>) {
-  safeStorage.setItem(DELETED_KEY, JSON.stringify([...ids]));
+function writeSettings(bag: Record<string, ProjectSetting>) {
+  safeStorage.setItem(SETTINGS_KEY, JSON.stringify(bag));
   window.dispatchEvent(new Event("hourglass:projects"));
 }
 
+function patchSetting(id: string, patch: Partial<ProjectSetting>) {
+  const bag = readSettings();
+  const prev = bag[id] ?? { projectTag: id, hidden: false };
+  const next: ProjectSetting = { ...prev, ...patch, projectTag: id };
+  bag[id] = next;
+  writeSettings(bag);
+  void upsertProjectSettingRemote(next);
+}
+
 /**
- * Returns the union of (a) projects derived from the synced sessions table and
- * (b) locally-created projects that haven't been used yet, minus any tags the
- * user has explicitly deleted (tombstones persist so deletions survive refresh
- * and re-derivation from historical sessions).
+ * Returns the derived tag list, applying project_settings overrides for
+ * color and hidden flag. Rows flagged `hidden = true` are filtered out.
  */
 export function getProjects(): ProjectTag[] {
-  const deleted = readDeleted();
+  const settings = readSettings();
   const locals = new Map<string, ProjectTag>();
   for (const p of readLocal()) {
     const id = projectIdFromName(p.name);
-    if (deleted.has(id)) continue;
+    if (settings[id]?.hidden) continue;
     locals.set(id, { ...p, id });
   }
-  const fromSessions = new Map<string, ProjectTag>();
+  const merged = new Map<string, ProjectTag>();
   for (const s of getSessions()) {
     const name = s.projectName?.trim();
     if (!name) continue;
     const id = projectIdFromName(name);
-    if (deleted.has(id)) continue;
-    if (fromSessions.has(id)) continue;
-    // Local (user-edited) color ALWAYS wins over the session-derived one,
-    // otherwise a fresh session sync overwrites the user's custom color with
-    // whatever color was denormalized on the row (often the deterministic
-    // default).
+    if (settings[id]?.hidden) continue;
+    if (merged.has(id)) continue;
+    const settingColor = settings[id]?.color;
     const localColor = locals.get(id)?.color;
-    fromSessions.set(id, {
+    merged.set(id, {
       id,
       name,
-      color: localColor || s.projectColor || colorForProjectName(name),
+      color: settingColor || localColor || s.projectColor || colorForProjectName(name),
     });
   }
-  // Merge in any local-only projects (not yet used in a session).
   for (const [id, p] of locals) {
-    if (!fromSessions.has(id)) fromSessions.set(id, p);
+    if (merged.has(id)) continue;
+    const settingColor = settings[id]?.color;
+    merged.set(id, settingColor ? { ...p, color: settingColor } : p);
   }
-  return [...fromSessions.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function addProject(name: string, color?: string): ProjectTag {
   const trimmed = name.trim().slice(0, 30);
   const id = projectIdFromName(trimmed);
-  // Re-adding a previously-deleted tag should resurrect it.
-  const deleted = readDeleted();
-  if (deleted.has(id)) {
-    deleted.delete(id);
-    writeDeleted(deleted);
+  // Un-hide if this tag was previously deleted.
+  const settings = readSettings();
+  if (settings[id]?.hidden) {
+    patchSetting(id, { hidden: false, name: trimmed });
   }
   const existing = getProjects().find((p) => p.id === id);
-  if (existing) return existing;
-  const tag: ProjectTag = {
-    id,
-    name: trimmed,
-    color: color || colorForProjectName(trimmed),
-  };
-  writeLocal([...readLocal(), tag]);
+  if (existing && !color) return existing;
+  const finalColor = color || existing?.color || colorForProjectName(trimmed);
+  const tag: ProjectTag = { id, name: trimmed, color: finalColor };
+  const list = readLocal();
+  if (!list.some((p) => projectIdFromName(p.name) === id)) {
+    writeLocal([...list, tag]);
+  }
+  if (color) {
+    patchSetting(id, { name: trimmed, color });
+  } else {
+    patchSetting(id, { name: trimmed });
+  }
   return tag;
 }
 
 export function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>) {
   const list = readLocal();
-  const existing = list.find((p) => p.id === id);
+  const existing = list.find((p) => projectIdFromName(p.name) === id);
   if (existing) {
-    writeLocal(list.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    return;
+    writeLocal(
+      list.map((p) =>
+        projectIdFromName(p.name) === id ? { ...p, ...patch, id } : p,
+      ),
+    );
+  } else {
+    const derived = getProjects().find((p) => p.id === id);
+    if (derived) writeLocal([...list, { ...derived, ...patch, id }]);
   }
-  // Project was only derived from sessions; materialize a local record so
-  // the user's edits (like a custom color) persist across session syncs.
-  const derived = getProjects().find((p) => p.id === id);
-  if (!derived) return;
-  writeLocal([...list, { ...derived, ...patch, id }]);
+  patchSetting(id, {
+    name: patch.name,
+    color: patch.color,
+  });
 }
 
 export function deleteProject(id: string) {
-  // 1. Remove from the local-only list so it disappears immediately.
-  writeLocal(readLocal().filter((p) => p.id !== id));
-  // 2. Tombstone the id so it doesn't get re-derived from historical
-  //    sessions on the next render / refresh / sync.
-  const deleted = readDeleted();
-  deleted.add(id);
-  writeDeleted(deleted);
-  // Cross-device sync via unsigned anon broadcasts was removed because
-  // any client holding the public anon key could forge deletions on
-  // another user's channel. Peers will pick up the change on next
-  // refresh/hydrate from Supabase.
+  writeLocal(readLocal().filter((p) => projectIdFromName(p.name) !== id));
+  patchSetting(id, { hidden: true });
 }
+
+/** @deprecated anon broadcast removed. */
+export function ingestRemoteDeletion(_id: string) {}
 
 /**
- * @deprecated Kept as a no-op for backward compatibility. Cross-device
- * project deletion sync via anon Realtime broadcasts was removed because
- * the payloads were unauthenticated and forgeable.
+ * Replace the local project_settings cache with the authoritative rows
+ * from public.project_settings so colors + hidden flags persist across
+ * cache clears and devices.
  */
-export function ingestRemoteDeletion(_id: string) {
-  // no-op: do not trust unauthenticated broadcast payloads.
+export async function hydrateProjectSettingsFromRemote(): Promise<void> {
+  const remote = await fetchProjectSettingsRemote();
+  if (!remote) return;
+  const bag: Record<string, ProjectSetting> = {};
+  for (const r of remote) bag[r.projectTag] = r;
+  writeSettings(bag);
 }
 
-// Re-broadcast a projects event whenever sessions change so any component
-// listening only to `hourglass:projects` still picks up newly-derived tags.
 if (typeof window !== "undefined") {
   window.addEventListener("hourglass:sessions", () => {
     window.dispatchEvent(new Event("hourglass:projects"));
