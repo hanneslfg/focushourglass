@@ -17,6 +17,10 @@ import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
+import { supabase } from "@/lib/supabase";
+import { hydrateGoalsFromRemote } from "@/lib/goals";
+import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
+import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
 import "@/lib/i18n";
 
 function NotFoundComponent() {
