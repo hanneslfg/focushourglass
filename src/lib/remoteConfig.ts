@@ -41,7 +41,8 @@ interface RemoteGoal {
   text: string;
   target_minutes: number | null;
   color: string | null;
-  done: boolean | null;
+  is_completed: boolean | null;
+  position: number | null;
   created_at: string;
 }
 
@@ -52,7 +53,8 @@ function goalFromRemote(r: RemoteGoal): ProjectGoal {
     text: r.text,
     targetMinutes: Math.max(0, Math.round(Number(r.target_minutes ?? 0))),
     color: r.color || "#f4a261",
-    done: Boolean(r.done),
+    done: Boolean(r.is_completed),
+    position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
     createdAt: Date.parse(r.created_at) || Date.now(),
   };
 }
@@ -63,7 +65,8 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const { data, error } = await supabase
     .from("goals")
     .select("*")
-    .eq("user_id", uid);
+    .eq("user_id", uid)
+    .order("position", { ascending: true });
   if (error) {
     console.warn("[remoteConfig] fetchAllGoals failed:", error.message);
     return null;
@@ -81,14 +84,15 @@ export async function insertGoalRemote(g: ProjectGoal): Promise<void> {
     text: g.text,
     target_minutes: g.targetMinutes,
     color: g.color,
-    done: g.done,
+    is_completed: g.done,
+    position: g.position ?? 0,
   });
   if (error) console.warn("[remoteConfig] insertGoal failed:", error.message);
 }
 
 export async function updateGoalRemote(
   id: string,
-  patch: Partial<Pick<ProjectGoal, "text" | "targetMinutes" | "color" | "done">>,
+  patch: Partial<Pick<ProjectGoal, "text" | "targetMinutes" | "color" | "done" | "position">>,
 ): Promise<void> {
   const uid = await authUid();
   if (!uid) return;
@@ -96,7 +100,8 @@ export async function updateGoalRemote(
   if (patch.text !== undefined) payload.text = patch.text;
   if (patch.targetMinutes !== undefined) payload.target_minutes = patch.targetMinutes;
   if (patch.color !== undefined) payload.color = patch.color;
-  if (patch.done !== undefined) payload.done = patch.done;
+  if (patch.done !== undefined) payload.is_completed = patch.done;
+  if (patch.position !== undefined) payload.position = patch.position;
   if (Object.keys(payload).length === 0) return;
   const { error } = await supabase
     .from("goals")
@@ -105,6 +110,7 @@ export async function updateGoalRemote(
     .eq("user_id", uid);
   if (error) console.warn("[remoteConfig] updateGoal failed:", error.message);
 }
+
 
 export async function deleteGoalRemote(id: string): Promise<void> {
   const uid = await authUid();

@@ -25,8 +25,10 @@ export interface ProjectGoal {
   targetMinutes: number;
   color: string;
   done: boolean;
+  position: number;
   createdAt: number;
 }
+
 
 const KEY = "hourglass.project_goals.v1";
 
@@ -59,7 +61,9 @@ function writeAll(bag: Record<string, ProjectGoal[]>) {
 export function getProjectGoals(projectId: string): ProjectGoal[] {
   if (!projectId) return [];
   const list = readAll()[projectId] ?? [];
-  return [...list].sort((a, b) => Number(a.done) - Number(b.done) || a.createdAt - b.createdAt);
+  return [...list].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
+  );
 }
 
 export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
@@ -90,6 +94,8 @@ export function addGoal(
   const clean = text.trim().slice(0, 140);
   if (!projectId || !clean) return null;
   const bag = readAll();
+  const existing = bag[projectId] ?? [];
+  const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
   const goal: ProjectGoal = {
     id: newId(),
     projectId,
@@ -97,13 +103,15 @@ export function addGoal(
     targetMinutes: Math.max(0, Math.round(opts?.targetMinutes ?? 0)),
     color: opts?.color || GOAL_COLORS[0],
     done: false,
+    position: maxPos + 1,
     createdAt: Date.now(),
   };
-  bag[projectId] = [...(bag[projectId] ?? []), goal];
+  bag[projectId] = [...existing, goal];
   writeAll(bag);
   void insertGoalRemote(goal);
   return goal;
 }
+
 
 export function updateGoal(
   projectId: string,
@@ -124,6 +132,7 @@ export function updateGoal(
     targetMinutes: normalizedPatch.targetMinutes,
     color: normalizedPatch.color,
     done: normalizedPatch.done,
+    position: normalizedPatch.position,
   });
 }
 
@@ -133,6 +142,24 @@ export function deleteGoal(projectId: string, id: string) {
   writeAll(bag);
   void deleteGoalRemote(id);
 }
+
+/**
+ * Reorder the active goals of a project. Persists new position integers
+ * (0..n-1) for every goal in `orderedIds`; goals not present are left alone.
+ */
+export function reorderGoals(projectId: string, orderedIds: string[]) {
+  const bag = readAll();
+  const list = bag[projectId] ?? [];
+  const posById = new Map(orderedIds.map((id, i) => [id, i]));
+  bag[projectId] = list.map((g) =>
+    posById.has(g.id) ? { ...g, position: posById.get(g.id)! } : g,
+  );
+  writeAll(bag);
+  for (const [id, position] of posById) {
+    void updateGoalRemote(id, { position });
+  }
+}
+
 
 /**
  * Replace the entire local cache with the authoritative list from Supabase.
