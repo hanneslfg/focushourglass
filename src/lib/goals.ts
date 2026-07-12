@@ -132,6 +132,7 @@ export function updateGoal(
     targetMinutes: normalizedPatch.targetMinutes,
     color: normalizedPatch.color,
     done: normalizedPatch.done,
+    position: normalizedPatch.position,
   });
 }
 
@@ -141,6 +142,24 @@ export function deleteGoal(projectId: string, id: string) {
   writeAll(bag);
   void deleteGoalRemote(id);
 }
+
+/**
+ * Reorder the active goals of a project. Persists new position integers
+ * (0..n-1) for every goal in `orderedIds`; goals not present are left alone.
+ */
+export function reorderGoals(projectId: string, orderedIds: string[]) {
+  const bag = readAll();
+  const list = bag[projectId] ?? [];
+  const posById = new Map(orderedIds.map((id, i) => [id, i]));
+  bag[projectId] = list.map((g) =>
+    posById.has(g.id) ? { ...g, position: posById.get(g.id)! } : g,
+  );
+  writeAll(bag);
+  for (const [id, position] of posById) {
+    void updateGoalRemote(id, { position });
+  }
+}
+
 
 /**
  * Replace the entire local cache with the authoritative list from Supabase.
