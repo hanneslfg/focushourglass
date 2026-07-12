@@ -25,8 +25,10 @@ export interface ProjectGoal {
   targetMinutes: number;
   color: string;
   done: boolean;
+  position: number;
   createdAt: number;
 }
+
 
 const KEY = "hourglass.project_goals.v1";
 
