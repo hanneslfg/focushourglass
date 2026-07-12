@@ -124,18 +124,30 @@ interface RemoteRhythm {
   user_id: string;
   name: string;
   description: string | null;
-  blocks: RhythmBlock[] | null;
+  focus_duration: number | null;
+  break_duration: number | null;
   created_at: string;
 }
 
 function rhythmFromRemote(r: RemoteRhythm): Rhythm {
+  const focusMin = Math.max(0, Math.round(Number(r.focus_duration ?? 0)));
+  const breakMin = Math.max(0, Math.round(Number(r.break_duration ?? 0)));
+  const blocks: RhythmBlock[] = [];
+  if (focusMin > 0) blocks.push({ id: `${r.id}-f`, kind: "focus", minutes: focusMin });
+  if (breakMin > 0) blocks.push({ id: `${r.id}-b`, kind: "break", minutes: breakMin });
   return {
     id: r.id,
     name: r.name,
     description: r.description || undefined,
-    blocks: Array.isArray(r.blocks) ? r.blocks : [],
+    blocks,
     builtin: false,
   };
+}
+
+function rhythmDurations(r: Rhythm): { focus: number; break: number } {
+  const focus = r.blocks.find((b) => b.kind === "focus")?.minutes ?? 0;
+  const brk = r.blocks.find((b) => b.kind === "break")?.minutes ?? 0;
+  return { focus, break: brk };
 }
 
 export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
@@ -156,6 +168,7 @@ export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
 export async function upsertRhythmRemote(r: Rhythm): Promise<void> {
   const uid = await authUid();
   if (!uid) return;
+  const { focus, break: brk } = rhythmDurations(r);
   const { error } = await supabase
     .from("custom_rhythms")
     .upsert(
@@ -164,12 +177,14 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<void> {
         user_id: uid,
         name: r.name,
         description: r.description ?? null,
-        blocks: r.blocks,
+        focus_duration: focus,
+        break_duration: brk,
       },
       { onConflict: "id" },
     );
   if (error) console.warn("[remoteConfig] upsertRhythm failed:", error.message);
 }
+
 
 export async function deleteRhythmRemote(id: string): Promise<void> {
   const uid = await authUid();
@@ -196,7 +211,7 @@ interface RemoteProjectSetting {
   project_tag: string;
   name: string | null;
   color: string | null;
-  hidden: boolean | null;
+  is_deleted: boolean | null;
 }
 
 export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | null> {
@@ -214,7 +229,7 @@ export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | n
     projectTag: r.project_tag,
     name: r.name ?? undefined,
     color: r.color ?? undefined,
-    hidden: Boolean(r.hidden),
+    hidden: Boolean(r.is_deleted),
   }));
 }
 
@@ -229,9 +244,10 @@ export async function upsertProjectSettingRemote(
       project_tag: s.projectTag,
       name: s.name ?? null,
       color: s.color ?? null,
-      hidden: s.hidden ?? false,
+      is_deleted: s.hidden ?? false,
     },
     { onConflict: "user_id,project_tag" },
   );
   if (error) console.warn("[remoteConfig] upsertProjectSetting failed:", error.message);
 }
+
