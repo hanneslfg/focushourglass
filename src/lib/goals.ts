@@ -61,7 +61,9 @@ function writeAll(bag: Record<string, ProjectGoal[]>) {
 export function getProjectGoals(projectId: string): ProjectGoal[] {
   if (!projectId) return [];
   const list = readAll()[projectId] ?? [];
-  return [...list].sort((a, b) => Number(a.done) - Number(b.done) || a.createdAt - b.createdAt);
+  return [...list].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
+  );
 }
 
 export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
@@ -92,6 +94,8 @@ export function addGoal(
   const clean = text.trim().slice(0, 140);
   if (!projectId || !clean) return null;
   const bag = readAll();
+  const existing = bag[projectId] ?? [];
+  const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
   const goal: ProjectGoal = {
     id: newId(),
     projectId,
@@ -99,13 +103,15 @@ export function addGoal(
     targetMinutes: Math.max(0, Math.round(opts?.targetMinutes ?? 0)),
     color: opts?.color || GOAL_COLORS[0],
     done: false,
+    position: maxPos + 1,
     createdAt: Date.now(),
   };
-  bag[projectId] = [...(bag[projectId] ?? []), goal];
+  bag[projectId] = [...existing, goal];
   writeAll(bag);
   void insertGoalRemote(goal);
   return goal;
 }
+
 
 export function updateGoal(
   projectId: string,
