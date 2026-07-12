@@ -211,7 +211,7 @@ interface RemoteProjectSetting {
   project_tag: string;
   name: string | null;
   color: string | null;
-  hidden: boolean | null;
+  is_deleted: boolean | null;
 }
 
 export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | null> {
@@ -229,7 +229,7 @@ export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | n
     projectTag: r.project_tag,
     name: r.name ?? undefined,
     color: r.color ?? undefined,
-    hidden: Boolean(r.hidden),
+    hidden: Boolean(r.is_deleted),
   }));
 }
 
@@ -244,9 +244,10 @@ export async function upsertProjectSettingRemote(
       project_tag: s.projectTag,
       name: s.name ?? null,
       color: s.color ?? null,
-      hidden: s.hidden ?? false,
+      is_deleted: s.hidden ?? false,
     },
     { onConflict: "user_id,project_tag" },
   );
   if (error) console.warn("[remoteConfig] upsertProjectSetting failed:", error.message);
 }
+
