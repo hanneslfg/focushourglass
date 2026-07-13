@@ -4,31 +4,36 @@
  *  - public.custom_rhythms     (user-authored focus block chains)
  *  - public.project_settings   (project color + hidden flag, keyed by project_tag)
  *
- * Assumed schemas (created out-of-band in production):
- *   goals(id uuid pk default gen_random_uuid(), user_id uuid, project_id text,
- *         text text, target_minutes int4 default 0, color text, done bool default false,
- *         created_at timestamptz default now())
- *   custom_rhythms(id text pk, user_id uuid, name text, description text,
- *                  blocks jsonb, created_at timestamptz default now())
- *   project_settings(user_id uuid, project_tag text, name text, color text,
- *                    hidden bool default false, primary key (user_id, project_tag))
- *
- * RLS: each table gates read/write by auth.uid() = user_id.
- *
- * All exports are safe to call unauthenticated: they resolve to no-ops so
- * the app still runs in offline / signed-out mode against localStorage.
+ * All mutations return { ok, error, notAuthed } so callers can wait for
+ * confirmation from Supabase before committing to their local UI state.
+ * Optimistic updates are intentionally NOT performed here.
  */
 import { supabase } from "./supabase";
 import type { ProjectGoal } from "./goals";
 import type { Rhythm, RhythmBlock } from "./rhythms";
-import type { ProjectTag } from "./projects";
+
+export interface RemoteResult {
+  ok: boolean;
+  error: string | null;
+  /** True when there was no signed-in user (RLS would silently reject). */
+  notAuthed?: boolean;
+}
 
 async function authUid(): Promise<string | null> {
   try {
-    const { data } = await supabase.auth.getUser();
+    const { data, error } = await supabase.auth.getUser();
+    if (error) return null;
     return data.user?.id ?? null;
   } catch {
     return null;
+  }
+}
+
+function reportError(op: string, msg: string) {
+  const line = `[${op}] ${msg}`;
+  console.error(line);
+  if (typeof window !== "undefined") {
+    try { window.alert(`Supabase error — ${line}`); } catch { /* noop */ }
   }
 }
 
@@ -71,9 +76,9 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   return (data as RemoteGoal[]).map(goalFromRemote);
 }
 
-export async function insertGoalRemote(g: ProjectGoal): Promise<void> {
+export async function insertGoalRemote(g: ProjectGoal): Promise<RemoteResult> {
   const uid = await authUid();
-  if (!uid) return;
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const { error } = await supabase.from("goals").insert({
     id: g.id,
     user_id: uid,
@@ -82,39 +87,50 @@ export async function insertGoalRemote(g: ProjectGoal): Promise<void> {
     is_completed: g.done,
     position: g.position ?? 0,
   });
-  if (error) console.warn("[remoteConfig] insertGoal failed:", error.message);
+  if (error) {
+    reportError("insertGoal", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }
 
 export async function updateGoalRemote(
   id: string,
   patch: Partial<Pick<ProjectGoal, "text" | "targetMinutes" | "color" | "done" | "position">>,
-): Promise<void> {
+): Promise<RemoteResult> {
   const uid = await authUid();
-  if (!uid) return;
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const payload: Record<string, unknown> = {};
   if (patch.text !== undefined) payload.text = patch.text;
   if (patch.color !== undefined) payload.color = patch.color;
   if (patch.done !== undefined) payload.is_completed = patch.done;
   if (patch.position !== undefined) payload.position = patch.position;
-  if (Object.keys(payload).length === 0) return;
+  if (Object.keys(payload).length === 0) return { ok: true, error: null };
   const { error } = await supabase
     .from("goals")
     .update(payload)
     .eq("id", id)
     .eq("user_id", uid);
-  if (error) console.warn("[remoteConfig] updateGoal failed:", error.message);
+  if (error) {
+    reportError("updateGoal", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }
 
-
-export async function deleteGoalRemote(id: string): Promise<void> {
+export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
   const uid = await authUid();
-  if (!uid) return;
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const { error } = await supabase
     .from("goals")
     .delete()
     .eq("id", id)
     .eq("user_id", uid);
-  if (error) console.warn("[remoteConfig] deleteGoal failed:", error.message);
+  if (error) {
+    reportError("deleteGoal", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }
 
 /* --------------------------- custom rhythms --------------------------- */
@@ -165,9 +181,9 @@ export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
   return (data as RemoteRhythm[]).map(rhythmFromRemote);
 }
 
-export async function upsertRhythmRemote(r: Rhythm): Promise<void> {
+export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult> {
   const uid = await authUid();
-  if (!uid) return;
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const { focus, break: brk } = rhythmDurations(r);
   const { error } = await supabase
     .from("custom_rhythms")
@@ -182,25 +198,32 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<void> {
       },
       { onConflict: "id" },
     );
-  if (error) console.warn("[remoteConfig] upsertRhythm failed:", error.message);
+  if (error) {
+    reportError("upsertRhythm", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }
 
-
-export async function deleteRhythmRemote(id: string): Promise<void> {
+export async function deleteRhythmRemote(id: string): Promise<RemoteResult> {
   const uid = await authUid();
-  if (!uid) return;
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const { error } = await supabase
     .from("custom_rhythms")
     .delete()
     .eq("id", id)
     .eq("user_id", uid);
-  if (error) console.warn("[remoteConfig] deleteRhythm failed:", error.message);
+  if (error) {
+    reportError("deleteRhythm", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }
 
 /* --------------------------- project settings --------------------------- */
 
 export interface ProjectSetting {
-  projectTag: string;   // stable slug id
+  projectTag: string;
   name?: string;
   color?: string;
   hidden: boolean;
@@ -235,9 +258,9 @@ export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | n
 
 export async function upsertProjectSettingRemote(
   s: Partial<ProjectSetting> & { projectTag: string },
-): Promise<void> {
+): Promise<RemoteResult> {
   const uid = await authUid();
-  if (!uid) return;
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const { error } = await supabase.from("project_settings").upsert(
     {
       user_id: uid,
@@ -248,6 +271,9 @@ export async function upsertProjectSettingRemote(
     },
     { onConflict: "user_id,project_tag" },
   );
-  if (error) console.warn("[remoteConfig] upsertProjectSetting failed:", error.message);
+  if (error) {
+    reportError("upsertProjectSetting", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true, error: null };
 }
-
