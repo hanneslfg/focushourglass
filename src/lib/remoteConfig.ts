@@ -37,25 +37,22 @@ async function authUid(): Promise<string | null> {
 interface RemoteGoal {
   id: string;
   user_id: string;
-  project_id: string;
   text: string;
-  target_minutes: number | null;
   color: string | null;
   is_completed: boolean | null;
   position: number | null;
-  created_at: string;
 }
 
 function goalFromRemote(r: RemoteGoal): ProjectGoal {
   return {
     id: r.id,
-    projectId: r.project_id,
+    projectId: "",
     text: r.text,
-    targetMinutes: Math.max(0, Math.round(Number(r.target_minutes ?? 0))),
+    targetMinutes: 0,
     color: r.color || "#f4a261",
     done: Boolean(r.is_completed),
     position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
-    createdAt: Date.parse(r.created_at) || Date.now(),
+    createdAt: Date.now(),
   };
 }
 
@@ -80,9 +77,7 @@ export async function insertGoalRemote(g: ProjectGoal): Promise<void> {
   const { error } = await supabase.from("goals").insert({
     id: g.id,
     user_id: uid,
-    project_id: g.projectId,
     text: g.text,
-    target_minutes: g.targetMinutes,
     color: g.color,
     is_completed: g.done,
     position: g.position ?? 0,
@@ -98,7 +93,6 @@ export async function updateGoalRemote(
   if (!uid) return;
   const payload: Record<string, unknown> = {};
   if (patch.text !== undefined) payload.text = patch.text;
-  if (patch.targetMinutes !== undefined) payload.target_minutes = patch.targetMinutes;
   if (patch.color !== undefined) payload.color = patch.color;
   if (patch.done !== undefined) payload.is_completed = patch.done;
   if (patch.position !== undefined) payload.position = patch.position;
