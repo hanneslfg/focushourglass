@@ -81,12 +81,15 @@ function writeSettings(bag: Record<string, ProjectSetting>) {
 }
 
 function patchSetting(id: string, patch: Partial<ProjectSetting>) {
-  const bag = readSettings();
-  const prev = bag[id] ?? { projectTag: id, hidden: false };
+  const prev = readSettings()[id] ?? { projectTag: id, hidden: false };
   const next: ProjectSetting = { ...prev, ...patch, projectTag: id };
-  bag[id] = next;
-  writeSettings(bag);
-  void upsertProjectSettingRemote(next);
+  void (async () => {
+    const res = await upsertProjectSettingRemote(next);
+    if (!res.ok && !res.notAuthed) return;
+    const bag = readSettings();
+    bag[id] = next;
+    writeSettings(bag);
+  })();
 }
 
 /**
