@@ -169,12 +169,19 @@ export function reorderGoals(projectId: string, orderedIds: string[]) {
 export async function hydrateGoalsFromRemote(): Promise<void> {
   const remote = await fetchAllGoals();
   if (!remote) return;
+  // Safety net: if the remote returned an empty list but we have local data,
+  // treat it as a transient auth/network hiccup (e.g. tab-focus refetch
+  // before the session is fully restored) and keep the cached UI intact.
+  const local = readAll();
+  const localCount = Object.values(local).reduce((n, arr) => n + arr.length, 0);
+  if (remote.length === 0 && localCount > 0) return;
   const bag: Record<string, ProjectGoal[]> = {};
   for (const g of remote) {
     (bag[g.projectId] ??= []).push(g);
   }
   writeAll(bag);
 }
+
 
 /** @deprecated no-op — anon broadcasts removed. */
 export function ingestRemoteGoals(_projectId: string, _goals: ProjectGoal[]) {}
