@@ -86,6 +86,12 @@ function newId(): string {
     : `g_${Math.random().toString(36).slice(2)}_${Date.now()}`;
 }
 
+/**
+ * Remote-first: builds the goal locally, awaits Supabase confirmation, and
+ * only THEN commits to the cache. Returns the constructed goal synchronously
+ * so callers with a stable ID can proceed; UI updates fire on the async
+ * success path (or an alert on failure).
+ */
 export function addGoal(
   projectId: string,
   text: string,
@@ -93,8 +99,7 @@ export function addGoal(
 ): ProjectGoal | null {
   const clean = text.trim().slice(0, 140);
   if (!projectId || !clean) return null;
-  const bag = readAll();
-  const existing = bag[projectId] ?? [];
+  const existing = readAll()[projectId] ?? [];
   const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
   const goal: ProjectGoal = {
     id: newId(),
@@ -106,58 +111,80 @@ export function addGoal(
     position: maxPos + 1,
     createdAt: Date.now(),
   };
-  bag[projectId] = [...existing, goal];
-  writeAll(bag);
-  void insertGoalRemote(goal);
+  void (async () => {
+    const res = await insertGoalRemote(goal);
+    if (res.notAuthed) {
+      // Offline / signed-out fallback: keep local write so the app still works.
+      const bag = readAll();
+      bag[projectId] = [...(bag[projectId] ?? []), goal];
+      writeAll(bag);
+      return;
+    }
+    if (!res.ok) return;
+    const bag = readAll();
+    bag[projectId] = [...(bag[projectId] ?? []), goal];
+    writeAll(bag);
+  })();
   return goal;
 }
-
 
 export function updateGoal(
   projectId: string,
   id: string,
   patch: Partial<Omit<ProjectGoal, "id" | "projectId" | "createdAt">>,
 ) {
-  const bag = readAll();
-  const list = bag[projectId] ?? [];
   const normalizedPatch: Partial<ProjectGoal> = { ...patch };
   if (patch.text !== undefined) normalizedPatch.text = patch.text.trim().slice(0, 140);
   if (patch.targetMinutes !== undefined)
     normalizedPatch.targetMinutes = Math.max(0, Math.round(patch.targetMinutes));
-  const next = list.map((g) => (g.id === id ? { ...g, ...normalizedPatch } : g));
-  bag[projectId] = next;
-  writeAll(bag);
-  void updateGoalRemote(id, {
-    text: normalizedPatch.text,
-    targetMinutes: normalizedPatch.targetMinutes,
-    color: normalizedPatch.color,
-    done: normalizedPatch.done,
-    position: normalizedPatch.position,
-  });
+  void (async () => {
+    const res = await updateGoalRemote(id, {
+      text: normalizedPatch.text,
+      targetMinutes: normalizedPatch.targetMinutes,
+      color: normalizedPatch.color,
+      done: normalizedPatch.done,
+      position: normalizedPatch.position,
+    });
+    if (!res.ok && !res.notAuthed) return;
+    const bag = readAll();
+    const list = bag[projectId] ?? [];
+    bag[projectId] = list.map((g) => (g.id === id ? { ...g, ...normalizedPatch } : g));
+    writeAll(bag);
+  })();
 }
 
 export function deleteGoal(projectId: string, id: string) {
-  const bag = readAll();
-  bag[projectId] = (bag[projectId] ?? []).filter((g) => g.id !== id);
-  writeAll(bag);
-  void deleteGoalRemote(id);
+  void (async () => {
+    const res = await deleteGoalRemote(id);
+    if (!res.ok && !res.notAuthed) return;
+    const bag = readAll();
+    bag[projectId] = (bag[projectId] ?? []).filter((g) => g.id !== id);
+    writeAll(bag);
+  })();
 }
 
 /**
- * Reorder the active goals of a project. Persists new position integers
- * (0..n-1) for every goal in `orderedIds`; goals not present are left alone.
+ * Reorder active goals — awaits every position update before committing new
+ * order to the cache, so a failed write cannot leave a false order on screen.
  */
 export function reorderGoals(projectId: string, orderedIds: string[]) {
-  const bag = readAll();
-  const list = bag[projectId] ?? [];
   const posById = new Map(orderedIds.map((id, i) => [id, i]));
-  bag[projectId] = list.map((g) =>
-    posById.has(g.id) ? { ...g, position: posById.get(g.id)! } : g,
-  );
-  writeAll(bag);
-  for (const [id, position] of posById) {
-    void updateGoalRemote(id, { position });
-  }
+  void (async () => {
+    let anyFail = false;
+    let notAuthed = false;
+    for (const [id, position] of posById) {
+      const res = await updateGoalRemote(id, { position });
+      if (res.notAuthed) notAuthed = true;
+      else if (!res.ok) anyFail = true;
+    }
+    if (anyFail && !notAuthed) return;
+    const bag = readAll();
+    const list = bag[projectId] ?? [];
+    bag[projectId] = list.map((g) =>
+      posById.has(g.id) ? { ...g, position: posById.get(g.id)! } : g,
+    );
+    writeAll(bag);
+  })();
 }
 
 

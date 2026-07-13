@@ -105,23 +105,29 @@ export function getRhythm(id: string): Rhythm | null {
 }
 
 export function saveCustomRhythm(rhythm: Rhythm) {
-  const s = read();
-  const idx = s.custom.findIndex((r) => r.id === rhythm.id);
-  if (idx >= 0) s.custom[idx] = rhythm;
-  else s.custom.push(rhythm);
-  write(s);
-  void upsertRhythmRemote(rhythm);
+  void (async () => {
+    const res = await upsertRhythmRemote(rhythm);
+    if (!res.ok && !res.notAuthed) return;
+    const s = read();
+    const idx = s.custom.findIndex((r) => r.id === rhythm.id);
+    if (idx >= 0) s.custom[idx] = rhythm;
+    else s.custom.push(rhythm);
+    write(s);
+  })();
 }
 
 export function deleteCustomRhythm(id: string) {
-  const s = read();
-  s.custom = s.custom.filter((r) => r.id !== id);
-  if (s.activeId === id) {
-    s.activeId = null;
-    s.activeIndex = 0;
-  }
-  write(s);
-  void deleteRhythmRemote(id);
+  void (async () => {
+    const res = await deleteRhythmRemote(id);
+    if (!res.ok && !res.notAuthed) return;
+    const s = read();
+    s.custom = s.custom.filter((r) => r.id !== id);
+    if (s.activeId === id) {
+      s.activeId = null;
+      s.activeIndex = 0;
+    }
+    write(s);
+  })();
 }
 
 export interface ActiveRhythmState {
