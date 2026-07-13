@@ -183,10 +183,15 @@ export function ingestRemoteDeletion(_id: string) {}
 export async function hydrateProjectSettingsFromRemote(): Promise<void> {
   const remote = await fetchProjectSettingsRemote();
   if (!remote) return;
+  const current = readSettings();
+  // Safety net: don't clobber cached settings if remote came back empty
+  // during a transient auth/network hiccup (e.g. tab visibility refetch).
+  if (remote.length === 0 && Object.keys(current).length > 0) return;
   const bag: Record<string, ProjectSetting> = {};
   for (const r of remote) bag[r.projectTag] = r;
   writeSettings(bag);
 }
+
 
 if (typeof window !== "undefined") {
   window.addEventListener("hourglass:sessions", () => {

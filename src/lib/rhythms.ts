@@ -183,8 +183,10 @@ export async function hydrateRhythmsFromRemote(): Promise<void> {
   const remote = await fetchCustomRhythmsRemote();
   if (!remote) return;
   const s = read();
+  // Safety net: don't wipe local custom rhythms if remote came back empty
+  // (transient auth/network state on tab focus).
+  if (remote.length === 0 && s.custom.length > 0) return;
   s.custom = remote;
-  // If the currently-active rhythm was deleted server-side, clear it.
   if (s.activeId && !BUILTIN_RHYTHMS.some((r) => r.id === s.activeId) &&
       !remote.some((r) => r.id === s.activeId)) {
     s.activeId = null;
@@ -192,3 +194,4 @@ export async function hydrateRhythmsFromRemote(): Promise<void> {
   }
   write(s);
 }
+

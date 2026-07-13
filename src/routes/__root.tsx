@@ -153,19 +153,32 @@ function RootComponent() {
   // Supabase whenever we have a signed-in session. DB is the source of truth;
   // localStorage is just an offline cache used between hydrations.
   useEffect(() => {
-    const hydrate = () => {
+    let lastUserId: string | null | undefined = undefined;
+    const hydrateFor = (uid: string | null) => {
+      // Only re-hydrate when the effective user actually changes. Supabase
+      // fires SIGNED_IN / TOKEN_REFRESHED on tab focus in some versions,
+      // which would otherwise race against optimistic writes and blank the
+      // UI if the query returns an empty result mid-restore.
+      if (lastUserId === uid) return;
+      lastUserId = uid;
+      if (!uid) return;
       void hydrateGoalsFromRemote();
       void hydrateRhythmsFromRemote();
       void hydrateProjectSettingsFromRemote();
     };
-    hydrate();
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-        hydrate();
+    void supabase.auth.getSession().then(({ data }) => {
+      hydrateFor(data.session?.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "INITIAL_SESSION") {
+        hydrateFor(session?.user?.id ?? null);
+      } else if (event === "SIGNED_OUT") {
+        lastUserId = null;
       }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
 
 
   return (
