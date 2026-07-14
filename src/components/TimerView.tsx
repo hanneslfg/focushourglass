@@ -73,11 +73,10 @@ export function TimerView() {
 
   // Break blocks can start without a task (the timer auto-fills "Break").
   const nextIsBreak = phase === "idle" && rhythm?.block.kind === "break";
-  const hasGoal = sessionGoals.length > 0;
   const canStart =
-    phase === "idle" &&
-    (nextIsBreak || (task.trim().length > 0 && hasGoal));
+    phase === "idle" && (nextIsBreak || task.trim().length > 0);
   const locked = phase !== "idle";
+
 
 
   function computeEndTime(offsetSeconds: number) {
