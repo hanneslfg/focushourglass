@@ -96,7 +96,6 @@ function completedGoal(g: ProjectGoal): ProjectGoal {
   return {
     ...g,
     projectId: "__all_goals__",
-    targetMinutes: 0,
     createdAt: g.createdAt || Date.now(),
   };
 }
@@ -115,7 +114,7 @@ function goalFromRemote(r: RemoteGoal): ProjectGoal {
     id: r.id,
     projectId: "__all_goals__",
     text: r.text,
-    targetMinutes: 0,
+    targetMinutes: Math.max(0, Math.round(Number(r.target_minutes ?? 0))),
     color: r.color || "#f4a261",
     done: Boolean(r.is_completed),
     position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
@@ -131,13 +130,17 @@ function settingFromRemote(r: RemoteProjectSetting): ProjectSetting {
   };
 }
 
-function goalPayload(uid: string, g: Pick<ProjectGoal, "text" | "color" | "position" | "done">) {
+function goalPayload(
+  uid: string,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes">,
+) {
   return {
     user_id: uid,
     text: g.text,
     color: g.color,
     position: Math.max(0, Math.round(Number(g.position) || 0)),
     is_completed: Boolean(g.done),
+    target_minutes: Math.max(0, Math.round(Number(g.targetMinutes) || 0)),
   };
 }
 
