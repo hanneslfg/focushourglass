@@ -95,7 +95,7 @@ export function TimerView() {
     <div className="flex-1 flex items-start md:items-center justify-center px-4 md:px-6 pt-28 pb-6 md:py-10">
       <div className="w-full max-w-md flex flex-col items-center gap-6 md:gap-10">
         {/* Rhythm indicator (Focus Blocks) — minimal floating pill */}
-        {rhythm && (
+        {mounted && rhythm && (
           <div
             key={`${rhythm.rhythm.id}-${rhythm.index}`}
             className="group flex items-center gap-2 rounded-full bg-white/[0.03] backdrop-blur-md px-3 py-1 text-[11px] text-muted-foreground/80 ring-1 ring-inset ring-white/[0.06] transition-opacity duration-500 animate-in fade-in"
