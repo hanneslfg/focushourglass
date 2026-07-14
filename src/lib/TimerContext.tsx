@@ -793,10 +793,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setTask,
         project,
         setProject,
+        sessionGoals,
+        toggleSessionGoal,
+        setSessionGoals,
         goalText,
         goalId,
         setGoalText: setGoalTextState,
         setGoal,
+
 
         minutes,
         setMinutes,
