@@ -194,7 +194,8 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
 }
 
 export async function insertGoalRemote(
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
+
 ): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
