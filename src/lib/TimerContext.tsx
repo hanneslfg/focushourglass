@@ -402,8 +402,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setPhase("idle");
     setTaskState("");
     setProjectState(null);
-    setGoalTextState(null);
-    setGoalIdState(null);
+    setSessionGoalsState([]);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
@@ -578,8 +577,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           focusedRef.current = 0;
           startedAtRef.current = null;
           setTaskState("");
-          setGoalTextState(null);
-          setGoalIdState(null);
+          setSessionGoalsState([]);
 
           setMinutesState(next.block.minutes);
           setTotal(next.block.minutes * 60);
