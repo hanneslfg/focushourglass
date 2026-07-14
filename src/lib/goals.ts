@@ -55,10 +55,16 @@ export function getProjectGoals(projectId: string): ProjectGoal[] {
   const legacy = bag[projectId] ?? [];
   const combined = master.length ? master : legacy;
   return combined
-    .filter((g) => (g.projectId ?? "").trim() === projectId)
+    .filter((g) => {
+      const tag = (g.projectId ?? "").trim();
+      // Show goals matching this project, OR untagged/legacy goals
+      // (NULL project_tag) so pre-existing data is never hidden.
+      return tag === "" || tag === projectId;
+    })
     .sort(
       (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
     );
+
 }
 
 export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
