@@ -59,10 +59,14 @@ function ColorPalette({
 
 interface Props {
   projectId: string;
+  activeProjectTag?: string;
   focusedMinutesByGoal: Map<string, number>;
 }
 
-export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) {
+export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinutesByGoal }: Props) {
+  const activeTag = (activeProjectTag ?? projectId ?? "").trim();
+  const activeTagLower = activeTag.toLowerCase();
+
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
@@ -105,12 +109,21 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
   const { active, completed } = useMemo(() => {
     const a: ProjectGoal[] = [];
     const c: ProjectGoal[] = [];
-    for (const g of goals) {
+    // Strict client-side project filter: goals with no project_tag are
+    // treated as general/fallback and shown everywhere; tagged goals only
+    // appear in the matching project (case-insensitive).
+    const filtered = goals.filter((g) => {
+      const tag = (g.projectId ?? "").trim().toLowerCase();
+      if (!tag) return true;
+      return tag === activeTagLower || tag === (projectId ?? "").trim().toLowerCase();
+    });
+    for (const g of filtered) {
       if (g.done) c.push(g);
       else a.push(g);
     }
     return { active: a, completed: c };
-  }, [goals]);
+  }, [goals, activeTagLower, projectId]);
+
 
   async function commitNew() {
     const text = newText.trim();
@@ -122,7 +135,9 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
     }
     const hrs = Number(newHours);
     const targetMinutes = Number.isFinite(hrs) && hrs > 0 ? Math.round(hrs * 60) : 0;
-    const saved = await addGoal(projectId, text, { targetMinutes, color: newColor });
+    const tagForSave = activeTag || projectId;
+    const saved = await addGoal(tagForSave, text, { targetMinutes, color: newColor });
+
     if (!saved) return;
     setNewText("");
     setNewHours("");

@@ -354,6 +354,8 @@ function ProjectDetailFull({
 
       <ProjectGoalsSection
         projectId={project.id}
+        activeProjectTag={project.name}
+
         focusedMinutesByGoal={(() => {
           const m = new Map<string, number>();
           for (const s of sessions) {
