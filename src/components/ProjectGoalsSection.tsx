@@ -135,7 +135,9 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     }
     const hrs = Number(newHours);
     const targetMinutes = Number.isFinite(hrs) && hrs > 0 ? Math.round(hrs * 60) : 0;
-    const saved = await addGoal(projectId, text, { targetMinutes, color: newColor });
+    const tagForSave = activeTag || projectId;
+    const saved = await addGoal(tagForSave, text, { targetMinutes, color: newColor });
+
     if (!saved) return;
     setNewText("");
     setNewHours("");
