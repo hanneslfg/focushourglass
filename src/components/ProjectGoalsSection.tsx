@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import {
   addGoal,
+  backfillUntaggedGoals,
   deleteGoal,
-  getProjectGoals,
+  getAllGoals,
   reorderGoals,
   updateGoal,
   GOAL_COLORS,
@@ -65,7 +66,6 @@ interface Props {
 
 export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinutesByGoal }: Props) {
   const activeTag = (activeProjectTag ?? projectId ?? "").trim();
-  const activeTagLower = activeTag.toLowerCase();
 
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [adding, setAdding] = useState(false);
@@ -84,10 +84,11 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   // Drag state
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const backfilledTags = useRef<Set<string>>(new Set());
 
   const [, forceTick] = useState(0);
   useEffect(() => {
-    const sync = () => setGoals(getProjectGoals(projectId));
+    const sync = () => setGoals(getAllGoals());
     const bump = () => forceTick((t) => t + 1);
     sync();
     window.addEventListener("hourglass:goals", sync);
@@ -96,7 +97,23 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
       window.removeEventListener("hourglass:goals", sync);
       window.removeEventListener("hourglass:sessions", bump);
     };
-  }, [projectId]);
+  }, []);
+
+  useEffect(() => {
+    const currentTag = (activeTag || projectId || "Uni").trim();
+    const key = currentTag.toLowerCase();
+    if (!key || backfilledTags.current.has(key)) return;
+    if (!goals.some((g) => !(g.projectId ?? "").trim())) return;
+
+    backfilledTags.current.add(key);
+    void backfillUntaggedGoals(currentTag).then((count) => {
+      if (count > 0) {
+        // eslint-disable-next-line no-console
+        console.log("[goals] backfilled legacy untagged goals", { project_tag: currentTag, count });
+        setGoals(getAllGoals());
+      }
+    });
+  }, [goals, activeTag, projectId]);
 
   // Cleanup any pending timers on unmount / project switch
   useEffect(() => {
@@ -109,40 +126,25 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   const { active, completed } = useMemo(() => {
     const a: ProjectGoal[] = [];
     const c: ProjectGoal[] = [];
-    const projectIdLower = (projectId ?? "").trim().toLowerCase();
-
-    // Are there any goals actually tagged for this project?
-    const taggedForThisProject = goals.some((g) => {
-      const tag = (g.projectId ?? "").trim().toLowerCase();
-      return !!tag && (tag === activeTagLower || tag === projectIdLower);
-    });
+    const currentTag = (activeTag || projectId || "").trim();
+    const currentTagLower = currentTag.toLowerCase();
 
     const filtered = goals.filter((g) => {
       const tag = (g.projectId ?? "").trim().toLowerCase();
-      if (!activeTagLower && !projectId) return true;
-      if (!tag) {
-        // Fallback so a bad write can't lock the user out: keep untagged
-        // goals visible while no properly-tagged goal exists here.
-        return !taggedForThisProject;
-      }
-      return tag === activeTagLower || tag === projectIdLower;
+      if (!currentTagLower) return true;
+      if (!tag) return false;
+      return tag === currentTagLower;
     });
 
     // eslint-disable-next-line no-console
-    console.log("[goals] render", {
-      projectId,
-      activeTag,
-      total: goals.length,
-      shown: filtered.length,
-      tags: goals.map((g) => g.projectId ?? null),
-    });
+    console.log("DEBUG FILTERS - Current Project Tag:", currentTag, "Goals raw:", goals, "Filtered:", filtered);
 
     for (const g of filtered) {
       if (g.done) c.push(g);
       else a.push(g);
     }
     return { active: a, completed: c };
-  }, [goals, activeTagLower, activeTag, projectId]);
+  }, [goals, activeTag, projectId]);
 
 
   async function commitNew() {
@@ -155,7 +157,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     }
     const hrs = Number(newHours);
     const targetMinutes = Number.isFinite(hrs) && hrs > 0 ? Math.round(hrs * 60) : 0;
-    const tagForSave = (activeTag || projectId || "").trim().toLowerCase();
+    const tagForSave = (activeTag || projectId || "").trim();
     // eslint-disable-next-line no-console
     console.log("[goals] insert payload", {
       project_tag: tagForSave || null,

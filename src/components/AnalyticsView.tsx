@@ -689,7 +689,7 @@ export function AnalyticsView({
   const availableGoals = useMemo(() => {
     const map = new Map<string, { key: string; projectId: string; projectName: string; projectColor: string; text: string; color: string; targetMinutes: number }>();
     for (const p of projects) {
-      for (const g of getProjectGoals(p.id)) {
+      for (const g of getProjectGoals(p.id, p.name)) {
         const key = `${p.id}::${g.text.toLowerCase()}`;
         map.set(key, {
           key,

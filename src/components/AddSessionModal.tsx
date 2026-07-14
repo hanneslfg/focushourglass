@@ -76,10 +76,11 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   }, [open]);
 
   useEffect(() => {
-    setGoals(projectId ? getProjectGoals(projectId) : []);
+    const selectedProject = projects.find((p) => p.id === projectId) ?? null;
+    setGoals(projectId ? getProjectGoals(projectId, selectedProject?.name) : []);
     setGoalId("");
     setGoalText("");
-  }, [projectId]);
+  }, [projectId, projects]);
 
 
   const windowMinutes = useMemo(() => Math.max(1, diffMinutes(start, end)), [start, end]);
