@@ -171,14 +171,17 @@ interface RemoteGoal {
   color: string | null;
   position: number | null;
   is_completed: boolean | null;
+  target_minutes: number | null;
 }
+
+const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes";
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const uid = await authUid();
   if (!uid) return null;
   const { data, error } = await supabase
     .from("goals")
-    .select("id,user_id,text,color,position,is_completed")
+    .select(GOAL_COLUMNS)
     .eq("user_id", uid)
     .order("position", { ascending: true });
   if (error) {
@@ -189,14 +192,14 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
 }
 
 export async function insertGoalRemote(
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes">,
 ): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const { data, error, status } = await supabase
     .from("goals")
     .insert(goalPayload(uid, g))
-    .select("id,user_id,text,color,position,is_completed")
+    .select(GOAL_COLUMNS)
     .single();
   if (error) {
     reportError("insertGoal", error);
@@ -212,7 +215,7 @@ export async function insertGoalRemote(
 
 export async function updateGoalRemote(
   id: string,
-  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position">>,
+  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position" | "targetMinutes">>,
 ): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
@@ -222,7 +225,11 @@ export async function updateGoalRemote(
   if (patch.color !== undefined) payload.color = patch.color;
   if (patch.done !== undefined) payload.is_completed = patch.done;
   if (patch.position !== undefined) payload.position = patch.position;
+  if (patch.targetMinutes !== undefined) {
+    payload.target_minutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
+  }
   if (Object.keys(payload).length === 1) return { ok: true, error: null };
+
   const { data, error, status } = await supabase
     .from("goals")
     .update(payload)
