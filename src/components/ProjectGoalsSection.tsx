@@ -109,16 +109,32 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   const { active, completed } = useMemo(() => {
     const a: ProjectGoal[] = [];
     const c: ProjectGoal[] = [];
-    // Strict client-side project filter: goals with no project_tag are
-    // treated as general/fallback and shown everywhere; tagged goals only
-    // appear in the matching project (case-insensitive).
+    const projectIdLower = (projectId ?? "").trim().toLowerCase();
+
+    // Are there any goals actually tagged for this project?
+    const taggedForThisProject = goals.some((g) => {
+      const tag = (g.projectId ?? "").trim().toLowerCase();
+      return !!tag && (tag === activeTagLower || tag === projectIdLower);
+    });
+
     const filtered = goals.filter((g) => {
       const tag = (g.projectId ?? "").trim().toLowerCase();
-      // No active project selected → show everything (incl. legacy untagged).
       if (!activeTagLower && !projectId) return true;
-      // Active project → strictly hide untagged/legacy goals.
-      if (!tag) return false;
-      return tag === activeTagLower || tag === (projectId ?? "").trim().toLowerCase();
+      if (!tag) {
+        // Fallback so a bad write can't lock the user out: keep untagged
+        // goals visible while no properly-tagged goal exists here.
+        return !taggedForThisProject;
+      }
+      return tag === activeTagLower || tag === projectIdLower;
+    });
+
+    // eslint-disable-next-line no-console
+    console.log("[goals] render", {
+      projectId,
+      activeTag,
+      total: goals.length,
+      shown: filtered.length,
+      tags: goals.map((g) => g.projectId ?? null),
     });
 
     for (const g of filtered) {
@@ -126,7 +142,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
       else a.push(g);
     }
     return { active: a, completed: c };
-  }, [goals, activeTagLower, projectId]);
+  }, [goals, activeTagLower, activeTag, projectId]);
 
 
   async function commitNew() {
@@ -139,15 +155,29 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     }
     const hrs = Number(newHours);
     const targetMinutes = Number.isFinite(hrs) && hrs > 0 ? Math.round(hrs * 60) : 0;
-    const tagForSave = activeTag || projectId;
+    const tagForSave = (activeTag || projectId || "").trim().toLowerCase();
+    // eslint-disable-next-line no-console
+    console.log("[goals] insert payload", {
+      project_tag: tagForSave || null,
+      text,
+      target_minutes: targetMinutes,
+      color: newColor,
+    });
+    if (!tagForSave) {
+      console.error("[goals] refusing to insert — no active project tag");
+      return;
+    }
     const saved = await addGoal(tagForSave, text, { targetMinutes, color: newColor });
-
-    if (!saved) return;
+    if (!saved) {
+      console.error("[goals] insert failed — Supabase returned no row");
+      return;
+    }
     setNewText("");
     setNewHours("");
     setNewColor(GOAL_COLORS[0]);
     setAdding(false);
   }
+
 
   async function withBusy(id: string, action: () => Promise<boolean>) {
     setBusyIds((prev) => new Set(prev).add(id));
