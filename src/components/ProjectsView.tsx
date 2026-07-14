@@ -354,7 +354,7 @@ function ProjectDetailFull({
 
       <ProjectGoalsSection
         projectId={project.id}
-        activeProjectTag={project.name}
+        activeProjectTag={project.id}
 
         focusedMinutesByGoal={(() => {
           const m = new Map<string, number>();
