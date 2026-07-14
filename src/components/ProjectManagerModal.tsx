@@ -53,10 +53,11 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
     [projects],
   );
 
-  function commitNew() {
+  async function commitNew() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    addProject(trimmed, color);
+    const saved = await addProject(trimmed, color);
+    if (!saved) return;
     setName("");
   }
 
@@ -65,14 +66,15 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
     setEditName(p.name);
     setEditColor(p.color);
   }
-  function commitEdit() {
+  async function commitEdit() {
     if (!editingId) return;
     const trimmed = editName.trim().slice(0, 30);
     if (!trimmed) {
       setEditingId(null);
       return;
     }
-    updateProject(editingId, { name: trimmed, color: editColor });
+    const ok = await updateProject(editingId, { name: trimmed, color: editColor });
+    if (!ok) return;
     setEditingId(null);
   }
 
@@ -233,7 +235,7 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
                     <button
                       onClick={() => {
                         if (confirm(`Delete project "${p.name}"?`)) {
-                          deleteProject(p.id);
+                          void deleteProject(p.id);
                         }
                       }}
                       className="h-7 w-7 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
