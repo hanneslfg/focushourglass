@@ -126,18 +126,21 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   const { active, completed } = useMemo(() => {
     const a: ProjectGoal[] = [];
     const c: ProjectGoal[] = [];
-    const currentTag = (activeTag || projectId || "").trim();
-    const currentTagLower = currentTag.toLowerCase();
+    const nameKey = (activeTag || "").toLowerCase();
+    const idKey = (projectId || "").toLowerCase();
 
     const filtered = goals.filter((g) => {
-      const tag = (g.projectId ?? "").trim().toLowerCase();
-      if (!currentTagLower) return true;
+      const tag = (g.projectId ?? "").trim();
       if (!tag) return false;
-      return tag === currentTagLower;
+      const tagLower = tag.toLowerCase();
+      const matchesProject =
+        (!!nameKey && tagLower === nameKey) ||
+        (!!idKey && (tag === projectId || tagLower === idKey));
+      return matchesProject;
     });
 
     // eslint-disable-next-line no-console
-    console.log("DEBUG FILTERS - Current Project Tag:", currentTag, "Goals raw:", goals, "Filtered:", filtered);
+    console.log("DEBUG FILTERS - project name:", activeTag, "id:", projectId, "Goals raw:", goals, "Filtered:", filtered);
 
     for (const g of filtered) {
       if (g.done) c.push(g);
@@ -145,6 +148,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     }
     return { active: a, completed: c };
   }, [goals, activeTag, projectId]);
+
 
 
   async function commitNew() {
