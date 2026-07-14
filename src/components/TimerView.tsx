@@ -31,8 +31,9 @@ export function TimerView() {
     setTask,
     project,
     setProject,
-    goalId,
-    setGoal,
+    sessionGoals,
+    toggleSessionGoal,
+
 
 
     minutes,
