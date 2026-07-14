@@ -14,7 +14,6 @@ import {
   backfillUntaggedGoals,
   deleteGoal,
   getAllGoals,
-  getProjectGoals,
   reorderGoals,
   updateGoal,
   GOAL_COLORS,
@@ -67,7 +66,6 @@ interface Props {
 
 export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinutesByGoal }: Props) {
   const activeTag = (activeProjectTag ?? projectId ?? "").trim();
-  const activeTagLower = activeTag.toLowerCase();
 
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [adding, setAdding] = useState(false);

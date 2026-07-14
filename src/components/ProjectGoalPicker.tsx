@@ -23,7 +23,7 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const sync = () => setGoals(project ? getProjectGoals(project.id) : []);
+    const sync = () => setGoals(project ? getProjectGoals(project.id, project.name) : []);
     sync();
     window.addEventListener("hourglass:goals", sync);
     window.addEventListener("hourglass:sessions", () => setTick((t) => t + 1));
