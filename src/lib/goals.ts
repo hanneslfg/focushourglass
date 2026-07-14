@@ -49,6 +49,18 @@ function writeAll(bag: Record<string, ProjectGoal[]>) {
   }
 }
 
+export function getAllGoals(): ProjectGoal[] {
+  const bag = readAll();
+  const master = bag[MASTER_KEY] ?? [];
+  const legacyBuckets = Object.entries(bag)
+    .filter(([key]) => key !== MASTER_KEY)
+    .flatMap(([, list]) => list);
+  const combined = master.length ? master : legacyBuckets;
+  return combined.sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
+  );
+}
+
 export function getProjectGoals(projectId: string): ProjectGoal[] {
   if (!projectId) return [];
   const bag = readAll();
