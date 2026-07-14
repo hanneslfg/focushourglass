@@ -41,19 +41,25 @@ import { calculateFocusScore } from "./focusScore";
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
+export interface SessionGoal { id: string; text: string }
+
 interface TimerCtx {
   // form / draft state (used when idle)
   task: string;
   setTask: (s: string) => void;
   project: ProjectTag | null;
   setProject: (p: ProjectTag | null) => void;
-  /** Selected goal text for this session (denormalized). */
+  /** Goals selected for this session (max 2). Written to Supabase as `tags`. */
+  sessionGoals: SessionGoal[];
+  toggleSessionGoal: (goal: SessionGoal) => void;
+  setSessionGoals: (goals: SessionGoal[]) => void;
+  /** Derived — first selected goal's text (kept for legacy consumers). */
   goalText: string | null;
-  /** UUID of the selected goal (or null). Persisted to Supabase as goal_id. */
+  /** Derived — first selected goal's id. */
   goalId: string | null;
   setGoalText: (t: string | null) => void;
-  /** Set the active goal by id + text in one atomic update. */
-  setGoal: (goal: { id: string; text: string } | null) => void;
+  /** @deprecated use toggleSessionGoal / setSessionGoals for multi-goal flow. */
+  setGoal: (goal: SessionGoal | null) => void;
   minutes: number;
   setMinutes: (m: number) => void;
 
@@ -78,6 +84,7 @@ interface TimerCtx {
   abort: () => void;
   addExtra: (mins: number) => void;
 }
+
 
 
 const Ctx = createContext<TimerCtx | null>(null);
