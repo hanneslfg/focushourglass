@@ -61,7 +61,7 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
             (focusedByGoal.get(g.id) ?? 0) +
             (focusedByGoal.get(g.text.toLowerCase()) ?? 0);
           const achieved = isGoalAchieved(g, focused);
-          const dimmed = !on && atCap;
+          const dimmed = false;
           return (
             <button
               key={g.id}
