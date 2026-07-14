@@ -31,8 +31,9 @@ export function TimerView() {
     setTask,
     project,
     setProject,
-    goalId,
-    setGoal,
+    sessionGoals,
+    toggleSessionGoal,
+
 
 
     minutes,
@@ -72,9 +73,12 @@ export function TimerView() {
 
   // Break blocks can start without a task (the timer auto-fills "Break").
   const nextIsBreak = phase === "idle" && rhythm?.block.kind === "break";
+  const hasGoal = sessionGoals.length > 0;
   const canStart =
-    phase === "idle" && (nextIsBreak || task.trim().length > 0);
+    phase === "idle" &&
+    (nextIsBreak || (task.trim().length > 0 && hasGoal));
   const locked = phase !== "idle";
+
 
   function computeEndTime(offsetSeconds: number) {
     const d = new Date(Date.now() + offsetSeconds * 1000);
@@ -155,7 +159,13 @@ export function TimerView() {
             selectedId={project?.id ?? null}
             onSelect={setProject}
           />
-          <ProjectGoalPicker project={project} goalId={goalId} onChange={setGoal} disabled={locked} />
+          <ProjectGoalPicker
+            project={project}
+            selectedIds={sessionGoals.map((g) => g.id)}
+            onToggle={toggleSessionGoal}
+            disabled={locked}
+          />
+
         </div>
 
         {/* Ambient sound selector */}
@@ -339,11 +349,18 @@ export function TimerView() {
           </div>
         )}
 
-        {!canStart && phase === "idle" && (
+        {!canStart && phase === "idle" && !nextIsBreak && (
           <p className="text-[11px] text-muted-foreground/70 -mt-4">
-            {t("timer.nameYourThing")}
+            {task.trim().length === 0
+              ? t("timer.nameYourThing")
+              : !project
+                ? "Pick a project to unlock its goals."
+                : !hasGoal
+                  ? "Pick 1 or 2 goals from this project to begin."
+                  : t("timer.nameYourThing")}
           </p>
         )}
+
       </div>
       {warmupActive && (
         <VisualWarmup

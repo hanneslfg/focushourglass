@@ -41,19 +41,25 @@ import { calculateFocusScore } from "./focusScore";
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
 
+export interface SessionGoal { id: string; text: string }
+
 interface TimerCtx {
   // form / draft state (used when idle)
   task: string;
   setTask: (s: string) => void;
   project: ProjectTag | null;
   setProject: (p: ProjectTag | null) => void;
-  /** Selected goal text for this session (denormalized). */
+  /** Goals selected for this session (max 2). Written to Supabase as `tags`. */
+  sessionGoals: SessionGoal[];
+  toggleSessionGoal: (goal: SessionGoal) => void;
+  setSessionGoals: (goals: SessionGoal[]) => void;
+  /** Derived — first selected goal's text (kept for legacy consumers). */
   goalText: string | null;
-  /** UUID of the selected goal (or null). Persisted to Supabase as goal_id. */
+  /** Derived — first selected goal's id. */
   goalId: string | null;
   setGoalText: (t: string | null) => void;
-  /** Set the active goal by id + text in one atomic update. */
-  setGoal: (goal: { id: string; text: string } | null) => void;
+  /** @deprecated use toggleSessionGoal / setSessionGoals for multi-goal flow. */
+  setGoal: (goal: SessionGoal | null) => void;
   minutes: number;
   setMinutes: (m: number) => void;
 
@@ -80,6 +86,7 @@ interface TimerCtx {
 }
 
 
+
 const Ctx = createContext<TimerCtx | null>(null);
 
 export function useTimer(): TimerCtx {
@@ -91,8 +98,30 @@ export function useTimer(): TimerCtx {
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
-  const [goalText, setGoalTextState] = useState<string | null>(null);
-  const [goalId, setGoalIdState] = useState<string | null>(null);
+  const [sessionGoals, setSessionGoalsState] = useState<SessionGoal[]>([]);
+  const goalText = sessionGoals[0]?.text ?? null;
+  const goalId = sessionGoals[0]?.id ?? null;
+  const goalTexts = sessionGoals.map((g) => g.text);
+
+  // Legacy setter shims so existing single-goal call sites keep working.
+  const setGoalTextState = useCallback((t: string | null) => {
+    setSessionGoalsState((prev) => {
+      if (!t) return prev.length ? [] : prev;
+      const first = prev[0];
+      const rest = prev.slice(1);
+      return [{ id: first?.id ?? "", text: t }, ...rest];
+    });
+  }, []);
+  const setGoalIdState = useCallback((id: string | null) => {
+    setSessionGoalsState((prev) => {
+      if (!id) return prev.length ? [] : prev;
+      const first = prev[0];
+      const rest = prev.slice(1);
+      return [{ id, text: first?.text ?? "" }, ...rest];
+    });
+  }, []);
+
+
 
   const [minutes, setMinutesState] = useState(90);
 
@@ -166,7 +195,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectId: project?.id,
         projectName: project?.name,
         projectColor: project?.color,
-        tags: goalText ? [goalText] : undefined,
+        tags: goalTexts.length ? goalTexts : undefined,
         goalId: goalId ?? undefined,
         plannedMinutes: Math.round(total / 60),
         startedAt: startedAtRef.current,
@@ -239,8 +268,18 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         color: a.projectColor ?? "#f4a261",
       });
     }
-    if (Array.isArray(a.tags) && a.tags.length > 0) setGoalTextState(String(a.tags[0]));
-    if (a.goalId) setGoalIdState(a.goalId);
+    if (Array.isArray(a.tags) && a.tags.length > 0) {
+      // First tag inherits the persisted goalId (single-goal legacy); the
+      // rest come back id-less. Capped to 2 to match the new UX.
+      const goals: SessionGoal[] = a.tags.slice(0, 2).map((t, i) => ({
+        id: i === 0 && a.goalId ? a.goalId : "",
+        text: String(t),
+      }));
+      setSessionGoalsState(goals);
+    } else if (a.goalId) {
+      setSessionGoalsState([{ id: a.goalId, text: "" }]);
+    }
+
 
     setMinutesState(planned);
     setTotal(plannedSec);
@@ -309,13 +348,27 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (active) {
       const isBreak = active.block.kind === "break";
       if (!isBreak && !task.trim()) return;
+      // Focus blocks in a rhythm still require a chosen goal (breaks don't).
+      if (!isBreak && sessionGoals.length === 0) {
+        toast("Pick a goal", {
+          description: "Select at least 1 goal (up to 2) before starting.",
+        });
+        return;
+      }
       if (isBreak && !task.trim()) setTaskState("Break");
       startWith(active.block.minutes, active.block.kind);
       return;
     }
     if (!task.trim()) return;
+    if (sessionGoals.length === 0) {
+      toast("Pick a goal", {
+        description: "Select at least 1 goal (up to 2) before starting.",
+      });
+      return;
+    }
     startWith(minutes, null);
-  }, [task, phase, minutes, startWith]);
+  }, [task, phase, minutes, sessionGoals, startWith]);
+
 
   const pause = useCallback(() => {
     if (phase === "running") {
@@ -349,8 +402,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setPhase("idle");
     setTaskState("");
     setProjectState(null);
-    setGoalTextState(null);
-    setGoalIdState(null);
+    setSessionGoalsState([]);
     setMinutesState(90);
     setRemaining(90 * 60);
     setTotal(90 * 60);
@@ -364,15 +416,44 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setEndAt(null);
   }, [setEndAt]);
 
-  const setGoal = useCallback((goal: { id: string; text: string } | null) => {
+  const MAX_SESSION_GOALS = 2;
+
+  const setSessionGoals = useCallback((goals: SessionGoal[]) => {
+    // Cap to MAX_SESSION_GOALS and dedupe by id.
+    const seen = new Set<string>();
+    const clean: SessionGoal[] = [];
+    for (const g of goals) {
+      const key = g.id || g.text;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      clean.push(g);
+      if (clean.length >= MAX_SESSION_GOALS) break;
+    }
+    setSessionGoalsState(clean);
+  }, []);
+
+  const toggleSessionGoal = useCallback((goal: SessionGoal) => {
+    setSessionGoalsState((prev) => {
+      const idx = prev.findIndex((g) => g.id === goal.id);
+      if (idx >= 0) return prev.filter((_, i) => i !== idx);
+      if (prev.length >= MAX_SESSION_GOALS) {
+        toast("Max 2 goals per session", {
+          description: "Deselect one to swap.",
+        });
+        return prev;
+      }
+      return [...prev, goal];
+    });
+  }, []);
+
+  const setGoal = useCallback((goal: SessionGoal | null) => {
     if (!goal) {
-      setGoalIdState(null);
-      setGoalTextState(null);
+      setSessionGoalsState([]);
       return;
     }
-    setGoalIdState(goal.id);
-    setGoalTextState(goal.text);
+    setSessionGoalsState([goal]);
   }, []);
+
 
 
   /**
@@ -431,7 +512,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectColor: project?.color,
         goalText: goalText ?? undefined,
         goalId: goalId ?? undefined,
-        tags: goalText ? [goalText] : undefined,
+        tags: goalTexts.length ? goalTexts : undefined,
         focusScore,
         pauseCount,
         totalPauseSeconds,
@@ -450,7 +531,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: false,
-        tags: goalText ? [goalText] : undefined,
+        tags: goalTexts.length ? goalTexts : undefined,
         focus_score: focusScore,
         pause_count: pauseCount,
         total_pause_seconds: totalPauseSeconds,
@@ -496,8 +577,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           focusedRef.current = 0;
           startedAtRef.current = null;
           setTaskState("");
-          setGoalTextState(null);
-          setGoalIdState(null);
+          setSessionGoalsState([]);
 
           setMinutesState(next.block.minutes);
           setTotal(next.block.minutes * 60);
@@ -571,7 +651,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         projectColor: project?.color,
         goalText: goalText ?? undefined,
         goalId: goalId ?? undefined,
-        tags: goalText ? [goalText] : undefined,
+        tags: goalTexts.length ? goalTexts : undefined,
         focusScore,
         pauseCount,
         totalPauseSeconds,
@@ -585,7 +665,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         started_at: startedAt,
         completed_at: completedAt,
         was_aborted: true,
-        tags: goalText ? [goalText] : undefined,
+        tags: goalTexts.length ? goalTexts : undefined,
         focus_score: focusScore,
         pause_count: pauseCount,
         total_pause_seconds: totalPauseSeconds,
@@ -691,11 +771,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         toast("Auto-paused", { description: "Project changed mid-session." });
       }
       setProjectState(p);
-      // Active session goal is scoped to a project; clear on switch.
-      if (changed) {
-        setGoalTextState(null);
-        setGoalIdState(null);
-      }
+      // Active session goals are scoped to a project; clear on switch.
+      if (changed) setSessionGoalsState([]);
+
     },
     [phase, project, setEndAt],
   );
@@ -711,10 +789,14 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setTask,
         project,
         setProject,
+        sessionGoals,
+        toggleSessionGoal,
+        setSessionGoals,
         goalText,
         goalId,
         setGoalText: setGoalTextState,
         setGoal,
+
 
         minutes,
         setMinutes,
