@@ -98,8 +98,11 @@ export function useTimer(): TimerCtx {
 export function TimerProvider({ children }: { children: ReactNode }) {
   const [task, setTaskState] = useState("");
   const [project, setProjectState] = useState<ProjectTag | null>(null);
-  const [goalText, setGoalTextState] = useState<string | null>(null);
-  const [goalId, setGoalIdState] = useState<string | null>(null);
+  const [sessionGoals, setSessionGoalsState] = useState<SessionGoal[]>([]);
+  const goalText = sessionGoals[0]?.text ?? null;
+  const goalId = sessionGoals[0]?.id ?? null;
+  const goalTexts = sessionGoals.map((g) => g.text);
+
 
   const [minutes, setMinutesState] = useState(90);
 
