@@ -95,7 +95,6 @@ function isPersistedUuid(id: string): boolean {
 function completedGoal(g: ProjectGoal): ProjectGoal {
   return {
     ...g,
-    projectId: "__all_goals__",
     createdAt: g.createdAt || Date.now(),
   };
 }
@@ -112,7 +111,7 @@ function rhythmFromDurations(r: RemoteRhythm): Rhythm {
 function goalFromRemote(r: RemoteGoal): ProjectGoal {
   return completedGoal({
     id: r.id,
-    projectId: "__all_goals__",
+    projectId: (r.project_tag ?? "").trim(),
     text: r.text,
     targetMinutes: Math.max(0, Math.round(Number(r.target_minutes ?? 0))),
     color: r.color || "#f4a261",
@@ -132,7 +131,7 @@ function settingFromRemote(r: RemoteProjectSetting): ProjectSetting {
 
 function goalPayload(
   uid: string,
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
 ) {
   return {
     user_id: uid,
@@ -141,6 +140,7 @@ function goalPayload(
     position: Math.max(0, Math.round(Number(g.position) || 0)),
     is_completed: Boolean(g.done),
     target_minutes: Math.max(0, Math.round(Number(g.targetMinutes) || 0)),
+    project_tag: g.projectId || null,
   };
 }
 
@@ -172,7 +172,9 @@ interface RemoteGoal {
   position: number | null;
   is_completed: boolean | null;
   target_minutes: number | null;
+  project_tag: string | null;
 }
+
 
 const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes";
 
