@@ -61,17 +61,21 @@ export function getAllGoals(): ProjectGoal[] {
   );
 }
 
-export function getProjectGoals(projectId: string): ProjectGoal[] {
-  if (!projectId) return [];
+export function getProjectGoals(projectId: string, activeProjectTag?: string): ProjectGoal[] {
   const bag = readAll();
   const master = bag[MASTER_KEY] ?? [];
   const legacy = bag[projectId] ?? [];
   const combined = master.length ? master : legacy;
-  const needle = projectId.trim().toLowerCase();
+  const aliases = new Set(
+    [activeProjectTag, projectId]
+      .map((v) => (v ?? "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  if (aliases.size === 0) return [];
   return combined
     .filter((g) => {
       const tag = (g.projectId ?? "").trim().toLowerCase();
-      return !!tag && tag === needle;
+      return !!tag && aliases.has(tag);
     })
     .sort(
       (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
@@ -110,7 +114,7 @@ export async function addGoal(
   opts?: { targetMinutes?: number; color?: string },
 ): Promise<ProjectGoal | null> {
   const clean = text.trim().slice(0, 140);
-  const tagForSave = projectId.trim().toLowerCase();
+  const tagForSave = projectId.trim();
   if (!tagForSave || !clean) return null;
   const existing = getProjectGoals(tagForSave);
   const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
@@ -142,7 +146,7 @@ export async function addGoal(
 }
 
 export async function backfillUntaggedGoals(projectTag?: string | null): Promise<number> {
-  const tagForSave = (projectTag?.trim() || "Uni").toLowerCase();
+  const tagForSave = projectTag?.trim() || "Uni";
   const legacyGoals = getUntaggedGoals();
   if (legacyGoals.length === 0) return 0;
 
