@@ -53,7 +53,18 @@ export function AmbientSound({ running }: { running: boolean }) {
   }, []);
 
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // HTMLAudio crossfade pair — two instances of the same track. Only one is
+  // "active" at a time; the other is primed to take over the last N seconds
+  // for a seamless handoff (true gapless looping requires two instances
+  // because HTMLAudio's `loop=true` re-seeks to 0 with an audible gap).
+  const audioARef = useRef<HTMLAudioElement | null>(null);
+  const audioBRef = useRef<HTMLAudioElement | null>(null);
+  const activeSlotRef = useRef<"a" | "b">("a");
+  const crossfadeRafRef = useRef<number | null>(null);
+  const crossfadingRef = useRef<boolean>(false);
+
+  // Kept for legacy references below.
+  const audioRef = audioARef;
   // Web Audio graph for truly gapless looping (preferred path)
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainRef = useRef<GainNode | null>(null);
@@ -62,6 +73,7 @@ export function AmbientSound({ running }: { running: boolean }) {
   const bufferUrlRef = useRef<string | null>(null);
   const usingWebAudioRef = useRef<boolean>(false);
   const fadeRef = useRef<number | null>(null);
+
 
   // Fetch bucket contents (client only, after mount)
   useEffect(() => {
