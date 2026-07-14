@@ -29,7 +29,7 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
   useEffect(() => setSession(sessionProp), [sessionProp]);
 
   useEffect(() => {
-    const syncGoals = () => setGoals(pid ? getProjectGoals(pid) : []);
+    const syncGoals = () => setGoals(pid ? getProjectGoals(pid, sessionProp.projectName) : []);
     const syncSession = () => {
       const latest = getSessions().find((s) => s.id === sessionProp.id);
       if (latest) setSession(latest);
@@ -41,7 +41,7 @@ export function SessionGoalToggler({ session: sessionProp, projectId, size = "xs
       window.removeEventListener("hourglass:goals", syncGoals);
       window.removeEventListener("hourglass:sessions", syncSession);
     };
-  }, [pid, sessionProp.id]);
+  }, [pid, sessionProp.id, sessionProp.projectName]);
 
   if (!pid || goals.length === 0) return null;
 

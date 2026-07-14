@@ -94,11 +94,11 @@ export function getUntaggedGoals(): ProjectGoal[] {
     );
 }
 
-export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
+export function findGoalByText(projectId: string, text: string | undefined | null, activeProjectTag?: string): ProjectGoal | null {
   if (!projectId || !text) return null;
   const needle = text.trim().toLowerCase();
   if (!needle) return null;
-  return getProjectGoals(projectId).find((g) => g.text.trim().toLowerCase() === needle) ?? null;
+  return getProjectGoals(projectId, activeProjectTag).find((g) => g.text.trim().toLowerCase() === needle) ?? null;
 }
 
 
