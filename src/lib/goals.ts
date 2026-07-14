@@ -51,20 +51,23 @@ function writeAll(bag: Record<string, ProjectGoal[]>) {
 export function getProjectGoals(projectId: string): ProjectGoal[] {
   if (!projectId) return [];
   const bag = readAll();
-  const list = bag[MASTER_KEY] ?? bag[projectId] ?? [];
-  return [...list].sort(
-    (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
-  );
+  const master = bag[MASTER_KEY] ?? [];
+  const legacy = bag[projectId] ?? [];
+  const combined = master.length ? master : legacy;
+  return combined
+    .filter((g) => (g.projectId ?? "").trim() === projectId)
+    .sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
+    );
 }
 
 export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
   if (!projectId || !text) return null;
   const needle = text.trim().toLowerCase();
   if (!needle) return null;
-  const bag = readAll();
-  const list = bag[MASTER_KEY] ?? bag[projectId] ?? [];
-  return list.find((g) => g.text.trim().toLowerCase() === needle) ?? null;
+  return getProjectGoals(projectId).find((g) => g.text.trim().toLowerCase() === needle) ?? null;
 }
+
 
 export function isGoalAchieved(goal: ProjectGoal | null | undefined, focusedMinutes: number): boolean {
   if (!goal) return false;
