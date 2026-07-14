@@ -159,7 +159,13 @@ export function TimerView() {
             selectedId={project?.id ?? null}
             onSelect={setProject}
           />
-          <ProjectGoalPicker project={project} goalId={goalId} onChange={setGoal} disabled={locked} />
+          <ProjectGoalPicker
+            project={project}
+            selectedIds={sessionGoals.map((g) => g.id)}
+            onToggle={toggleSessionGoal}
+            disabled={locked}
+          />
+
         </div>
 
         {/* Ambient sound selector */}
