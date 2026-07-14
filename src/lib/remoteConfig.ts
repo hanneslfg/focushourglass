@@ -133,6 +133,7 @@ function goalPayload(
   uid: string,
   g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
 ) {
+  const projectTag = (g.projectId ?? "").trim();
   return {
     user_id: uid,
     text: g.text,
@@ -140,7 +141,7 @@ function goalPayload(
     position: Math.max(0, Math.round(Number(g.position) || 0)),
     is_completed: Boolean(g.done),
     target_minutes: Math.max(0, Math.round(Number(g.targetMinutes) || 0)),
-    project_tag: g.projectId || null,
+    project_tag: projectTag,
   };
 }
 
@@ -199,9 +200,15 @@ export async function insertGoalRemote(
 ): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
+  const projectTag = (g.projectId ?? "").trim();
+  if (!projectTag) {
+    const msg = "Refusing to insert goal without project_tag";
+    reportError("insertGoal", msg);
+    return { ok: false, error: msg };
+  }
   const { data, error, status } = await supabase
     .from("goals")
-    .insert(goalPayload(uid, g))
+    .insert(goalPayload(uid, { ...g, projectId: projectTag }))
     .select(GOAL_COLUMNS)
     .single();
   if (error) {
@@ -214,6 +221,37 @@ export async function insertGoalRemote(
     return { ok: false, error: msg, status };
   }
   return { ok: true, error: null, status, data: goalFromRemote(data as RemoteGoal) };
+}
+
+export async function updateGoalProjectTagRemote(
+  id: string,
+  projectTag: string,
+): Promise<RemoteResult<ProjectGoal>> {
+  const uid = await authUid();
+  if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
+  const cleanTag = projectTag.trim();
+  if (!cleanTag) {
+    const msg = "Refusing to update goal with empty project_tag";
+    reportError("updateGoalProjectTag", msg);
+    return { ok: false, error: msg };
+  }
+  const { data, error, status } = await supabase
+    .from("goals")
+    .update({ user_id: uid, project_tag: cleanTag })
+    .eq("id", id)
+    .eq("user_id", uid)
+    .select(GOAL_COLUMNS)
+    .maybeSingle();
+  if (error) {
+    reportError("updateGoalProjectTag", error);
+    return { ok: false, error: error.message };
+  }
+  if (!data) {
+    const msg = "No goal row was backfilled; check user_id/RLS for public.goals";
+    reportError("updateGoalProjectTag", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: successStatus(status), error: successStatus(status) ? null : `Unexpected status ${status}`, status, data: goalFromRemote(data as RemoteGoal) };
 }
 
 export async function updateGoalRemote(
