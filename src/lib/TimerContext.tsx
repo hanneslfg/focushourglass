@@ -268,8 +268,18 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         color: a.projectColor ?? "#f4a261",
       });
     }
-    if (Array.isArray(a.tags) && a.tags.length > 0) setGoalTextState(String(a.tags[0]));
-    if (a.goalId) setGoalIdState(a.goalId);
+    if (Array.isArray(a.tags) && a.tags.length > 0) {
+      // First tag inherits the persisted goalId (single-goal legacy); the
+      // rest come back id-less. Capped to 2 to match the new UX.
+      const goals: SessionGoal[] = a.tags.slice(0, 2).map((t, i) => ({
+        id: i === 0 && a.goalId ? a.goalId : "",
+        text: String(t),
+      }));
+      setSessionGoalsState(goals);
+    } else if (a.goalId) {
+      setSessionGoalsState([{ id: a.goalId, text: "" }]);
+    }
+
 
     setMinutesState(planned);
     setTotal(plannedSec);
