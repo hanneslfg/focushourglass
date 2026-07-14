@@ -59,10 +59,14 @@ function ColorPalette({
 
 interface Props {
   projectId: string;
+  activeProjectTag?: string;
   focusedMinutesByGoal: Map<string, number>;
 }
 
-export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) {
+export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinutesByGoal }: Props) {
+  const activeTag = (activeProjectTag ?? projectId ?? "").trim();
+  const activeTagLower = activeTag.toLowerCase();
+
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [adding, setAdding] = useState(false);
   const [newText, setNewText] = useState("");
