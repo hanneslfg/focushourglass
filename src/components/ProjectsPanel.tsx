@@ -67,14 +67,15 @@ export function ProjectsPanel() {
     return map;
   }, [sessions]);
 
-  function commitNew() {
+  async function commitNew() {
     const name = newName.trim();
     if (!name) {
       setAdding(false);
       setNewName("");
       return;
     }
-    addProject(name, newColor);
+    const saved = await addProject(name, newColor);
+    if (!saved) return;
     setNewName("");
     setAdding(false);
   }
@@ -91,8 +92,9 @@ export function ProjectsPanel() {
         sessions={sessions.filter((s) => s.projectId === project.id)}
         onBack={() => setActiveId(null)}
         onDelete={() => {
-          deleteProject(project.id);
-          setActiveId(null);
+          void deleteProject(project.id).then((ok) => {
+            if (ok) setActiveId(null);
+          });
         }}
       />
     );

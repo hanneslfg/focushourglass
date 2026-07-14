@@ -74,8 +74,9 @@ export function ProjectPicker({ selectedId, onSelect, disabled }: Props) {
               {!disabled && (
                 <button
                   onClick={() => {
-                    if (selectedId === t.id) onSelect(null);
-                    deleteProject(t.id);
+                    void deleteProject(t.id).then((ok) => {
+                      if (ok && selectedId === t.id) onSelect(null);
+                    });
                   }}
                   className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                   aria-label={`Delete ${t.name}`}
