@@ -103,6 +103,25 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const goalId = sessionGoals[0]?.id ?? null;
   const goalTexts = sessionGoals.map((g) => g.text);
 
+  // Legacy setter shims so existing single-goal call sites keep working.
+  const setGoalTextState = useCallback((t: string | null) => {
+    setSessionGoalsState((prev) => {
+      if (!t) return prev.length ? [] : prev;
+      const first = prev[0];
+      const rest = prev.slice(1);
+      return [{ id: first?.id ?? "", text: t }, ...rest];
+    });
+  }, []);
+  const setGoalIdState = useCallback((id: string | null) => {
+    setSessionGoalsState((prev) => {
+      if (!id) return prev.length ? [] : prev;
+      const first = prev[0];
+      const rest = prev.slice(1);
+      return [{ id, text: first?.text ?? "" }, ...rest];
+    });
+  }, []);
+
+
 
   const [minutes, setMinutesState] = useState(90);
 
