@@ -176,7 +176,7 @@ interface RemoteGoal {
 }
 
 
-const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes";
+const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag";
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const uid = await authUid();
