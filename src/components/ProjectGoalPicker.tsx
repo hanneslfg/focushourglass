@@ -1,9 +1,8 @@
 /**
  * Inline multi-goal picker shown right under the project selector on the
- * home screen. Lets the user select 1–2 goals for the upcoming session
- * (mandatory: no goal, no timer). Each pill uses the goal's own color and
- * shows a subtle checkmark when the goal has been achieved (marked done or
- * focused time ≥ target).
+ * home screen. Selection is fully optional — pick zero, one, several, or
+ * all of the active goals. Each pill uses the goal's own color and shows
+ * a subtle checkmark when the goal has already been achieved.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
@@ -11,7 +10,6 @@ import type { ProjectTag } from "@/lib/projects";
 import { getProjectGoals, isGoalAchieved, type ProjectGoal } from "@/lib/goals";
 import { getSessions } from "@/lib/sessions";
 
-export const MAX_SESSION_GOALS = 2;
 
 interface Props {
   project: ProjectTag | null;
