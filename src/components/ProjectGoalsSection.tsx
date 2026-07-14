@@ -114,9 +114,13 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     // appear in the matching project (case-insensitive).
     const filtered = goals.filter((g) => {
       const tag = (g.projectId ?? "").trim().toLowerCase();
-      if (!tag) return true;
+      // No active project selected → show everything (incl. legacy untagged).
+      if (!activeTagLower && !projectId) return true;
+      // Active project → strictly hide untagged/legacy goals.
+      if (!tag) return false;
       return tag === activeTagLower || tag === (projectId ?? "").trim().toLowerCase();
     });
+
     for (const g of filtered) {
       if (g.done) c.push(g);
       else a.push(g);
