@@ -773,11 +773,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         toast("Auto-paused", { description: "Project changed mid-session." });
       }
       setProjectState(p);
-      // Active session goal is scoped to a project; clear on switch.
-      if (changed) {
-        setGoalTextState(null);
-        setGoalIdState(null);
-      }
+      // Active session goals are scoped to a project; clear on switch.
+      if (changed) setSessionGoalsState([]);
+
     },
     [phase, project, setEndAt],
   );
