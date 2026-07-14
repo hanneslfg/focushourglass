@@ -4,6 +4,7 @@ import {
   deleteGoalRemote,
   fetchAllGoals,
   insertGoalRemote,
+  updateGoalProjectTagRemote,
   updateGoalRemote,
 } from "./remoteConfig";
 
@@ -58,15 +59,23 @@ export function getProjectGoals(projectId: string): ProjectGoal[] {
   return combined
     .filter((g) => {
       const tag = (g.projectId ?? "").trim().toLowerCase();
-      // Show goals matching this project (case-insensitive), OR untagged/legacy
-      // goals (NULL project_tag) so pre-existing data is never hidden.
-      return tag === "" || tag === needle;
+      return !!tag && tag === needle;
     })
     .sort(
       (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
     );
 
 
+}
+
+export function getUntaggedGoals(): ProjectGoal[] {
+  const bag = readAll();
+  const master = bag[MASTER_KEY] ?? [];
+  return master
+    .filter((g) => !(g.projectId ?? "").trim())
+    .sort(
+      (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.createdAt - b.createdAt,
+    );
 }
 
 export function findGoalByText(projectId: string, text: string | undefined | null): ProjectGoal | null {
@@ -89,12 +98,13 @@ export async function addGoal(
   opts?: { targetMinutes?: number; color?: string },
 ): Promise<ProjectGoal | null> {
   const clean = text.trim().slice(0, 140);
-  if (!projectId || !clean) return null;
-  const existing = getProjectGoals(projectId);
+  const tagForSave = projectId.trim().toLowerCase();
+  if (!tagForSave || !clean) return null;
+  const existing = getProjectGoals(tagForSave);
   const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
   const draft: ProjectGoal = {
     id: "",
-    projectId,
+    projectId: tagForSave,
     text: clean,
     targetMinutes: Math.max(0, Math.round(opts?.targetMinutes ?? 0)),
     color: opts?.color || GOAL_COLORS[0],
@@ -102,13 +112,41 @@ export async function addGoal(
     position: maxPos + 1,
     createdAt: Date.now(),
   };
+  // eslint-disable-next-line no-console
+  console.log("[goals] addGoal insert payload", {
+    project_tag: draft.projectId,
+    text: draft.text,
+    target_minutes: draft.targetMinutes,
+    color: draft.color,
+    position: draft.position,
+  });
   const res = await insertGoalRemote(draft);
   if (!res.ok || !res.data) return null;
-  const saved = { ...res.data, projectId };
+  const saved = { ...res.data, projectId: res.data.projectId || tagForSave };
   const bag = readAll();
   bag[MASTER_KEY] = [...(bag[MASTER_KEY] ?? []), saved];
   writeAll(bag);
   return saved;
+}
+
+export async function backfillUntaggedGoals(projectTag?: string | null): Promise<number> {
+  const tagForSave = (projectTag?.trim() || "Uni").toLowerCase();
+  const legacyGoals = getUntaggedGoals();
+  if (legacyGoals.length === 0) return 0;
+
+  const updated: ProjectGoal[] = [];
+  for (const goal of legacyGoals) {
+    const res = await updateGoalProjectTagRemote(goal.id, tagForSave);
+    if (res.ok && res.data) updated.push({ ...res.data, projectId: tagForSave });
+  }
+  if (updated.length === 0) return 0;
+
+  const updatesById = new Map(updated.map((g) => [g.id, g]));
+  const bag = readAll();
+  const master = bag[MASTER_KEY] ?? [];
+  bag[MASTER_KEY] = master.map((g) => updatesById.get(g.id) ?? g);
+  writeAll(bag);
+  return updated.length;
 }
 
 export async function updateGoal(
