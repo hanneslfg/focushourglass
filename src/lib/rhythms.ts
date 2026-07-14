@@ -104,30 +104,29 @@ export function getRhythm(id: string): Rhythm | null {
   return getAllRhythms().find((r) => r.id === id) ?? null;
 }
 
-export function saveCustomRhythm(rhythm: Rhythm) {
-  void (async () => {
-    const res = await upsertRhythmRemote(rhythm);
-    if (!res.ok && !res.notAuthed) return;
-    const s = read();
-    const idx = s.custom.findIndex((r) => r.id === rhythm.id);
-    if (idx >= 0) s.custom[idx] = rhythm;
-    else s.custom.push(rhythm);
-    write(s);
-  })();
+export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
+  const res = await upsertRhythmRemote(rhythm);
+  if (!res.ok || !res.data) return null;
+  const saved = res.data;
+  const s = read();
+  const idx = s.custom.findIndex((r) => r.id === rhythm.id || r.id === saved.id);
+  if (idx >= 0) s.custom[idx] = saved;
+  else s.custom.push(saved);
+  write(s);
+  return saved;
 }
 
-export function deleteCustomRhythm(id: string) {
-  void (async () => {
-    const res = await deleteRhythmRemote(id);
-    if (!res.ok && !res.notAuthed) return;
-    const s = read();
-    s.custom = s.custom.filter((r) => r.id !== id);
-    if (s.activeId === id) {
-      s.activeId = null;
-      s.activeIndex = 0;
-    }
-    write(s);
-  })();
+export async function deleteCustomRhythm(id: string): Promise<boolean> {
+  const res = await deleteRhythmRemote(id);
+  if (!res.ok) return false;
+  const s = read();
+  s.custom = s.custom.filter((r) => r.id !== id);
+  if (s.activeId === id) {
+    s.activeId = null;
+    s.activeIndex = 0;
+  }
+  write(s);
+  return true;
 }
 
 export interface ActiveRhythmState {
@@ -189,9 +188,6 @@ export async function hydrateRhythmsFromRemote(): Promise<void> {
   const remote = await fetchCustomRhythmsRemote();
   if (!remote) return;
   const s = read();
-  // Safety net: don't wipe local custom rhythms if remote came back empty
-  // (transient auth/network state on tab focus).
-  if (remote.length === 0 && s.custom.length > 0) return;
   s.custom = remote;
   if (s.activeId && !BUILTIN_RHYTHMS.some((r) => r.id === s.activeId) &&
       !remote.some((r) => r.id === s.activeId)) {

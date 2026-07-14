@@ -27,14 +27,15 @@ export function ProjectPicker({ selectedId, onSelect, disabled }: Props) {
     return () => window.removeEventListener("hourglass:projects", sync);
   }, []);
 
-  function commit() {
+  async function commit() {
     const name = newName.trim();
     if (!name) {
       setAdding(false);
       setNewName("");
       return;
     }
-    const tag = addProject(name, newColor);
+    const tag = await addProject(name, newColor);
+    if (!tag) return;
     onSelect(tag);
     setNewName("");
     setAdding(false);
