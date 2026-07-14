@@ -108,15 +108,16 @@ export async function updateGoal(
   const normalizedPatch: Partial<ProjectGoal> = { ...patch };
   if (patch.text !== undefined) normalizedPatch.text = patch.text.trim().slice(0, 140);
   if (patch.targetMinutes !== undefined) {
-    console.error("[goals] targetMinutes is not persisted because public.goals has no target_minutes column");
-    delete normalizedPatch.targetMinutes;
+    normalizedPatch.targetMinutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
   }
   const dbPatch = {
     text: normalizedPatch.text,
     color: normalizedPatch.color,
     done: normalizedPatch.done,
     position: normalizedPatch.position,
+    targetMinutes: normalizedPatch.targetMinutes,
   };
+
   const res = await updateGoalRemote(id, dbPatch);
   if (!res.ok) return false;
   const bag = readAll();
