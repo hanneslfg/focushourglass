@@ -416,9 +416,13 @@ export function AmbientSound({ running }: { running: boolean }) {
   useEffect(() => {
     return () => {
       stopWebAudioSource();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
+      stopCrossfadeLoop();
+      for (const ref of [audioARef, audioBRef]) {
+        const el = ref.current;
+        if (el) {
+          try { el.pause(); } catch { /* ignore */ }
+          el.src = "";
+        }
       }
       if (fadeRef.current) window.clearInterval(fadeRef.current);
       if (audioCtxRef.current) {
@@ -428,6 +432,7 @@ export function AmbientSound({ running }: { running: boolean }) {
       }
     };
   }, []);
+
 
   const hasSounds = sounds.length > 0;
 
