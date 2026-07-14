@@ -407,15 +407,44 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     setEndAt(null);
   }, [setEndAt]);
 
-  const setGoal = useCallback((goal: { id: string; text: string } | null) => {
+  const MAX_SESSION_GOALS = 2;
+
+  const setSessionGoals = useCallback((goals: SessionGoal[]) => {
+    // Cap to MAX_SESSION_GOALS and dedupe by id.
+    const seen = new Set<string>();
+    const clean: SessionGoal[] = [];
+    for (const g of goals) {
+      const key = g.id || g.text;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      clean.push(g);
+      if (clean.length >= MAX_SESSION_GOALS) break;
+    }
+    setSessionGoalsState(clean);
+  }, []);
+
+  const toggleSessionGoal = useCallback((goal: SessionGoal) => {
+    setSessionGoalsState((prev) => {
+      const idx = prev.findIndex((g) => g.id === goal.id);
+      if (idx >= 0) return prev.filter((_, i) => i !== idx);
+      if (prev.length >= MAX_SESSION_GOALS) {
+        toast("Max 2 goals per session", {
+          description: "Deselect one to swap.",
+        });
+        return prev;
+      }
+      return [...prev, goal];
+    });
+  }, []);
+
+  const setGoal = useCallback((goal: SessionGoal | null) => {
     if (!goal) {
-      setGoalIdState(null);
-      setGoalTextState(null);
+      setSessionGoalsState([]);
       return;
     }
-    setGoalIdState(goal.id);
-    setGoalTextState(goal.text);
+    setSessionGoalsState([goal]);
   }, []);
+
 
 
   /**
