@@ -44,14 +44,15 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
 
   const selected = tags.find((t) => t.id === selectedId) ?? null;
 
-  function commitNew() {
+  async function commitNew() {
     const name = newName.trim();
     if (!name) {
       setAdding(false);
       setNewName("");
       return;
     }
-    const tag = addProject(name, newColor);
+    const tag = await addProject(name, newColor);
+    if (!tag) return;
     onSelect(tag);
     setNewName("");
     setAdding(false);

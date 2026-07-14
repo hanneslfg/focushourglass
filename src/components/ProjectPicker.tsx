@@ -27,14 +27,15 @@ export function ProjectPicker({ selectedId, onSelect, disabled }: Props) {
     return () => window.removeEventListener("hourglass:projects", sync);
   }, []);
 
-  function commit() {
+  async function commit() {
     const name = newName.trim();
     if (!name) {
       setAdding(false);
       setNewName("");
       return;
     }
-    const tag = addProject(name, newColor);
+    const tag = await addProject(name, newColor);
+    if (!tag) return;
     onSelect(tag);
     setNewName("");
     setAdding(false);
@@ -73,8 +74,9 @@ export function ProjectPicker({ selectedId, onSelect, disabled }: Props) {
               {!disabled && (
                 <button
                   onClick={() => {
-                    if (selectedId === t.id) onSelect(null);
-                    deleteProject(t.id);
+                    void deleteProject(t.id).then((ok) => {
+                      if (ok && selectedId === t.id) onSelect(null);
+                    });
                   }}
                   className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                   aria-label={`Delete ${t.name}`}

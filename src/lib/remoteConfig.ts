@@ -1,40 +1,162 @@
-/**
- * Supabase-backed CRUD for app configuration:
- *  - public.goals              (per-project milestone list)
- *  - public.custom_rhythms     (user-authored focus block chains)
- *  - public.project_settings   (project color + hidden flag, keyed by project_tag)
- *
- * All mutations return { ok, error, notAuthed } so callers can wait for
- * confirmation from Supabase before committing to their local UI state.
- * Optimistic updates are intentionally NOT performed here.
- */
+/** Remote-first CRUD for Supabase-backed app configuration. */
 import { supabase } from "./supabase";
 import type { ProjectGoal } from "./goals";
 import type { Rhythm, RhythmBlock } from "./rhythms";
 
-export interface RemoteResult {
+export interface RemoteResult<T = undefined> {
   ok: boolean;
   error: string | null;
   /** True when there was no signed-in user (RLS would silently reject). */
   notAuthed?: boolean;
+  status?: number;
+  data?: T;
 }
 
-async function authUid(): Promise<string | null> {
+type SupabaseLikeError = {
+  message?: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+};
+
+function describeError(error: SupabaseLikeError | Error | string): string {
+  if (typeof error === "string") return error;
+  const e = error as SupabaseLikeError;
+  return [e.message, e.code && `code=${e.code}`, e.details, e.hint && `hint=${e.hint}`]
+    .filter(Boolean)
+    .join(" | ") || "Unknown Supabase error";
+}
+
+function reportError(op: string, error: SupabaseLikeError | Error | string) {
+  const msg = describeError(error);
+  console.error(`[remoteConfig] ${op} failed: ${msg}`, error);
+  if (typeof window !== "undefined") {
+    try {
+      window.alert(`Supabase error — ${op}: ${msg}`);
+    } catch {
+      /* noop */
+    }
+  }
+}
+
+async function currentAuthUid(): Promise<string | null> {
   try {
     const { data, error } = await supabase.auth.getUser();
-    if (error) return null;
-    return data.user?.id ?? null;
-  } catch {
+    if (!error && data.user?.id) return data.user.id;
+    const session = await supabase.auth.getSession();
+    return session.data.session?.user?.id ?? null;
+  } catch (error) {
+    console.error("[remoteConfig] auth lookup failed", error);
     return null;
   }
 }
 
-function reportError(op: string, msg: string) {
-  const line = `[${op}] ${msg}`;
-  console.error(line);
-  if (typeof window !== "undefined") {
-    try { window.alert(`Supabase error — ${line}`); } catch { /* noop */ }
-  }
+async function authUid(waitMs = 4000): Promise<string | null> {
+  const immediate = await currentAuthUid();
+  if (immediate || typeof window === "undefined" || waitMs <= 0) return immediate;
+
+  return new Promise<string | null>((resolve) => {
+    let settled = false;
+    const finish = (uid: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      sub.subscription.unsubscribe();
+      resolve(uid);
+    };
+    const timeout = window.setTimeout(() => finish(null), waitMs);
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        finish(null);
+        return;
+      }
+      const uid = session?.user?.id ?? (await currentAuthUid());
+      if (uid) finish(uid);
+    });
+  }).then((uid) => {
+    if (!uid) reportError("auth", "No authenticated user loaded; request was not sent");
+    return uid;
+  });
+}
+
+function successStatus(status: number): boolean {
+  return status >= 200 && status < 300;
+}
+
+function firstPositiveBlock(r: Rhythm, kind: "focus" | "break"): number {
+  const minutes = r.blocks.find((b) => b.kind === kind)?.minutes ?? 0;
+  return Math.max(0, Math.round(Number(minutes) || 0));
+}
+
+function isPersistedUuid(id: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+}
+
+function completedGoal(g: ProjectGoal): ProjectGoal {
+  return {
+    ...g,
+    projectId: "__all_goals__",
+    targetMinutes: 0,
+    createdAt: g.createdAt || Date.now(),
+  };
+}
+
+function rhythmFromDurations(r: RemoteRhythm): Rhythm {
+  const focusMin = Math.max(0, Math.round(Number(r.focus_duration ?? 0)));
+  const breakMin = Math.max(0, Math.round(Number(r.break_duration ?? 0)));
+  const blocks: RhythmBlock[] = [];
+  if (focusMin > 0) blocks.push({ id: `${r.id}-focus`, kind: "focus", minutes: focusMin });
+  if (breakMin > 0) blocks.push({ id: `${r.id}-break`, kind: "break", minutes: breakMin });
+  return { id: r.id, name: r.name, blocks, builtin: false };
+}
+
+function goalFromRemote(r: RemoteGoal): ProjectGoal {
+  return completedGoal({
+    id: r.id,
+    projectId: "__all_goals__",
+    text: r.text,
+    targetMinutes: 0,
+    color: r.color || "#f4a261",
+    done: Boolean(r.is_completed),
+    position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
+    createdAt: Date.now(),
+  });
+}
+
+function settingFromRemote(r: RemoteProjectSetting): ProjectSetting {
+  return {
+    projectTag: r.project_tag,
+    color: r.color ?? undefined,
+    hidden: Boolean(r.is_deleted),
+  };
+}
+
+function goalPayload(uid: string, g: Pick<ProjectGoal, "text" | "color" | "position" | "done">) {
+  return {
+    user_id: uid,
+    text: g.text,
+    color: g.color,
+    position: Math.max(0, Math.round(Number(g.position) || 0)),
+    is_completed: Boolean(g.done),
+  };
+}
+
+function rhythmPayload(uid: string, r: Rhythm) {
+  return {
+    user_id: uid,
+    name: r.name.trim().slice(0, 80) || "Untitled rhythm",
+    focus_duration: firstPositiveBlock(r, "focus"),
+    break_duration: firstPositiveBlock(r, "break"),
+  };
+}
+
+function settingPayload(uid: string, s: Partial<ProjectSetting> & { projectTag: string }) {
+  return {
+    user_id: uid,
+    project_tag: s.projectTag,
+    color: s.color ?? null,
+    is_deleted: Boolean(s.hidden),
+  };
 }
 
 /* --------------------------- goals --------------------------- */
@@ -44,21 +166,8 @@ interface RemoteGoal {
   user_id: string;
   text: string;
   color: string | null;
-  is_completed: boolean | null;
   position: number | null;
-}
-
-function goalFromRemote(r: RemoteGoal): ProjectGoal {
-  return {
-    id: r.id,
-    projectId: "",
-    text: r.text,
-    targetMinutes: 0,
-    color: r.color || "#f4a261",
-    done: Boolean(r.is_completed),
-    position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
-    createdAt: Date.now(),
-  };
+  is_completed: boolean | null;
 }
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
@@ -66,71 +175,90 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   if (!uid) return null;
   const { data, error } = await supabase
     .from("goals")
-    .select("*")
+    .select("id,user_id,text,color,position,is_completed")
     .eq("user_id", uid)
     .order("position", { ascending: true });
   if (error) {
-    console.warn("[remoteConfig] fetchAllGoals failed:", error.message);
+    reportError("fetchAllGoals", error);
     return null;
   }
-  return (data as RemoteGoal[]).map(goalFromRemote);
+  return ((data ?? []) as RemoteGoal[]).map(goalFromRemote);
 }
 
-export async function insertGoalRemote(g: ProjectGoal): Promise<RemoteResult> {
+export async function insertGoalRemote(
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done">,
+): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
-  const { error } = await supabase.from("goals").insert({
-    id: g.id,
-    user_id: uid,
-    text: g.text,
-    color: g.color,
-    is_completed: g.done,
-    position: g.position ?? 0,
-  });
+  const { data, error, status } = await supabase
+    .from("goals")
+    .insert(goalPayload(uid, g))
+    .select("id,user_id,text,color,position,is_completed")
+    .single();
   if (error) {
-    reportError("insertGoal", error.message);
+    reportError("insertGoal", error);
     return { ok: false, error: error.message };
   }
-  return { ok: true, error: null };
+  if (!successStatus(status) || !data) {
+    const msg = `Unexpected insertGoal status ${status}`;
+    reportError("insertGoal", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: true, error: null, status, data: goalFromRemote(data as RemoteGoal) };
 }
 
 export async function updateGoalRemote(
   id: string,
-  patch: Partial<Pick<ProjectGoal, "text" | "targetMinutes" | "color" | "done" | "position">>,
+  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position">>,
 ): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const payload: Record<string, unknown> = {};
+  payload.user_id = uid;
   if (patch.text !== undefined) payload.text = patch.text;
   if (patch.color !== undefined) payload.color = patch.color;
   if (patch.done !== undefined) payload.is_completed = patch.done;
   if (patch.position !== undefined) payload.position = patch.position;
-  if (Object.keys(payload).length === 0) return { ok: true, error: null };
-  const { error } = await supabase
+  if (Object.keys(payload).length === 1) return { ok: true, error: null };
+  const { data, error, status } = await supabase
     .from("goals")
     .update(payload)
     .eq("id", id)
-    .eq("user_id", uid);
+    .eq("user_id", uid)
+    .select("id")
+    .maybeSingle();
   if (error) {
-    reportError("updateGoal", error.message);
+    reportError("updateGoal", error);
     return { ok: false, error: error.message };
   }
-  return { ok: true, error: null };
+  if (!data) {
+    const msg = "No goal row was updated; check user_id/RLS for public.goals";
+    reportError("updateGoal", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: successStatus(status), error: successStatus(status) ? null : `Unexpected status ${status}`, status };
 }
 
 export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
-  const { error } = await supabase
+  const { data, error, status } = await supabase
     .from("goals")
     .delete()
     .eq("id", id)
-    .eq("user_id", uid);
+    .eq("user_id", uid)
+    .select("id")
+    .maybeSingle();
   if (error) {
-    reportError("deleteGoal", error.message);
+    reportError("deleteGoal", error);
     return { ok: false, error: error.message };
   }
-  return { ok: true, error: null };
+  if (!data) {
+    const msg = "No goal row was deleted; check user_id/RLS for public.goals";
+    reportError("deleteGoal", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: successStatus(status), error: successStatus(status) ? null : `Unexpected status ${status}`, status };
 }
 
 /* --------------------------- custom rhythms --------------------------- */
@@ -139,31 +267,8 @@ interface RemoteRhythm {
   id: string;
   user_id: string;
   name: string;
-  description: string | null;
   focus_duration: number | null;
   break_duration: number | null;
-  created_at: string;
-}
-
-function rhythmFromRemote(r: RemoteRhythm): Rhythm {
-  const focusMin = Math.max(0, Math.round(Number(r.focus_duration ?? 0)));
-  const breakMin = Math.max(0, Math.round(Number(r.break_duration ?? 0)));
-  const blocks: RhythmBlock[] = [];
-  if (focusMin > 0) blocks.push({ id: `${r.id}-f`, kind: "focus", minutes: focusMin });
-  if (breakMin > 0) blocks.push({ id: `${r.id}-b`, kind: "break", minutes: breakMin });
-  return {
-    id: r.id,
-    name: r.name,
-    description: r.description || undefined,
-    blocks,
-    builtin: false,
-  };
-}
-
-function rhythmDurations(r: Rhythm): { focus: number; break: number } {
-  const focus = r.blocks.find((b) => b.kind === "focus")?.minutes ?? 0;
-  const brk = r.blocks.find((b) => b.kind === "break")?.minutes ?? 0;
-  return { focus, break: brk };
 }
 
 export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
@@ -171,60 +276,80 @@ export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
   if (!uid) return null;
   const { data, error } = await supabase
     .from("custom_rhythms")
-    .select("*")
+    .select("id,user_id,name,focus_duration,break_duration")
     .eq("user_id", uid)
-    .order("created_at", { ascending: true });
+    .order("name", { ascending: true });
   if (error) {
-    console.warn("[remoteConfig] fetchCustomRhythms failed:", error.message);
+    reportError("fetchCustomRhythms", error);
     return null;
   }
-  return (data as RemoteRhythm[]).map(rhythmFromRemote);
+  return ((data ?? []) as RemoteRhythm[]).map(rhythmFromDurations);
 }
 
-export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult> {
+export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
-  const { focus, break: brk } = rhythmDurations(r);
-  const { error } = await supabase
+  const payload = rhythmPayload(uid, r);
+  if (isPersistedUuid(r.id)) {
+    const { data, error, status } = await supabase
+      .from("custom_rhythms")
+      .update(payload)
+      .eq("id", r.id)
+      .eq("user_id", uid)
+      .select("id,user_id,name,focus_duration,break_duration")
+      .maybeSingle();
+    if (error) {
+      reportError("updateRhythm", error);
+      return { ok: false, error: error.message };
+    }
+    if (data) {
+      return { ok: true, error: null, status, data: rhythmFromDurations(data as RemoteRhythm) };
+    }
+  }
+
+  const { data, error, status } = await supabase
     .from("custom_rhythms")
-    .upsert(
-      {
-        id: r.id,
-        user_id: uid,
-        name: r.name,
-        description: r.description ?? null,
-        focus_duration: focus,
-        break_duration: brk,
-      },
-      { onConflict: "id" },
-    );
+    .insert(payload)
+    .select("id,user_id,name,focus_duration,break_duration")
+    .single();
   if (error) {
-    reportError("upsertRhythm", error.message);
+    reportError("insertRhythm", error);
     return { ok: false, error: error.message };
   }
-  return { ok: true, error: null };
+  if (!successStatus(status) || !data) {
+    const msg = `Unexpected insertRhythm status ${status}`;
+    reportError("insertRhythm", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: true, error: null, status, data: rhythmFromDurations(data as RemoteRhythm) };
 }
 
 export async function deleteRhythmRemote(id: string): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
-  const { error } = await supabase
+  const { data, error, status } = await supabase
     .from("custom_rhythms")
     .delete()
     .eq("id", id)
-    .eq("user_id", uid);
+    .eq("user_id", uid)
+    .select("id")
+    .maybeSingle();
   if (error) {
-    reportError("deleteRhythm", error.message);
+    reportError("deleteRhythm", error);
     return { ok: false, error: error.message };
   }
-  return { ok: true, error: null };
+  if (!data) {
+    const msg = "No rhythm row was deleted; check user_id/RLS for public.custom_rhythms";
+    reportError("deleteRhythm", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: successStatus(status), error: successStatus(status) ? null : `Unexpected status ${status}`, status };
 }
 
 /* --------------------------- project settings --------------------------- */
 
 export interface ProjectSetting {
   projectTag: string;
-  name?: string;
   color?: string;
   hidden: boolean;
 }
@@ -232,7 +357,6 @@ export interface ProjectSetting {
 interface RemoteProjectSetting {
   user_id: string;
   project_tag: string;
-  name: string | null;
   color: string | null;
   is_deleted: boolean | null;
 }
@@ -242,38 +366,33 @@ export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | n
   if (!uid) return null;
   const { data, error } = await supabase
     .from("project_settings")
-    .select("*")
+    .select("user_id,project_tag,color,is_deleted")
     .eq("user_id", uid);
   if (error) {
-    console.warn("[remoteConfig] fetchProjectSettings failed:", error.message);
+    reportError("fetchProjectSettings", error);
     return null;
   }
-  return (data as RemoteProjectSetting[]).map((r) => ({
-    projectTag: r.project_tag,
-    name: r.name ?? undefined,
-    color: r.color ?? undefined,
-    hidden: Boolean(r.is_deleted),
-  }));
+  return ((data ?? []) as RemoteProjectSetting[]).map(settingFromRemote);
 }
 
 export async function upsertProjectSettingRemote(
   s: Partial<ProjectSetting> & { projectTag: string },
-): Promise<RemoteResult> {
+): Promise<RemoteResult<ProjectSetting>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
-  const { error } = await supabase.from("project_settings").upsert(
-    {
-      user_id: uid,
-      project_tag: s.projectTag,
-      name: s.name ?? null,
-      color: s.color ?? null,
-      is_deleted: s.hidden ?? false,
-    },
-    { onConflict: "user_id,project_tag" },
-  );
+  const { data, error, status } = await supabase
+    .from("project_settings")
+    .upsert(settingPayload(uid, s), { onConflict: "user_id,project_tag" })
+    .select("user_id,project_tag,color,is_deleted")
+    .single();
   if (error) {
-    reportError("upsertProjectSetting", error.message);
+    reportError("upsertProjectSetting", error);
     return { ok: false, error: error.message };
   }
-  return { ok: true, error: null };
+  if (!successStatus(status) || !data) {
+    const msg = `Unexpected upsertProjectSetting status ${status}`;
+    reportError("upsertProjectSetting", msg);
+    return { ok: false, error: msg, status };
+  }
+  return { ok: true, error: null, status, data: settingFromRemote(data as RemoteProjectSetting) };
 }

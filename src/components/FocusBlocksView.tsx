@@ -157,8 +157,9 @@ export function FocusBlocksView() {
                 onDeactivate={handleDeactivate}
                 onEdit={() => setEditing(r)}
                 onDelete={() => {
-                  deleteCustomRhythm(r.id);
-                  toast(t("focusBlocks.deletedToast", { name: r.name }));
+                  void deleteCustomRhythm(r.id).then((ok) => {
+                    if (ok) toast(t("focusBlocks.deletedToast", { name: r.name }));
+                  });
                 }}
               />
             ))}
@@ -171,9 +172,11 @@ export function FocusBlocksView() {
           initial={editing}
           onClose={() => setEditing(null)}
           onSave={(r) => {
-            saveCustomRhythm(r);
-            setEditing(null);
-            toast(t("focusBlocks.savedToast", { name: r.name }));
+            void saveCustomRhythm(r).then((saved) => {
+              if (!saved) return;
+              setEditing(null);
+              toast(t("focusBlocks.savedToast", { name: saved.name }));
+            });
           }}
         />
       )}

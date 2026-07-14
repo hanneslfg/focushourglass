@@ -77,14 +77,15 @@ export function ProjectsView() {
     return map;
   }, [sessions]);
 
-  function commitNew() {
+  async function commitNew() {
     const name = newName.trim();
     if (!name) {
       setAdding(false);
       setNewName("");
       return;
     }
-    addProject(name, newColor);
+    const saved = await addProject(name, newColor);
+    if (!saved) return;
     setNewName("");
     setAdding(false);
   }
@@ -101,8 +102,9 @@ export function ProjectsView() {
         sessions={sessions.filter((s) => s.projectId === project.id)}
         onBack={() => setActiveId(null)}
         onDelete={() => {
-          deleteProject(project.id);
-          setActiveId(null);
+          void deleteProject(project.id).then((ok) => {
+            if (ok) setActiveId(null);
+          });
         }}
       />
     );
@@ -527,14 +529,15 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
     setColor(project.color);
   }, [project.id, project.name, project.color]);
 
-  function save() {
+  async function save() {
     const trimmed = name.trim().slice(0, 30);
     if (!trimmed) {
       setName(project.name);
       setEditing(false);
       return;
     }
-    updateProject(project.id, { name: trimmed, color });
+    const ok = await updateProject(project.id, { name: trimmed, color });
+    if (!ok) return;
     setEditing(false);
   }
 
@@ -571,7 +574,7 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
           value={name}
           onChange={(e) => setName(e.target.value.slice(0, 30))}
           onKeyDown={(e) => {
-            if (e.key === "Enter") save();
+            if (e.key === "Enter") void save();
             if (e.key === "Escape") {
               setName(project.name);
               setColor(project.color);
@@ -581,7 +584,7 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
           className="flex-1 bg-transparent border-b border-border focus:border-foreground/60 outline-none font-display text-2xl md:text-3xl tracking-tight py-1"
         />
         <button
-          onClick={save}
+          onClick={() => void save()}
           className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
           aria-label="Save"
         >

@@ -70,6 +70,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
   const [newColor, setNewColor] = useState(GOAL_COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
 
   // Goals in "5-second grace" mode: still is_completed=false in DB, but
   // visually collapsing. Value = timestamp when the row was clicked done.
@@ -111,7 +112,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
     return { active: a, completed: c };
   }, [goals]);
 
-  function commitNew() {
+  async function commitNew() {
     const text = newText.trim();
     if (!text) {
       setAdding(false);
@@ -121,18 +122,32 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
     }
     const hrs = Number(newHours);
     const targetMinutes = Number.isFinite(hrs) && hrs > 0 ? Math.round(hrs * 60) : 0;
-    addGoal(projectId, text, { targetMinutes, color: newColor });
+    const saved = await addGoal(projectId, text, { targetMinutes, color: newColor });
+    if (!saved) return;
     setNewText("");
     setNewHours("");
     setNewColor(GOAL_COLORS[0]);
     setAdding(false);
   }
 
+  async function withBusy(id: string, action: () => Promise<boolean>) {
+    setBusyIds((prev) => new Set(prev).add(id));
+    try {
+      return await action();
+    } finally {
+      setBusyIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
   function startDone(id: string) {
     if (pending[id]) return;
     setPending((p) => ({ ...p, [id]: Date.now() }));
     timers.current[id] = setTimeout(() => {
-      updateGoal(projectId, id, { done: true });
+      void withBusy(id, () => updateGoal(projectId, id, { done: true }));
       setPending((p) => {
         const { [id]: _, ...rest } = p;
         return rest;
@@ -152,7 +167,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
   }
 
   function reopenCompleted(id: string) {
-    updateGoal(projectId, id, { done: false });
+    void withBusy(id, () => updateGoal(projectId, id, { done: false }));
   }
 
   function handleDragStart(id: string) {
@@ -177,7 +192,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
       return;
     }
     ids.splice(to, 0, ids.splice(from, 1)[0]);
-    reorderGoals(projectId, ids);
+    void reorderGoals(projectId, ids);
     setDragId(null);
     setDragOverId(null);
   }
@@ -279,16 +294,18 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
               isDragging={dragId === g.id}
               isDragOver={dragOverId === g.id && dragId !== g.id}
               pendingSince={pending[g.id] ?? null}
+              busy={busyIds.has(g.id)}
               onEdit={() => setEditingId(g.id)}
               onDone={() => setEditingId(null)}
-              onSaveText={(text) => updateGoal(projectId, g.id, { text })}
-              onSaveTarget={(m) => updateGoal(projectId, g.id, { targetMinutes: m })}
-              onSaveColor={(c) => updateGoal(projectId, g.id, { color: c })}
+              onSaveText={(text) => withBusy(g.id, () => updateGoal(projectId, g.id, { text }))}
+              onSaveTarget={(m) => withBusy(g.id, () => updateGoal(projectId, g.id, { targetMinutes: m }))}
+              onSaveColor={(c) => withBusy(g.id, () => updateGoal(projectId, g.id, { color: c }))}
               onStartDone={() => startDone(g.id)}
               onCancelDone={() => cancelDone(g.id)}
               onDelete={() => {
-                deleteGoal(projectId, g.id);
-                if (editingId === g.id) setEditingId(null);
+                void withBusy(g.id, () => deleteGoal(projectId, g.id)).then((ok) => {
+                  if (ok && editingId === g.id) setEditingId(null);
+                });
               }}
               onDragStart={() => handleDragStart(g.id)}
               onDragOver={(e) => handleDragOver(e, g.id)}
@@ -324,6 +341,7 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
                 >
                   <button
                     onClick={() => reopenCompleted(g.id)}
+                    disabled={busyIds.has(g.id)}
                     className="shrink-0 h-5 w-5 rounded-full flex items-center justify-center"
                     style={{ background: g.color }}
                     aria-label="Reopen goal"
@@ -340,7 +358,8 @@ export function ProjectGoalsSection({ projectId, focusedMinutesByGoal }: Props) 
                     </span>
                   )}
                   <button
-                    onClick={() => deleteGoal(projectId, g.id)}
+                    onClick={() => void withBusy(g.id, () => deleteGoal(projectId, g.id))}
+                    disabled={busyIds.has(g.id)}
                     className="h-7 w-7 rounded-full border border-transparent hover:border-destructive text-muted-foreground/50 hover:text-destructive flex items-center justify-center"
                     aria-label="Delete goal"
                   >
@@ -363,11 +382,12 @@ interface RowProps {
   isDragging: boolean;
   isDragOver: boolean;
   pendingSince: number | null;
+  busy: boolean;
   onEdit: () => void;
   onDone: () => void;
-  onSaveText: (t: string) => void;
-  onSaveTarget: (m: number) => void;
-  onSaveColor: (c: string) => void;
+  onSaveText: (t: string) => Promise<boolean>;
+  onSaveTarget: (m: number) => Promise<boolean>;
+  onSaveColor: (c: string) => Promise<boolean>;
   onStartDone: () => void;
   onCancelDone: () => void;
   onDelete: () => void;
@@ -384,6 +404,7 @@ function GoalRow({
   isDragging,
   isDragOver,
   pendingSince,
+  busy,
   onEdit,
   onDone,
   onSaveText,
@@ -421,18 +442,24 @@ function GoalRow({
   const pct =
     goal.targetMinutes > 0 ? Math.min(1, focusedMinutes / goal.targetMinutes) : 0;
 
-  function commit() {
+  async function commit() {
     const cleanText = text.trim();
-    if (cleanText && cleanText !== goal.text) onSaveText(cleanText);
+    if (cleanText && cleanText !== goal.text) {
+      const ok = await onSaveText(cleanText);
+      if (!ok) return;
+    }
     const hrs = Number(hours);
     const targetMinutes = Number.isFinite(hrs) && hrs > 0 ? Math.round(hrs * 60) : 0;
-    if (targetMinutes !== goal.targetMinutes) onSaveTarget(targetMinutes);
+    if (targetMinutes !== goal.targetMinutes) {
+      const ok = await onSaveTarget(targetMinutes);
+      if (!ok) return;
+    }
     onDone();
   }
 
   return (
     <li
-      draggable={!editing && !isPending}
+      draggable={!editing && !isPending && !busy}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
@@ -440,7 +467,7 @@ function GoalRow({
       className={`relative rounded-lg border bg-card/40 hover:bg-card/60 transition-all overflow-hidden ${
         isDragging ? "opacity-40" : ""
       } ${isDragOver ? "border-foreground/60 ring-1 ring-foreground/40" : "border-border"} ${
-        isPending ? "opacity-70" : ""
+        isPending || busy ? "opacity-70" : ""
       }`}
       style={{ borderLeft: `3px solid ${goal.color}` }}
     >
@@ -478,6 +505,7 @@ function GoalRow({
 
         <button
           onClick={isPending ? onCancelDone : onStartDone}
+          disabled={busy}
           className={`shrink-0 h-5 w-5 rounded-full border flex items-center justify-center transition-colors ${
             isPending ? "border-transparent" : "border-border hover:border-foreground/60"
           }`}
@@ -494,7 +522,7 @@ function GoalRow({
             value={text}
             onChange={(e) => setText(e.target.value.slice(0, 140))}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commit();
+              if (e.key === "Enter") void commit();
               if (e.key === "Escape") { setText(goal.text); onDone(); }
             }}
             className="flex-1 bg-transparent border-b border-border focus:border-foreground/60 outline-none text-sm py-1"
@@ -523,7 +551,7 @@ function GoalRow({
             value={hours}
             onChange={(e) => setHours(e.target.value.replace(/[^0-9.]/g, "").slice(0, 5))}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commit();
+              if (e.key === "Enter") void commit();
               if (e.key === "Escape") { setHours(goal.targetMinutes > 0 ? String(goal.targetMinutes / 60) : ""); onDone(); }
             }}
             placeholder="hrs"
@@ -541,7 +569,8 @@ function GoalRow({
         {!isPending && (editing ? (
           <>
             <button
-              onClick={commit}
+              onClick={() => void commit()}
+              disabled={busy}
               className="h-7 w-7 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
               aria-label="Save"
             >
@@ -549,6 +578,7 @@ function GoalRow({
             </button>
             <button
               onClick={onDelete}
+              disabled={busy}
               className="h-7 w-7 rounded-full border border-border hover:border-destructive text-muted-foreground hover:text-destructive flex items-center justify-center"
               aria-label="Delete goal"
             >

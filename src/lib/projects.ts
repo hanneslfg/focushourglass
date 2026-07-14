@@ -80,16 +80,15 @@ function writeSettings(bag: Record<string, ProjectSetting>) {
   window.dispatchEvent(new Event("hourglass:projects"));
 }
 
-function patchSetting(id: string, patch: Partial<ProjectSetting>) {
+async function patchSetting(id: string, patch: Partial<ProjectSetting>): Promise<ProjectSetting | null> {
   const prev = readSettings()[id] ?? { projectTag: id, hidden: false };
   const next: ProjectSetting = { ...prev, ...patch, projectTag: id };
-  void (async () => {
-    const res = await upsertProjectSettingRemote(next);
-    if (!res.ok && !res.notAuthed) return;
-    const bag = readSettings();
-    bag[id] = next;
-    writeSettings(bag);
-  })();
+  const res = await upsertProjectSettingRemote(next);
+  if (!res.ok || !res.data) return null;
+  const bag = readSettings();
+  bag[id] = res.data;
+  writeSettings(bag);
+  return res.data;
 }
 
 /**
@@ -124,34 +123,37 @@ export function getProjects(): ProjectTag[] {
     const settingColor = settings[id]?.color;
     merged.set(id, settingColor ? { ...p, color: settingColor } : p);
   }
+  for (const [id, setting] of Object.entries(settings)) {
+    if (setting.hidden || merged.has(id)) continue;
+    merged.set(id, {
+      id,
+      name: id.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
+      color: setting.color || colorForProjectName(id),
+    });
+  }
   return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function addProject(name: string, color?: string): ProjectTag {
+export async function addProject(name: string, color?: string): Promise<ProjectTag | null> {
   const trimmed = name.trim().slice(0, 30);
+  if (!trimmed) return null;
   const id = projectIdFromName(trimmed);
-  // Un-hide if this tag was previously deleted.
-  const settings = readSettings();
-  if (settings[id]?.hidden) {
-    patchSetting(id, { hidden: false, name: trimmed });
-  }
   const existing = getProjects().find((p) => p.id === id);
   if (existing && !color) return existing;
   const finalColor = color || existing?.color || colorForProjectName(trimmed);
   const tag: ProjectTag = { id, name: trimmed, color: finalColor };
+  const saved = await patchSetting(id, { hidden: false, color: finalColor });
+  if (!saved) return null;
   const list = readLocal();
   if (!list.some((p) => projectIdFromName(p.name) === id)) {
     writeLocal([...list, tag]);
   }
-  if (color) {
-    patchSetting(id, { name: trimmed, color });
-  } else {
-    patchSetting(id, { name: trimmed });
-  }
   return tag;
 }
 
-export function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>) {
+export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>): Promise<boolean> {
+  const saved = await patchSetting(id, { color: patch.color, hidden: false });
+  if (!saved) return false;
   const list = readLocal();
   const existing = list.find((p) => projectIdFromName(p.name) === id);
   if (existing) {
@@ -164,15 +166,14 @@ export function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>
     const derived = getProjects().find((p) => p.id === id);
     if (derived) writeLocal([...list, { ...derived, ...patch, id }]);
   }
-  patchSetting(id, {
-    name: patch.name,
-    color: patch.color,
-  });
+  return true;
 }
 
-export function deleteProject(id: string) {
+export async function deleteProject(id: string): Promise<boolean> {
+  const saved = await patchSetting(id, { hidden: true });
+  if (!saved) return false;
   writeLocal(readLocal().filter((p) => projectIdFromName(p.name) !== id));
-  patchSetting(id, { hidden: true });
+  return true;
 }
 
 /** @deprecated anon broadcast removed. */
@@ -186,10 +187,6 @@ export function ingestRemoteDeletion(_id: string) {}
 export async function hydrateProjectSettingsFromRemote(): Promise<void> {
   const remote = await fetchProjectSettingsRemote();
   if (!remote) return;
-  const current = readSettings();
-  // Safety net: don't clobber cached settings if remote came back empty
-  // during a transient auth/network hiccup (e.g. tab visibility refetch).
-  if (remote.length === 0 && Object.keys(current).length > 0) return;
   const bag: Record<string, ProjectSetting> = {};
   for (const r of remote) bag[r.projectTag] = r;
   writeSettings(bag);
