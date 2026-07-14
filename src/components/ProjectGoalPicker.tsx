@@ -50,7 +50,7 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
   if (!project) return null;
   if (goals.length === 0) return null;
 
-  const atCap = selectedIds.length >= MAX_SESSION_GOALS;
+  const allSelected = selectedIds.length > 0 && selectedIds.length === goals.length;
 
   return (
     <div className="flex flex-col items-center gap-2 animate-in fade-in duration-300">
