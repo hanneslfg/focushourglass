@@ -30,7 +30,7 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
     return () => {
       window.removeEventListener("hourglass:goals", sync);
     };
-  }, [project?.id]);
+  }, [project?.id, project?.name]);
 
   const focusedByGoal = useMemo(() => {
     if (!project) return new Map<string, number>();
