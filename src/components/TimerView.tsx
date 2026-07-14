@@ -350,15 +350,10 @@ export function TimerView() {
 
         {!canStart && phase === "idle" && !nextIsBreak && (
           <p className="text-[11px] text-muted-foreground/70 -mt-4">
-            {task.trim().length === 0
-              ? t("timer.nameYourThing")
-              : !project
-                ? "Pick a project to unlock its goals."
-                : !hasGoal
-                  ? "Pick 1 or 2 goals from this project to begin."
-                  : t("timer.nameYourThing")}
+            {t("timer.nameYourThing")}
           </p>
         )}
+
 
       </div>
       {warmupActive && (
