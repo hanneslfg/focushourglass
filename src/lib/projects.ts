@@ -236,30 +236,53 @@ async function renameProject(
   }
 
   if (authUid) {
-    // 1. Sessions: project_tag stores the LABEL (e.g. "Uni"), not the slug.
-    const { error: sessErr } = await supabase
-      .from("sessions")
-      .update({ project_tag: newName })
-      .eq("user_id", authUid)
-      .eq("project_tag", oldName);
-    if (sessErr) {
-      console.error("[projects] rename: sessions update failed:", sessErr.message);
-      return false;
+    // Case-insensitive tag variants — cascade catches goals/sessions/settings
+    // stored with either the label or the slug id, in any casing.
+    const variants = Array.from(
+      new Set(
+        [oldName, oldId, oldName?.toLowerCase(), oldId?.toLowerCase()]
+          .map((v) => (v ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    // 1. Sessions cascade
+    if (variants.length) {
+      const { error: sessErr } = await supabase
+        .from("sessions")
+        .update({ project_tag: newName })
+        .eq("user_id", authUid)
+        .in("project_tag", variants);
+      if (sessErr) {
+        console.error("[projects] rename: sessions update failed:", sessErr.message);
+        return false;
+      }
     }
 
-    // 2. Goals: cascade rename. project_tag may store the label (goals
-    //    created via ProjectGoalsSection use the active project name) OR
-    //    the slug id (older goals). Migrate every match to the new label
-    //    so goals never orphan after a rename.
-    const tagsToMigrate = Array.from(new Set([oldName, oldId].filter(Boolean)));
-    if (tagsToMigrate.length) {
+    // 2. Goals cascade — never orphan a goal after a rename.
+    if (variants.length) {
       const { error: goalErr } = await supabase
         .from("goals")
         .update({ project_tag: newName })
         .eq("user_id", authUid)
-        .in("project_tag", tagsToMigrate);
+        .in("project_tag", variants);
       if (goalErr) {
         console.error("[projects] rename: goals update failed:", goalErr.message);
+      }
+    }
+
+    // 2a. project_settings cascade — rename the row in place so we don't
+    //     leave a stale hidden row + duplicate new row for the same project.
+    //     Note: this app queries `project_settings` (not any `projects`
+    //     table); `is_deleted` lives here as the soft-hide flag.
+    if (variants.length) {
+      const { error: settingErr } = await supabase
+        .from("project_settings")
+        .update({ project_tag: newName })
+        .eq("user_id", authUid)
+        .in("project_tag", variants);
+      if (settingErr) {
+        console.warn("[projects] rename: project_settings rename failed:", settingErr.message);
       }
     }
 
