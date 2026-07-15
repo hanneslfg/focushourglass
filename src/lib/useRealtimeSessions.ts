@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { getActiveSyncUserId, syncPendingSessions, supabase } from "./supabase";
+import {
+  getActiveSyncUserId,
+  syncPendingSessions,
+  supabase,
+  mergeLocalSessionsToCloud,
+} from "./supabase";
 import {
   upsertRemoteSession,
   updateSession,
@@ -72,6 +77,12 @@ async function refresh() {
   }
   setState("syncing");
   try {
+    // CRITICAL: merge guest-mode local sessions into the cloud account BEFORE
+    // hydrateFromRemote() overwrites the local cache, so no data is lost when
+    // a guest signs into an existing account.
+    await mergeLocalSessionsToCloud().catch((e) =>
+      console.error("[realtime] mergeLocalSessionsToCloud failed:", e),
+    );
     await syncPendingSessions().catch(() => {});
     await hydrateFromRemote();
     setState("idle");
