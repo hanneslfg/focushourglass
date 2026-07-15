@@ -21,7 +21,8 @@ import {
   GOAL_COLORS,
   type ProjectGoal,
 } from "@/lib/goals";
-import { formatDeadline, toDateInputValue } from "@/lib/deadline";
+import { formatDeadline } from "@/lib/deadline";
+import { PremiumDatePicker } from "./PremiumDatePicker";
 
 function DeadlineBadge({ deadline }: { deadline: string | null | undefined }) {
   const info = formatDeadline(deadline);
