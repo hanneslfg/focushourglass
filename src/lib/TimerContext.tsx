@@ -348,26 +348,13 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (active) {
       const isBreak = active.block.kind === "break";
       if (!isBreak && !task.trim()) return;
-      // Focus blocks in a rhythm still require a chosen goal (breaks don't).
-      if (!isBreak && sessionGoals.length === 0) {
-        toast("Pick a goal", {
-          description: "Select at least 1 goal (up to 2) before starting.",
-        });
-        return;
-      }
       if (isBreak && !task.trim()) setTaskState("Break");
       startWith(active.block.minutes, active.block.kind);
       return;
     }
     if (!task.trim()) return;
-    if (sessionGoals.length === 0) {
-      toast("Pick a goal", {
-        description: "Select at least 1 goal (up to 2) before starting.",
-      });
-      return;
-    }
     startWith(minutes, null);
-  }, [task, phase, minutes, sessionGoals, startWith]);
+  }, [task, phase, minutes, startWith]);
 
 
   const pause = useCallback(() => {

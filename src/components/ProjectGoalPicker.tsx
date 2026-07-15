@@ -105,7 +105,7 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
       </div>
       <div className="text-[9px] uppercase tracking-[0.24em] text-muted-foreground/60">
         {selectedIds.length === 0
-          ? "Goals are optional"
+          ? "Select goals for this session (optional, up to 2)"
           : allSelected
             ? `All ${goals.length} selected`
             : `${selectedIds.length} of ${goals.length} selected`}
