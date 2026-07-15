@@ -259,6 +259,9 @@ export async function reclaimOrphanedGoals(): Promise<number> {
   if (projects.length === 0) return 0;
   const byNameLower = new Map(projects.map((p) => [p.name.trim().toLowerCase(), p]));
   const byIdLower = new Map(projects.map((p) => [p.id.toLowerCase(), p]));
+  // Fallback target for rename-orphaned goals: if only one active project
+  // remains after a rename (e.g. "Uni" → "Business"), pull orphans into it.
+  const soleProject = projects.length === 1 ? projects[0] : null;
 
   const goals = getAllGoals();
   let fixed = 0;
@@ -267,9 +270,37 @@ export async function reclaimOrphanedGoals(): Promise<number> {
     if (!tag) continue;
     const lower = tag.toLowerCase();
     if (byNameLower.has(lower) || byIdLower.has(lower)) continue;
-    const match = byIdLower.get(projectIdFromName(tag).toLowerCase());
+    const match =
+      byIdLower.get(projectIdFromName(tag).toLowerCase()) ?? soleProject;
     if (!match) continue;
     const ok = await updateGoalProjectTagRemote(g.id, match.name);
+    if (ok.ok) fixed++;
+  }
+  if (fixed > 0) await hydrateGoalsFromRemote();
+  return fixed;
+}
+
+/**
+ * Manual reclaim: assign every orphaned goal (whose project_tag does not
+ * match any active project) to the given target project. Called from the
+ * project details view when the user's goals went missing after a rename.
+ */
+export async function reclaimOrphanedGoalsInto(targetProjectName: string): Promise<number> {
+  const target = targetProjectName.trim();
+  if (!target) return 0;
+  const { getProjects } = await import("./projects");
+  const projects = getProjects();
+  const byNameLower = new Map(projects.map((p) => [p.name.trim().toLowerCase(), p]));
+  const byIdLower = new Map(projects.map((p) => [p.id.toLowerCase(), p]));
+
+  const goals = getAllGoals();
+  let fixed = 0;
+  for (const g of goals) {
+    const tag = (g.projectId ?? "").trim();
+    if (!tag) continue;
+    const lower = tag.toLowerCase();
+    if (byNameLower.has(lower) || byIdLower.has(lower)) continue;
+    const ok = await updateGoalProjectTagRemote(g.id, target);
     if (ok.ok) fixed++;
   }
   if (fixed > 0) await hydrateGoalsFromRemote();
