@@ -132,7 +132,7 @@ function settingFromRemote(r: RemoteProjectSetting): ProjectSetting {
 
 function goalPayload(
   uid: string,
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId"> & { deadline?: string | null },
 ) {
   const projectTag = (g.projectId ?? "").trim();
   return {
@@ -143,6 +143,7 @@ function goalPayload(
     is_completed: Boolean(g.done),
     target_minutes: Math.max(0, Math.round(Number(g.targetMinutes) || 0)),
     project_tag: projectTag,
+    deadline: g.deadline ? String(g.deadline).slice(0, 10) : null,
   };
 }
 
