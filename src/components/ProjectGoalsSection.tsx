@@ -515,6 +515,7 @@ function GoalRow({
   onSaveText,
   onSaveTarget,
   onSaveColor,
+  onSaveDeadline,
   onStartDone,
   onCancelDone,
   onDelete,
