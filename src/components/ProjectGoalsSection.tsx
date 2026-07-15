@@ -461,6 +461,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
                       {fmtHM(g.targetMinutes)}
                     </span>
                   )}
+                  {g.deadline && <DeadlineBadge deadline={g.deadline} />}
                   <button
                     onClick={() => void withBusy(g.id, () => deleteGoal(projectId, g.id))}
                     disabled={busyIds.has(g.id)}
