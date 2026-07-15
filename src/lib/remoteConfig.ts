@@ -454,7 +454,7 @@ export async function upsertProjectSettingRemote(
   const { data, error, status } = await supabase
     .from("project_settings")
     .upsert(settingPayload(uid, s), { onConflict: "user_id,project_tag" })
-    .select("user_id,project_tag,color,is_deleted")
+    .select(PROJECT_SETTING_COLUMNS)
     .single();
   if (error) {
     reportError("upsertProjectSetting", error);
