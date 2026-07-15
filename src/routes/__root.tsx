@@ -19,7 +19,7 @@ import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { supabase } from "@/lib/supabase";
-import { backfillUntaggedGoals, hydrateGoalsFromRemote } from "@/lib/goals";
+import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
 import "@/lib/i18n";
