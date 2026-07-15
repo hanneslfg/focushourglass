@@ -19,7 +19,7 @@ import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { supabase } from "@/lib/supabase";
-import { backfillUntaggedGoals, hydrateGoalsFromRemote } from "@/lib/goals";
+import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
 import "@/lib/i18n";
@@ -165,7 +165,7 @@ function RootComponent() {
       if (!uid) return;
       void hydrateGoalsFromRemote().then(() => backfillUntaggedGoals("Uni"));
       void hydrateRhythmsFromRemote();
-      void hydrateProjectSettingsFromRemote();
+      void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
     };
     void supabase.auth.getSession().then(({ data }) => {
       hydrateFor(data.session?.user?.id ?? null);
