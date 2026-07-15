@@ -260,7 +260,12 @@ async function renameProject(
 
   // 3. project_settings: new row visible with the chosen color, old row hidden
   //    so getProjects() no longer synthesizes it back into the list.
-  const savedNew = await patchSetting(newId, { color: finalColor, hidden: false });
+  const savedNew = await patchSetting(newId, {
+    color: finalColor,
+    hidden: false,
+    longTermGoal: finalGoal,
+  });
+
   if (!savedNew) return false;
   if (oldId !== newId) {
     await patchSetting(oldId, { hidden: true });
