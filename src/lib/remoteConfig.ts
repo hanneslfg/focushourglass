@@ -287,8 +287,12 @@ export async function updateGoalRemote(
 ): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
+  // Column-scoped patch: ONLY include columns the caller explicitly changed.
+  // Do NOT add user_id / project_tag / anything session-related — the row is
+  // already scoped by .eq("id", id).eq("user_id", uid). This function must
+  // never touch public.sessions (no cascades, no tag rewrites) — a deadline
+  // change is a pure single-column update on public.goals.
   const payload: Record<string, unknown> = {};
-  payload.user_id = uid;
   if (patch.text !== undefined) payload.text = patch.text;
   if (patch.color !== undefined) payload.color = patch.color;
   if (patch.done !== undefined) payload.is_completed = patch.done;
@@ -299,8 +303,7 @@ export async function updateGoalRemote(
   if (patch.deadline !== undefined) {
     payload.deadline = patch.deadline ? String(patch.deadline).slice(0, 10) : null;
   }
-  if (Object.keys(payload).length === 1) return { ok: true, error: null };
-
+  if (Object.keys(payload).length === 0) return { ok: true, error: null };
 
   const { data, error, status } = await supabase
     .from("goals")
