@@ -8,6 +8,8 @@ import {
   GripVertical,
   ChevronDown,
   Undo2,
+  Calendar as CalendarIcon,
+  AlertTriangle,
 } from "lucide-react";
 import {
   addGoal,
@@ -19,6 +21,23 @@ import {
   GOAL_COLORS,
   type ProjectGoal,
 } from "@/lib/goals";
+import { formatDeadline, toDateInputValue } from "@/lib/deadline";
+
+function DeadlineBadge({ deadline }: { deadline: string | null | undefined }) {
+  const info = formatDeadline(deadline);
+  if (!info) return null;
+  const Icon = info.icon === "warn" ? AlertTriangle : CalendarIcon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.16em] tabular-nums ${info.colorClass}`}
+      title={`Deadline: ${deadline}`}
+    >
+      <Icon className="h-3 w-3" strokeWidth={1.75} />
+      {info.label}
+    </span>
+  );
+}
+
 
 const GRACE_MS = 5000;
 
