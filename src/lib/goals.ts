@@ -246,6 +246,37 @@ export async function hydrateGoalsFromRemote(): Promise<void> {
   writeAll(bag);
 }
 
+/**
+ * Retroactive cascade: after project rename bugs, some goals may still be
+ * tagged with a project's slug id (e.g. "uni") or a legacy label that no
+ * active project claims. When the tag matches an active project's slug id
+ * (case-insensitive), remap it to that project's canonical name so the
+ * goal reappears in the UI.
+ */
+export async function reclaimOrphanedGoals(): Promise<number> {
+  const { getProjects, projectIdFromName } = await import("./projects");
+  const projects = getProjects();
+  if (projects.length === 0) return 0;
+  const byNameLower = new Map(projects.map((p) => [p.name.trim().toLowerCase(), p]));
+  const byIdLower = new Map(projects.map((p) => [p.id.toLowerCase(), p]));
+
+  const goals = getAllGoals();
+  let fixed = 0;
+  for (const g of goals) {
+    const tag = (g.projectId ?? "").trim();
+    if (!tag) continue;
+    const lower = tag.toLowerCase();
+    if (byNameLower.has(lower) || byIdLower.has(lower)) continue;
+    const match = byIdLower.get(projectIdFromName(tag).toLowerCase());
+    if (!match) continue;
+    const ok = await updateGoalProjectTagRemote(g.id, match.name);
+    if (ok.ok) fixed++;
+  }
+  if (fixed > 0) await hydrateGoalsFromRemote();
+  return fixed;
+}
+
+
 
 /** @deprecated no-op — anon broadcasts removed. */
 export function ingestRemoteGoals(_projectId: string, _goals: ProjectGoal[]) {}
