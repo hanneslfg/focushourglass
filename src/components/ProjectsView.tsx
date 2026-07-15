@@ -9,7 +9,7 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { getSessions, dayKey, sessionGoalTexts, type Session } from "@/lib/sessions";
-import { findGoalByText } from "@/lib/goals";
+import { findGoalByText, reclaimOrphanedGoalsInto } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { SessionGoalToggler } from "./SessionGoalToggler";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
@@ -260,6 +260,14 @@ function ProjectDetailFull({
   onDelete: () => void;
 }) {
   const [openSession, setOpenSession] = useState<Session | null>(null);
+
+  // Auto-repair: when opening a project's details, pull any goals that were
+  // orphaned by an earlier rename (tag no longer matches any active project)
+  // into this project so they reappear on the page immediately.
+  useEffect(() => {
+    void reclaimOrphanedGoalsInto(project.name);
+  }, [project.name]);
+
   const totalMin = sessions.reduce((s, x) => s + (x.focusedMinutes || 0), 0);
   const firstAt = sessions.reduce(
     (m, x) => Math.min(m, new Date(x.startedAt || x.completedAt).getTime()),
