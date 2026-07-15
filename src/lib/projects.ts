@@ -143,15 +143,25 @@ export function getProjects(): ProjectTag[] {
 }
 
 
-export async function addProject(name: string, color?: string): Promise<ProjectTag | null> {
+export async function addProject(
+  name: string,
+  color?: string,
+  longTermGoal?: string | null,
+): Promise<ProjectTag | null> {
   const trimmed = name.trim().slice(0, 30);
   if (!trimmed) return null;
   const id = projectIdFromName(trimmed);
   const existing = getProjects().find((p) => p.id === id);
-  if (existing && !color) return existing;
+  if (existing && !color && longTermGoal === undefined) return existing;
   const finalColor = color || existing?.color || colorForProjectName(trimmed);
-  const tag: ProjectTag = { id, name: trimmed, color: finalColor };
-  const saved = await patchSetting(id, { hidden: false, color: finalColor });
+  const finalGoal =
+    longTermGoal === undefined ? existing?.longTermGoal ?? null : longTermGoal;
+  const tag: ProjectTag = { id, name: trimmed, color: finalColor, longTermGoal: finalGoal };
+  const saved = await patchSetting(id, {
+    hidden: false,
+    color: finalColor,
+    longTermGoal: finalGoal,
+  });
   if (!saved) return null;
   const list = readLocal();
   if (!list.some((p) => projectIdFromName(p.name) === id)) {
@@ -167,10 +177,12 @@ export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, 
 
   if (isRename) {
     console.log("Updating project ID:", id, "with new name:", newName);
-    return renameProject(id, currentName!, newName!, patch.color);
+    return renameProject(id, currentName!, newName!, patch.color, patch.longTermGoal);
   }
 
-  const saved = await patchSetting(id, { color: patch.color, hidden: false });
+  const settingPatch: Partial<ProjectSetting> = { color: patch.color, hidden: false };
+  if (patch.longTermGoal !== undefined) settingPatch.longTermGoal = patch.longTermGoal;
+  const saved = await patchSetting(id, settingPatch);
   if (!saved) return false;
   const list = readLocal();
   const existing = list.find((p) => projectIdFromName(p.name) === id);
@@ -186,6 +198,7 @@ export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, 
   }
   return true;
 }
+
 
 /**
  * Rename a project in place. Since the project id is a slug derived from the
