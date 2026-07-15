@@ -181,12 +181,16 @@ export async function updateGoal(
   if (patch.targetMinutes !== undefined) {
     normalizedPatch.targetMinutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
   }
+  if (patch.deadline !== undefined) {
+    normalizedPatch.deadline = patch.deadline ? String(patch.deadline).trim() || null : null;
+  }
   const dbPatch = {
     text: normalizedPatch.text,
     color: normalizedPatch.color,
     done: normalizedPatch.done,
     position: normalizedPatch.position,
     targetMinutes: normalizedPatch.targetMinutes,
+    deadline: normalizedPatch.deadline,
   };
 
   const res = await updateGoalRemote(id, dbPatch);
