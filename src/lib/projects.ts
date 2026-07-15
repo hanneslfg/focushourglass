@@ -216,10 +216,15 @@ async function renameProject(
   oldName: string,
   newName: string,
   color?: string,
+  longTermGoal?: string | null,
 ): Promise<boolean> {
   const newId = projectIdFromName(newName);
+  const settingsBag = readSettings();
   const finalColor =
-    color || readSettings()[oldId]?.color || colorForProjectName(newName);
+    color || settingsBag[oldId]?.color || colorForProjectName(newName);
+  const finalGoal =
+    longTermGoal === undefined ? settingsBag[oldId]?.longTermGoal ?? null : longTermGoal;
+
 
   const { supabase } = await import("./supabase");
   let authUid: string | null = null;
