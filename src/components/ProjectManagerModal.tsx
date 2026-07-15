@@ -158,7 +158,15 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
               />
             ))}
           </div>
+          <textarea
+            value={longTermGoal}
+            onChange={(e) => setLongTermGoal(e.target.value.slice(0, 240))}
+            placeholder="Why / Long-term Goal (optional) — e.g., To graduate with honors and build my own company..."
+            rows={2}
+            className="mt-4 w-full bg-transparent outline-none text-[13px] italic text-white/80 placeholder:text-white/25 border-t border-white/[0.06] pt-3 resize-none leading-relaxed"
+          />
         </div>
+
 
         {/* Divider — single hairline, no card borders elsewhere */}
         <div className="h-px mx-7" style={{ background: "rgba(255,255,255,0.06)" }} />
