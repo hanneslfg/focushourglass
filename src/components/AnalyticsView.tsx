@@ -1270,6 +1270,7 @@ interface GoalRow {
   color: string;
   min: number;
   targetMinutes: number;
+  deadline?: string | null;
 }
 
 function GoalBreakdown({ rows }: { rows: GoalRow[] }) {
