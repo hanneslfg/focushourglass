@@ -27,9 +27,12 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
   const [projects, setProjects] = useState<ProjectTag[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState(TAG_COLORS[0]);
+  const [longTermGoal, setLongTermGoal] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState(TAG_COLORS[0]);
+  const [editGoal, setEditGoal] = useState("");
+
 
   useEffect(() => {
     if (!open) return;
