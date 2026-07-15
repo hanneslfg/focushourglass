@@ -762,7 +762,7 @@ export function AnalyticsView({
   // Goal → minutes breakdown for the current range (ignores the goal filter
   // so users always see the full distribution).
   const goalBreakdown = useMemo(() => {
-    const totals = new Map<string, { key: string; text: string; projectId: string; projectName: string; projectColor: string; color: string; min: number; targetMinutes: number }>();
+    const totals = new Map<string, { key: string; text: string; projectId: string; projectName: string; projectColor: string; color: string; min: number; targetMinutes: number; deadline: string | null }>();
     let untracked = 0;
     for (const s of rawInRange) {
       if (!sessionMatchesProject(s, selectedProjects)) continue;
@@ -783,6 +783,7 @@ export function AnalyticsView({
           color: goal?.color ?? s.projectColor ?? "#94a3b8",
           min: 0,
           targetMinutes: goal?.targetMinutes ?? 0,
+          deadline: goal?.deadline ?? null,
         };
         cur.min += mins;
         totals.set(key, cur);
@@ -802,6 +803,7 @@ export function AnalyticsView({
         color: "#94a3b8",
         min: Math.round(untracked),
         targetMinutes: 0,
+        deadline: null,
       });
     }
     return rows;
