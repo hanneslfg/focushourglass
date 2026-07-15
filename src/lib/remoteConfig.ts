@@ -118,6 +118,7 @@ function goalFromRemote(r: RemoteGoal): ProjectGoal {
     done: Boolean(r.is_completed),
     position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
     createdAt: Date.now(),
+    deadline: r.deadline ? String(r.deadline).slice(0, 10) : null,
   });
 }
 
