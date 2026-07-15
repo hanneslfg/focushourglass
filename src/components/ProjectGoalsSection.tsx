@@ -91,6 +91,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   const [newText, setNewText] = useState("");
   const [newHours, setNewHours] = useState("");
   const [newColor, setNewColor] = useState(GOAL_COLORS[0]);
+  const [newDeadline, setNewDeadline] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
