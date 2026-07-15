@@ -1054,7 +1054,7 @@ export function AnalyticsView({
         </section>
       )}
 
-      {(availableGoals.list.length > 0 || availableGoals.hasNoGoal) && (
+      {selectedProjects.size > 0 && (availableGoals.list.length > 0 || availableGoals.hasNoGoal) && (
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
