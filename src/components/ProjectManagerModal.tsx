@@ -249,10 +249,16 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
                           onClose();
                         }
                       }}
-                      className="flex-1 text-left text-sm text-white/90 truncate"
+                      className="flex-1 text-left min-w-0"
                     >
-                      {p.name}
+                      <div className="text-sm text-white/90 truncate">{p.name}</div>
+                      {p.longTermGoal && (
+                        <div className="text-[11px] italic text-white/40 truncate mt-0.5">
+                          {p.longTermGoal}
+                        </div>
+                      )}
                     </button>
+
                     <button
                       onClick={() => startEdit(p)}
                       className="h-7 w-7 rounded-full flex items-center justify-center text-white/30 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
