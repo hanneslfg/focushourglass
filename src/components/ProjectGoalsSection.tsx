@@ -193,7 +193,11 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
       console.error("[goals] refusing to insert — no active project tag");
       return;
     }
-    const saved = await addGoal(tagForSave, text, { targetMinutes, color: newColor });
+    const saved = await addGoal(tagForSave, text, {
+      targetMinutes,
+      color: newColor,
+      deadline: newDeadline || null,
+    });
     if (!saved) {
       console.error("[goals] insert failed — Supabase returned no row");
       return;
@@ -201,6 +205,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     setNewText("");
     setNewHours("");
     setNewColor(GOAL_COLORS[0]);
+    setNewDeadline("");
     setAdding(false);
   }
 
