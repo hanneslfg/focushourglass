@@ -118,12 +118,17 @@ export function getProjects(): ProjectTag[] {
       id,
       name,
       color: settingColor || localColor || s.projectColor || colorForProjectName(name),
+      longTermGoal: settings[id]?.longTermGoal ?? null,
     });
   }
   for (const [id, p] of locals) {
     if (merged.has(id)) continue;
     const settingColor = settings[id]?.color;
-    merged.set(id, settingColor ? { ...p, color: settingColor } : p);
+    merged.set(id, {
+      ...p,
+      color: settingColor || p.color,
+      longTermGoal: settings[id]?.longTermGoal ?? p.longTermGoal ?? null,
+    });
   }
   for (const [id, setting] of Object.entries(settings)) {
     if (setting.hidden || merged.has(id)) continue;
@@ -131,10 +136,12 @@ export function getProjects(): ProjectTag[] {
       id,
       name: id.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
       color: setting.color || colorForProjectName(id),
+      longTermGoal: setting.longTermGoal ?? null,
     });
   }
   return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
+
 
 export async function addProject(name: string, color?: string): Promise<ProjectTag | null> {
   const trimmed = name.trim().slice(0, 30);
