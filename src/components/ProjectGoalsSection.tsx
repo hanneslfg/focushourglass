@@ -356,26 +356,13 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
           </div>
           <div className="mt-3 flex items-center justify-between gap-4 flex-wrap">
             <ColorPalette value={newColor} onChange={setNewColor} size={18} />
-            <label className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
-              <CalendarIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
-              <span>Deadline</span>
-              <input
-                type="date"
-                value={newDeadline}
-                onChange={(e) => setNewDeadline(e.target.value)}
-                className="bg-transparent border-b border-border/60 focus:border-foreground/60 outline-none text-xs py-1 text-foreground/90 tabular-nums [color-scheme:dark]"
+            <div className="inline-flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">Deadline</span>
+              <PremiumDatePicker
+                value={newDeadline || null}
+                onChange={(iso) => setNewDeadline(iso ?? "")}
               />
-              {newDeadline && (
-                <button
-                  type="button"
-                  onClick={() => setNewDeadline("")}
-                  className="text-muted-foreground/60 hover:text-foreground"
-                  aria-label="Clear deadline"
-                >
-                  <X className="h-3 w-3" strokeWidth={1.75} />
-                </button>
-              )}
-            </label>
+            </div>
           </div>
         </div>
       )}
