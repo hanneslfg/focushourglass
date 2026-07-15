@@ -525,11 +525,13 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(project.name);
   const [color, setColor] = useState(project.color);
+  const [goal, setGoal] = useState(project.longTermGoal ?? "");
 
   useEffect(() => {
     setName(project.name);
     setColor(project.color);
-  }, [project.id, project.name, project.color]);
+    setGoal(project.longTermGoal ?? "");
+  }, [project.id, project.name, project.color, project.longTermGoal]);
 
   async function save() {
     const trimmed = name.trim().slice(0, 30);
@@ -538,28 +540,40 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
       setEditing(false);
       return;
     }
-    const ok = await updateProject(project.id, { name: trimmed, color });
+    const trimmedGoal = goal.trim();
+    const ok = await updateProject(project.id, {
+      name: trimmed,
+      color,
+      longTermGoal: trimmedGoal ? trimmedGoal : null,
+    });
     if (!ok) return;
     setEditing(false);
   }
 
   if (!editing) {
     return (
-      <header className="flex items-center gap-4 mb-10 group">
-        <span
-          className="h-5 w-5 rounded-full shrink-0"
-          style={{ background: project.color }}
-        />
-        <h1 className="font-display text-4xl md:text-5xl tracking-tight truncate">
-          {project.name}
-        </h1>
-        <button
-          onClick={() => setEditing(true)}
-          className="ml-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
-          aria-label="Edit project"
-        >
-          <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} /> Edit
-        </button>
+      <header className="mb-10 group">
+        <div className="flex items-center gap-4">
+          <span
+            className="h-5 w-5 rounded-full shrink-0"
+            style={{ background: project.color }}
+          />
+          <h1 className="font-display text-4xl md:text-5xl tracking-tight truncate">
+            {project.name}
+          </h1>
+          <button
+            onClick={() => setEditing(true)}
+            className="ml-2 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+            aria-label="Edit project"
+          >
+            <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} /> Edit
+          </button>
+        </div>
+        {project.longTermGoal && (
+          <p className="mt-2 ml-9 text-sm md:text-base italic text-muted-foreground max-w-2xl leading-relaxed">
+            {project.longTermGoal}
+          </p>
+        )}
       </header>
     );
   }
@@ -580,6 +594,7 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
             if (e.key === "Escape") {
               setName(project.name);
               setColor(project.color);
+              setGoal(project.longTermGoal ?? "");
               setEditing(false);
             }
           }}
@@ -596,6 +611,7 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
           onClick={() => {
             setName(project.name);
             setColor(project.color);
+            setGoal(project.longTermGoal ?? "");
             setEditing(false);
           }}
           className="h-9 w-9 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
@@ -604,6 +620,13 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
           <X className="h-4 w-4" strokeWidth={1.75} />
         </button>
       </div>
+      <textarea
+        value={goal}
+        onChange={(e) => setGoal(e.target.value.slice(0, 240))}
+        placeholder="Why / Long-term Goal (optional) — e.g., To graduate with honors and build my own company..."
+        rows={2}
+        className="mt-4 w-full bg-transparent outline-none text-sm italic text-muted-foreground placeholder:text-muted-foreground/50 resize-none leading-relaxed border-t border-border pt-3"
+      />
       <div className="mt-4 flex flex-wrap gap-2">
         {TAG_COLORS.map((c) => (
           <button
@@ -620,3 +643,4 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
     </header>
   );
 }
+
