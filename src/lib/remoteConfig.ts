@@ -418,6 +418,7 @@ export interface ProjectSetting {
   projectTag: string;
   color?: string;
   hidden: boolean;
+  longTermGoal?: string | null;
 }
 
 interface RemoteProjectSetting {
@@ -425,14 +426,17 @@ interface RemoteProjectSetting {
   project_tag: string;
   color: string | null;
   is_deleted: boolean | null;
+  long_term_goal?: string | null;
 }
+
+const PROJECT_SETTING_COLUMNS = "user_id,project_tag,color,is_deleted,long_term_goal";
 
 export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | null> {
   const uid = await authUid();
   if (!uid) return null;
   const { data, error } = await supabase
     .from("project_settings")
-    .select("user_id,project_tag,color,is_deleted")
+    .select(PROJECT_SETTING_COLUMNS)
     .eq("user_id", uid);
   if (error) {
     reportError("fetchProjectSettings", error);
@@ -440,6 +444,7 @@ export async function fetchProjectSettingsRemote(): Promise<ProjectSetting[] | n
   }
   return ((data ?? []) as RemoteProjectSetting[]).map(settingFromRemote);
 }
+
 
 export async function upsertProjectSettingRemote(
   s: Partial<ProjectSetting> & { projectTag: string },
