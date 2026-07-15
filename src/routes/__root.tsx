@@ -189,6 +189,7 @@ function RootComponent() {
         <Outlet />
         <Toaster position="bottom-center" />
         <MilestoneOverlay />
+        <OnboardingOverlay />
       </TimerProvider>
     </QueryClientProvider>
   );
