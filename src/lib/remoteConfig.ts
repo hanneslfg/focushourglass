@@ -193,25 +193,32 @@ interface RemoteGoal {
   target_minutes: number | null;
   project_tag: string | null;
   deadline: string | null;
+  is_deleted?: boolean | null;
 }
 
 
-const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag,deadline";
+const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag,deadline,is_deleted";
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const uid = await authUid();
   if (!uid) return null;
+  // Only active, non-deleted goals reach the UI. `is_deleted` is either
+  // false or null on active rows; soft-deleted rows have is_deleted = true.
   const { data, error } = await supabase
     .from("goals")
     .select(GOAL_COLUMNS)
     .eq("user_id", uid)
+    .or("is_deleted.is.null,is_deleted.eq.false")
     .order("position", { ascending: true });
   if (error) {
     reportError("fetchAllGoals", error);
     return null;
   }
-  return ((data ?? []) as RemoteGoal[]).map(goalFromRemote);
+  return ((data ?? []) as RemoteGoal[])
+    .filter((r) => !r.is_deleted)
+    .map(goalFromRemote);
 }
+
 
 export async function insertGoalRemote(
   g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId"> & { deadline?: string | null },
@@ -317,9 +324,12 @@ export async function updateGoalRemote(
 export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
+  // Soft-delete: flip is_deleted so subsequent fetches filter this row out
+  // instead of purging it. Prevents deleted goals from ever reappearing in
+  // pills (e.g. a stale cache on another device re-inserting them).
   const { data, error, status } = await supabase
     .from("goals")
-    .delete()
+    .update({ is_deleted: true })
     .eq("id", id)
     .eq("user_id", uid)
     .select("id")
@@ -329,12 +339,13 @@ export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
     return { ok: false, error: error.message };
   }
   if (!data) {
-    const msg = "No goal row was deleted; check user_id/RLS for public.goals";
+    const msg = "No goal row was updated; check user_id/RLS for public.goals";
     reportError("deleteGoal", msg);
     return { ok: false, error: msg, status };
   }
   return { ok: successStatus(status), error: successStatus(status) ? null : `Unexpected status ${status}`, status };
 }
+
 
 /* --------------------------- custom rhythms --------------------------- */
 
