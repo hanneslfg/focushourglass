@@ -152,6 +152,15 @@ export async function addProject(name: string, color?: string): Promise<ProjectT
 }
 
 export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, "id">>): Promise<boolean> {
+  const currentName = getProjects().find((p) => p.id === id)?.name;
+  const newName = patch.name?.trim().slice(0, 30);
+  const isRename = !!newName && !!currentName && projectIdFromName(newName) !== id;
+
+  if (isRename) {
+    console.log("Updating project ID:", id, "with new name:", newName);
+    return renameProject(id, currentName!, newName!, patch.color);
+  }
+
   const saved = await patchSetting(id, { color: patch.color, hidden: false });
   if (!saved) return false;
   const list = readLocal();
@@ -166,6 +175,116 @@ export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, 
     const derived = getProjects().find((p) => p.id === id);
     if (derived) writeLocal([...list, { ...derived, ...patch, id }]);
   }
+  return true;
+}
+
+/**
+ * Rename a project in place. Since the project id is a slug derived from the
+ * name, renaming means:
+ *  1. Migrate every session's `project_tag` from old label → new label
+ *     (Supabase + local cache).
+ *  2. Migrate every goal's `project_tag` from old id → new id (Supabase).
+ *  3. Move the project_settings row (create new under new id, hide old).
+ *  4. Update the local project list entry.
+ * Result: exactly one project appears in the UI under the new name — never
+ * a duplicate.
+ */
+async function renameProject(
+  oldId: string,
+  oldName: string,
+  newName: string,
+  color?: string,
+): Promise<boolean> {
+  const newId = projectIdFromName(newName);
+  const finalColor =
+    color || readSettings()[oldId]?.color || colorForProjectName(newName);
+
+  const { supabase } = await import("./supabase");
+  let authUid: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUid = data.user?.id ?? null;
+  } catch {
+    // fall through — local-only update
+  }
+
+  if (authUid) {
+    // 1. Sessions: project_tag stores the LABEL (e.g. "Uni"), not the slug.
+    const { error: sessErr } = await supabase
+      .from("sessions")
+      .update({ project_tag: newName })
+      .eq("user_id", authUid)
+      .eq("project_tag", oldName);
+    if (sessErr) {
+      console.error("[projects] rename: sessions update failed:", sessErr.message);
+      return false;
+    }
+
+    // 2. Goals: project_tag stores the slug id.
+    const { error: goalErr } = await supabase
+      .from("goals")
+      .update({ project_tag: newId })
+      .eq("user_id", authUid)
+      .eq("project_tag", oldId);
+    if (goalErr) {
+      console.error("[projects] rename: goals update failed:", goalErr.message);
+    }
+  }
+
+  // 3. project_settings: new row visible with the chosen color, old row hidden
+  //    so getProjects() no longer synthesizes it back into the list.
+  const savedNew = await patchSetting(newId, { color: finalColor, hidden: false });
+  if (!savedNew) return false;
+  if (oldId !== newId) {
+    await patchSetting(oldId, { hidden: true });
+  }
+
+  // 4. Local sessions cache — rewrite projectName on any matching rows so
+  //    getProjects() derives the new label until the next remote hydrate.
+  try {
+    const { getSessions: readSess } = await import("./sessions");
+    const raw = safeStorage.getItem("hourglass.sessions.v1");
+    if (raw) {
+      const list = JSON.parse(raw) as ReturnType<typeof readSess>;
+      let changed = false;
+      const next = list.map((s) => {
+        if (s.projectName === oldName || s.projectId === oldId) {
+          changed = true;
+          return { ...s, projectName: newName, projectId: newId, projectColor: finalColor };
+        }
+        return s;
+      });
+      if (changed) {
+        safeStorage.setItem("hourglass.sessions.v1", JSON.stringify(next));
+        window.dispatchEvent(new Event("hourglass:sessions"));
+      }
+    }
+  } catch (e) {
+    console.warn("[projects] rename: local session rewrite failed:", e);
+  }
+
+  // 5. Local project list — replace the old entry in place (map, don't append).
+  const list = readLocal();
+  const hasOld = list.some((p) => projectIdFromName(p.name) === oldId);
+  const hasNew = list.some((p) => projectIdFromName(p.name) === newId);
+  let nextList: ProjectTag[];
+  if (hasOld) {
+    nextList = list
+      .map((p) =>
+        projectIdFromName(p.name) === oldId
+          ? { id: newId, name: newName, color: finalColor }
+          : p,
+      )
+      .filter((p, i, arr) =>
+        // dedupe: if the new id already existed, drop the extra
+        arr.findIndex((q) => projectIdFromName(q.name) === projectIdFromName(p.name)) === i,
+      );
+  } else if (!hasNew) {
+    nextList = [...list, { id: newId, name: newName, color: finalColor }];
+  } else {
+    nextList = list;
+  }
+  writeLocal(nextList);
   return true;
 }
 
