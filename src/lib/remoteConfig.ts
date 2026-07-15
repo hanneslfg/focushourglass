@@ -260,7 +260,7 @@ export async function updateGoalProjectTagRemote(
 
 export async function updateGoalRemote(
   id: string,
-  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position" | "targetMinutes">>,
+  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position" | "targetMinutes" | "deadline">>,
 ): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
@@ -273,7 +273,11 @@ export async function updateGoalRemote(
   if (patch.targetMinutes !== undefined) {
     payload.target_minutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
   }
+  if (patch.deadline !== undefined) {
+    payload.deadline = patch.deadline ? String(patch.deadline).slice(0, 10) : null;
+  }
   if (Object.keys(payload).length === 1) return { ok: true, error: null };
+
 
   const { data, error, status } = await supabase
     .from("goals")
