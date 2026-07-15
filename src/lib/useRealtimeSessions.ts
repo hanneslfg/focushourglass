@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { getActiveSyncUserId, syncPendingSessions, supabase } from "./supabase";
+import {
+  getActiveSyncUserId,
+  syncPendingSessions,
+  supabase,
+  mergeLocalSessionsToCloud,
+} from "./supabase";
 import {
   upsertRemoteSession,
   updateSession,
