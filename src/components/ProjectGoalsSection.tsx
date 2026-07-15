@@ -492,6 +492,7 @@ interface RowProps {
   onSaveText: (t: string) => Promise<boolean>;
   onSaveTarget: (m: number) => Promise<boolean>;
   onSaveColor: (c: string) => Promise<boolean>;
+  onSaveDeadline: (d: string | null) => Promise<boolean>;
   onStartDone: () => void;
   onCancelDone: () => void;
   onDelete: () => void;
