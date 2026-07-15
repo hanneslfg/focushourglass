@@ -668,27 +668,31 @@ export function AnalyticsView({
   }, []);
 
   const availableProjects = useMemo(() => {
-    // Union of live projects + project names present on sessions.
-    const map = new Map<string, { id: string; name: string; color: string }>();
-    for (const p of projects) {
-      map.set(p.id, { id: p.id, name: p.name, color: p.color });
-    }
+    // Only active (non-deleted) projects. Deleted projects must not appear
+    // in the filter bar, even if historical sessions still reference them.
+    const list = projects
+      .map((p) => ({ id: p.id, name: p.name, color: p.color }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const activeIds = new Set(projects.map((p) => p.id));
     let hasNoProject = false;
     for (const s of sessions) {
-      if (!s.projectId || !s.projectName) { hasNoProject = true; continue; }
-      if (!map.has(s.projectId)) {
-        map.set(s.projectId, { id: s.projectId, name: s.projectName, color: s.projectColor ?? "#94a3b8" });
+      if (!s.projectId || !s.projectName || !activeIds.has(s.projectId)) {
+        hasNoProject = true;
+        break;
       }
     }
-    return { list: [...map.values()].sort((a, b) => a.name.localeCompare(b.name)), hasNoProject };
+    return { list, hasNoProject };
   }, [projects, sessions]);
 
   // Goals derived from BOTH project.goal store and historical session.goalText.
-  // Key is `${projectId}::${goalTextLower}` so goals with the same name in
-  // different projects stay distinct in filters and breakdowns.
+  // Restricted to the currently selected project(s) — goals are only meaningful
+  // in the context of a chosen project.
   const availableGoals = useMemo(() => {
     const map = new Map<string, { key: string; projectId: string; projectName: string; projectColor: string; text: string; color: string; targetMinutes: number }>();
-    for (const p of projects) {
+    const activeProjects = projects.filter(
+      (p) => selectedProjects.size === 0 || selectedProjects.has(p.id),
+    );
+    for (const p of activeProjects) {
       for (const g of getProjectGoals(p.id, p.name)) {
         const key = `${p.id}::${g.text.toLowerCase()}`;
         map.set(key, {
@@ -702,9 +706,11 @@ export function AnalyticsView({
         });
       }
     }
-    // Fold in goals seen on sessions but not defined in the goal store.
+    // Fold in goals seen on sessions but not defined in the goal store —
+    // only for the selected projects.
     for (const s of sessions) {
       if (!s.projectId) continue;
+      if (selectedProjects.size > 0 && !selectedProjects.has(s.projectId)) continue;
       for (const gt of sessionGoalTexts(s)) {
         const key = `${s.projectId}::${gt.toLowerCase()}`;
         if (!map.has(key)) {
@@ -722,6 +728,7 @@ export function AnalyticsView({
     }
     let hasNoGoal = false;
     for (const s of rawInRange) {
+      if (selectedProjects.size > 0 && (!s.projectId || !selectedProjects.has(s.projectId))) continue;
       if (sessionGoalTexts(s).length === 0) { hasNoGoal = true; break; }
     }
     const list = [...map.values()].sort((a, b) =>
@@ -729,7 +736,8 @@ export function AnalyticsView({
     );
     return { list, hasNoGoal };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects, sessions, rawInRange, dataTick]);
+  }, [projects, sessions, rawInRange, dataTick, selectedProjects]);
+
 
   const sessionMatchesProject = (s: Session, sel: Set<string>) => {
     if (sel.size === 0) return true;
@@ -1046,7 +1054,7 @@ export function AnalyticsView({
         </section>
       )}
 
-      {(availableGoals.list.length > 0 || availableGoals.hasNoGoal) && (
+      {selectedProjects.size > 0 && (availableGoals.list.length > 0 || availableGoals.hasNoGoal) && (
         <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground/80">
