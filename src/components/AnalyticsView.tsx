@@ -1323,6 +1323,20 @@ function GoalBreakdown({ rows }: { rows: GoalRow[] }) {
                       Achieved
                     </span>
                   )}
+                  {r.deadline && (() => {
+                    const info = formatDeadline(r.deadline);
+                    if (!info) return null;
+                    const Icon = info.icon === "warn" ? AlertTriangle : CalendarIcon;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] shrink-0 tabular-nums ${info.colorClass}`}
+                        title={`Deadline: ${r.deadline}`}
+                      >
+                        <Icon className="h-3 w-3" strokeWidth={1.75} />
+                        {info.label}
+                      </span>
+                    );
+                  })()}
                 </span>
                 <span
                   className="tabular-nums text-xs text-muted-foreground shrink-0"
