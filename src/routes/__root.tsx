@@ -165,7 +165,7 @@ function RootComponent() {
       if (!uid) return;
       void hydrateGoalsFromRemote().then(() => backfillUntaggedGoals("Uni"));
       void hydrateRhythmsFromRemote();
-      void hydrateProjectSettingsFromRemote();
+      void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
     };
     void supabase.auth.getSession().then(({ data }) => {
       hydrateFor(data.session?.user?.id ?? null);
