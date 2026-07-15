@@ -16,7 +16,9 @@ export interface ProjectTag {
   id: string;
   name: string;
   color: string;
+  longTermGoal?: string | null;
 }
+
 
 const KEY = "hourglass.projects.v1";
 const SETTINGS_KEY = "hourglass.project_settings.v1";
