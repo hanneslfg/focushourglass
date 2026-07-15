@@ -614,6 +614,136 @@ export async function deleteSessionRemote(opts: {
   }
 }
 
+const LOCAL_SESSIONS_KEY = "hourglass.sessions.v1";
+
+interface LocalSessionShape {
+  id?: string;
+  task?: string;
+  plannedMinutes?: number;
+  focusedMinutes?: number;
+  startedAt?: string;
+  completedAt?: string;
+  projectName?: string;
+  tags?: string[];
+  goalText?: string;
+  focusScore?: number;
+  pauseCount?: number;
+  totalPauseSeconds?: number;
+}
+
+/**
+ * Merge guest sessions saved locally (under `hourglass.sessions.v1`) into
+ * the signed-in user's cloud account. Deduplicates against existing remote
+ * rows using (task_name, started_at, completed_at). Never clears the local
+ * cache — hydrateFromRemote will refresh it from the server after upload.
+ *
+ * Call this BEFORE any hydrate/overwrite so no guest data is lost on login.
+ */
+export async function mergeLocalSessionsToCloud(): Promise<{ merged: number; skipped: number }> {
+  if (typeof window === "undefined") return { merged: 0, skipped: 0 };
+
+  let authUserId: string | null = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    authUserId = data.user?.id ?? null;
+  } catch {
+    // not authenticated — nothing to merge into
+  }
+  if (!authUserId) return { merged: 0, skipped: 0 };
+
+  let raw: string | null = null;
+  try {
+    raw = safeStorage.getItem(LOCAL_SESSIONS_KEY);
+  } catch {
+    return { merged: 0, skipped: 0 };
+  }
+  if (!raw) return { merged: 0, skipped: 0 };
+
+  let local: LocalSessionShape[] = [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) local = parsed as LocalSessionShape[];
+  } catch {
+    return { merged: 0, skipped: 0 };
+  }
+  if (local.length === 0) return { merged: 0, skipped: 0 };
+
+  // Fetch existing remote keys for this user to dedupe.
+  const remoteKeys = new Set<string>();
+  try {
+    const { data: existing } = await supabase
+      .from("sessions")
+      .select("task_name, started_at, completed_at")
+      .eq("user_id", authUserId);
+    for (const r of (existing ?? []) as Array<{
+      task_name: string;
+      started_at: string;
+      completed_at: string;
+    }>) {
+      remoteKeys.add(
+        `${r.task_name}|${String(r.started_at).slice(0, 19)}|${String(r.completed_at).slice(0, 19)}`,
+      );
+    }
+  } catch (e) {
+    console.warn("[supabase] mergeLocalSessionsToCloud: dedupe fetch failed:", e);
+  }
+
+  let merged = 0;
+  let skipped = 0;
+  for (const s of local) {
+    const task = String(s.task ?? "").trim();
+    const startedAt = String(s.startedAt ?? "");
+    const completedAt = String(s.completedAt ?? "");
+    if (!task || !startedAt || !completedAt) {
+      skipped += 1;
+      continue;
+    }
+    const key = `${task}|${startedAt.slice(0, 19)}|${completedAt.slice(0, 19)}`;
+    if (remoteKeys.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    const remote: RemoteSession = {
+      user_id: authUserId,
+      task_name: task,
+      project_tag: s.projectName ?? null,
+      planned_duration: Number(s.plannedMinutes ?? 0),
+      actual_duration: Number(s.focusedMinutes ?? 0),
+      started_at: startedAt,
+      completed_at: completedAt,
+      was_aborted: false,
+      tags: Array.isArray(s.tags) && s.tags.length > 0
+        ? s.tags
+        : s.goalText
+          ? [s.goalText]
+          : undefined,
+      focus_score: typeof s.focusScore === "number" ? s.focusScore : null,
+      pause_count: typeof s.pauseCount === "number" ? s.pauseCount : null,
+      total_pause_seconds:
+        typeof s.totalPauseSeconds === "number" ? s.totalPauseSeconds : null,
+    };
+    try {
+      const { error } = await insertSessionPayload(supabase, remote, authUserId);
+      if (error) {
+        console.error("[supabase] mergeLocalSessionsToCloud insert failed:", error.message);
+        // Also queue in pending so a later retry picks it up.
+        queuePending(remote);
+      } else {
+        merged += 1;
+        remoteKeys.add(key);
+      }
+    } catch (e) {
+      console.error("[supabase] mergeLocalSessionsToCloud threw:", e);
+      queuePending(remote);
+    }
+  }
+
+  if (merged > 0) {
+    console.log(`[supabase] merged ${merged} guest session(s) into cloud account (${skipped} already present).`);
+  }
+  return { merged, skipped };
+}
+
 /**
  * Push any sessions queued in localStorage to Supabase. Safe to call on
  * component mount or after sign-in. Falls back to the public client for
