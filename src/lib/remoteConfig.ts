@@ -174,10 +174,11 @@ interface RemoteGoal {
   is_completed: boolean | null;
   target_minutes: number | null;
   project_tag: string | null;
+  deadline: string | null;
 }
 
 
-const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag";
+const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag,deadline";
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const uid = await authUid();
