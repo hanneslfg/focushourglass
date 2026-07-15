@@ -403,6 +403,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
               onSaveText={(text) => withBusy(g.id, () => updateGoal(projectId, g.id, { text }))}
               onSaveTarget={(m) => withBusy(g.id, () => updateGoal(projectId, g.id, { targetMinutes: m }))}
               onSaveColor={(c) => withBusy(g.id, () => updateGoal(projectId, g.id, { color: c }))}
+              onSaveDeadline={(d) => withBusy(g.id, () => updateGoal(projectId, g.id, { deadline: d }))}
               onStartDone={() => startDone(g.id)}
               onCancelDone={() => cancelDone(g.id)}
               onDelete={() => {
