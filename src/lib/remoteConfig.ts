@@ -53,7 +53,18 @@ async function currentAuthUid(): Promise<string | null> {
 
 async function authUid(waitMs = 4000): Promise<string | null> {
   const immediate = await currentAuthUid();
-  if (immediate || typeof window === "undefined" || waitMs <= 0) return immediate;
+  if (immediate) return immediate;
+  if (typeof window === "undefined" || waitMs <= 0) return null;
+
+  // If Supabase has no persisted session at all, this is a guest — don't
+  // wait for an auth event that will never come, and never surface a blocking
+  // "no authenticated user" error. Callers handle a null uid gracefully.
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return null;
+  } catch {
+    return null;
+  }
 
   return new Promise<string | null>((resolve) => {
     let settled = false;
@@ -73,11 +84,9 @@ async function authUid(waitMs = 4000): Promise<string | null> {
       const uid = session?.user?.id ?? (await currentAuthUid());
       if (uid) finish(uid);
     });
-  }).then((uid) => {
-    if (!uid) reportError("auth", "No authenticated user loaded; request was not sent");
-    return uid;
   });
 }
+
 
 function successStatus(status: number): boolean {
   return status >= 200 && status < 300;
