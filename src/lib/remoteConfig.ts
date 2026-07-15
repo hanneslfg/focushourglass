@@ -324,9 +324,12 @@ export async function updateGoalRemote(
 export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
+  // Soft-delete: flip is_deleted so subsequent fetches filter this row out
+  // instead of purging it. Prevents deleted goals from ever reappearing in
+  // pills (e.g. a stale cache on another device re-inserting them).
   const { data, error, status } = await supabase
     .from("goals")
-    .delete()
+    .update({ is_deleted: true })
     .eq("id", id)
     .eq("user_id", uid)
     .select("id")
@@ -336,12 +339,13 @@ export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
     return { ok: false, error: error.message };
   }
   if (!data) {
-    const msg = "No goal row was deleted; check user_id/RLS for public.goals";
+    const msg = "No goal row was updated; check user_id/RLS for public.goals";
     reportError("deleteGoal", msg);
     return { ok: false, error: msg, status };
   }
   return { ok: successStatus(status), error: successStatus(status) ? null : `Unexpected status ${status}`, status };
 }
+
 
 /* --------------------------- custom rhythms --------------------------- */
 
