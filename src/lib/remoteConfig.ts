@@ -193,25 +193,32 @@ interface RemoteGoal {
   target_minutes: number | null;
   project_tag: string | null;
   deadline: string | null;
+  is_deleted?: boolean | null;
 }
 
 
-const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag,deadline";
+const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag,deadline,is_deleted";
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const uid = await authUid();
   if (!uid) return null;
+  // Only active, non-deleted goals reach the UI. `is_deleted` is either
+  // false or null on active rows; soft-deleted rows have is_deleted = true.
   const { data, error } = await supabase
     .from("goals")
     .select(GOAL_COLUMNS)
     .eq("user_id", uid)
+    .or("is_deleted.is.null,is_deleted.eq.false")
     .order("position", { ascending: true });
   if (error) {
     reportError("fetchAllGoals", error);
     return null;
   }
-  return ((data ?? []) as RemoteGoal[]).map(goalFromRemote);
+  return ((data ?? []) as RemoteGoal[])
+    .filter((r) => !r.is_deleted)
+    .map(goalFromRemote);
 }
+
 
 export async function insertGoalRemote(
   g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId"> & { deadline?: string | null },
