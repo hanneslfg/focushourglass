@@ -198,7 +198,8 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
 }
 
 export async function insertGoalRemote(
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId"> & { deadline?: string | null },
+
 
 ): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
