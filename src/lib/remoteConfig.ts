@@ -159,13 +159,18 @@ function rhythmPayload(uid: string, r: Rhythm) {
 }
 
 function settingPayload(uid: string, s: Partial<ProjectSetting> & { projectTag: string }) {
-  return {
+  const payload: Record<string, unknown> = {
     user_id: uid,
     project_tag: s.projectTag,
     color: s.color ?? null,
     is_deleted: Boolean(s.hidden),
   };
+  if (s.longTermGoal !== undefined) {
+    payload.long_term_goal = s.longTermGoal;
+  }
+  return payload;
 }
+
 
 /* --------------------------- goals --------------------------- */
 
