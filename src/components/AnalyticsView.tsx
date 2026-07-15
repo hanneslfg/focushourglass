@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Trash2, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
+import { formatDeadline } from "@/lib/deadline";
 import { getSessions, hydrateFromRemote, dayKey, removeSession, sessionGoalTexts, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { getProjectGoals, findGoalByText, isGoalAchieved } from "@/lib/goals";
@@ -762,7 +763,7 @@ export function AnalyticsView({
   // Goal → minutes breakdown for the current range (ignores the goal filter
   // so users always see the full distribution).
   const goalBreakdown = useMemo(() => {
-    const totals = new Map<string, { key: string; text: string; projectId: string; projectName: string; projectColor: string; color: string; min: number; targetMinutes: number }>();
+    const totals = new Map<string, { key: string; text: string; projectId: string; projectName: string; projectColor: string; color: string; min: number; targetMinutes: number; deadline: string | null }>();
     let untracked = 0;
     for (const s of rawInRange) {
       if (!sessionMatchesProject(s, selectedProjects)) continue;
@@ -783,6 +784,7 @@ export function AnalyticsView({
           color: goal?.color ?? s.projectColor ?? "#94a3b8",
           min: 0,
           targetMinutes: goal?.targetMinutes ?? 0,
+          deadline: goal?.deadline ?? null,
         };
         cur.min += mins;
         totals.set(key, cur);
@@ -802,6 +804,7 @@ export function AnalyticsView({
         color: "#94a3b8",
         min: Math.round(untracked),
         targetMinutes: 0,
+        deadline: null,
       });
     }
     return rows;
@@ -1268,6 +1271,7 @@ interface GoalRow {
   color: string;
   min: number;
   targetMinutes: number;
+  deadline?: string | null;
 }
 
 function GoalBreakdown({ rows }: { rows: GoalRow[] }) {
@@ -1319,6 +1323,20 @@ function GoalBreakdown({ rows }: { rows: GoalRow[] }) {
                       Achieved
                     </span>
                   )}
+                  {r.deadline && (() => {
+                    const info = formatDeadline(r.deadline);
+                    if (!info) return null;
+                    const Icon = info.icon === "warn" ? AlertTriangle : CalendarIcon;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] shrink-0 tabular-nums ${info.colorClass}`}
+                        title={`Deadline: ${r.deadline}`}
+                      >
+                        <Icon className="h-3 w-3" strokeWidth={1.75} />
+                        {info.label}
+                      </span>
+                    );
+                  })()}
                 </span>
                 <span
                   className="tabular-nums text-xs text-muted-foreground shrink-0"

@@ -118,6 +118,7 @@ function goalFromRemote(r: RemoteGoal): ProjectGoal {
     done: Boolean(r.is_completed),
     position: Number.isFinite(Number(r.position)) ? Number(r.position) : 0,
     createdAt: Date.now(),
+    deadline: r.deadline ? String(r.deadline).slice(0, 10) : null,
   });
 }
 
@@ -131,7 +132,7 @@ function settingFromRemote(r: RemoteProjectSetting): ProjectSetting {
 
 function goalPayload(
   uid: string,
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId"> & { deadline?: string | null },
 ) {
   const projectTag = (g.projectId ?? "").trim();
   return {
@@ -142,6 +143,7 @@ function goalPayload(
     is_completed: Boolean(g.done),
     target_minutes: Math.max(0, Math.round(Number(g.targetMinutes) || 0)),
     project_tag: projectTag,
+    deadline: g.deadline ? String(g.deadline).slice(0, 10) : null,
   };
 }
 
@@ -174,10 +176,11 @@ interface RemoteGoal {
   is_completed: boolean | null;
   target_minutes: number | null;
   project_tag: string | null;
+  deadline: string | null;
 }
 
 
-const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag";
+const GOAL_COLUMNS = "id,user_id,text,color,position,is_completed,target_minutes,project_tag,deadline";
 
 export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
   const uid = await authUid();
@@ -195,7 +198,8 @@ export async function fetchAllGoals(): Promise<ProjectGoal[] | null> {
 }
 
 export async function insertGoalRemote(
-  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId">,
+  g: Pick<ProjectGoal, "text" | "color" | "position" | "done" | "targetMinutes" | "projectId"> & { deadline?: string | null },
+
 
 ): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
@@ -256,7 +260,7 @@ export async function updateGoalProjectTagRemote(
 
 export async function updateGoalRemote(
   id: string,
-  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position" | "targetMinutes">>,
+  patch: Partial<Pick<ProjectGoal, "text" | "color" | "done" | "position" | "targetMinutes" | "deadline">>,
 ): Promise<RemoteResult> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
@@ -269,7 +273,11 @@ export async function updateGoalRemote(
   if (patch.targetMinutes !== undefined) {
     payload.target_minutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
   }
+  if (patch.deadline !== undefined) {
+    payload.deadline = patch.deadline ? String(patch.deadline).slice(0, 10) : null;
+  }
   if (Object.keys(payload).length === 1) return { ok: true, error: null };
+
 
   const { data, error, status } = await supabase
     .from("goals")

@@ -17,7 +17,10 @@ export interface ProjectGoal {
   done: boolean;
   position: number;
   createdAt: number;
+  /** ISO date string (YYYY-MM-DD) or null. */
+  deadline?: string | null;
 }
+
 
 
 const KEY = "hourglass.project_goals.v1";
@@ -111,7 +114,7 @@ export function isGoalAchieved(goal: ProjectGoal | null | undefined, focusedMinu
 export async function addGoal(
   projectId: string,
   text: string,
-  opts?: { targetMinutes?: number; color?: string },
+  opts?: { targetMinutes?: number; color?: string; deadline?: string | null },
 ): Promise<ProjectGoal | null> {
   const clean = text.trim().slice(0, 140);
   const tagForSave = projectId.trim();
@@ -127,6 +130,7 @@ export async function addGoal(
     done: false,
     position: maxPos + 1,
     createdAt: Date.now(),
+    deadline: opts?.deadline?.trim() || null,
   };
   // eslint-disable-next-line no-console
   console.log("[goals] addGoal insert payload", {
@@ -135,6 +139,7 @@ export async function addGoal(
     target_minutes: draft.targetMinutes,
     color: draft.color,
     position: draft.position,
+    deadline: draft.deadline,
   });
   const res = await insertGoalRemote(draft);
   if (!res.ok || !res.data) return null;
@@ -144,6 +149,7 @@ export async function addGoal(
   writeAll(bag);
   return saved;
 }
+
 
 export async function backfillUntaggedGoals(projectTag?: string | null): Promise<number> {
   const tagForSave = projectTag?.trim() || "Uni";
@@ -175,12 +181,16 @@ export async function updateGoal(
   if (patch.targetMinutes !== undefined) {
     normalizedPatch.targetMinutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
   }
+  if (patch.deadline !== undefined) {
+    normalizedPatch.deadline = patch.deadline ? String(patch.deadline).trim() || null : null;
+  }
   const dbPatch = {
     text: normalizedPatch.text,
     color: normalizedPatch.color,
     done: normalizedPatch.done,
     position: normalizedPatch.position,
     targetMinutes: normalizedPatch.targetMinutes,
+    deadline: normalizedPatch.deadline,
   };
 
   const res = await updateGoalRemote(id, dbPatch);

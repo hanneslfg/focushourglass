@@ -8,6 +8,8 @@ import {
   GripVertical,
   ChevronDown,
   Undo2,
+  Calendar as CalendarIcon,
+  AlertTriangle,
 } from "lucide-react";
 import {
   addGoal,
@@ -19,6 +21,23 @@ import {
   GOAL_COLORS,
   type ProjectGoal,
 } from "@/lib/goals";
+import { formatDeadline, toDateInputValue } from "@/lib/deadline";
+
+function DeadlineBadge({ deadline }: { deadline: string | null | undefined }) {
+  const info = formatDeadline(deadline);
+  if (!info) return null;
+  const Icon = info.icon === "warn" ? AlertTriangle : CalendarIcon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.16em] tabular-nums ${info.colorClass}`}
+      title={`Deadline: ${deadline}`}
+    >
+      <Icon className="h-3 w-3" strokeWidth={1.75} />
+      {info.label}
+    </span>
+  );
+}
+
 
 const GRACE_MS = 5000;
 
@@ -72,6 +91,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   const [newText, setNewText] = useState("");
   const [newHours, setNewHours] = useState("");
   const [newColor, setNewColor] = useState(GOAL_COLORS[0]);
+  const [newDeadline, setNewDeadline] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [busyIds, setBusyIds] = useState<Set<string>>(() => new Set());
@@ -173,7 +193,11 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
       console.error("[goals] refusing to insert — no active project tag");
       return;
     }
-    const saved = await addGoal(tagForSave, text, { targetMinutes, color: newColor });
+    const saved = await addGoal(tagForSave, text, {
+      targetMinutes,
+      color: newColor,
+      deadline: newDeadline || null,
+    });
     if (!saved) {
       console.error("[goals] insert failed — Supabase returned no row");
       return;
@@ -181,6 +205,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     setNewText("");
     setNewHours("");
     setNewColor(GOAL_COLORS[0]);
+    setNewDeadline("");
     setAdding(false);
   }
 
@@ -294,6 +319,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
                   setAdding(false);
                   setNewText("");
                   setNewHours("");
+                  setNewDeadline("");
                 }
               }}
               placeholder="Milestone (e.g. Ship v1 landing page)"
@@ -319,6 +345,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
                 setAdding(false);
                 setNewText("");
                 setNewHours("");
+                setNewDeadline("");
               }}
               className="h-8 w-8 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
               aria-label="Cancel"
@@ -326,11 +353,32 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
               <X className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center justify-between gap-4 flex-wrap">
             <ColorPalette value={newColor} onChange={setNewColor} size={18} />
+            <label className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
+              <CalendarIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <span>Deadline</span>
+              <input
+                type="date"
+                value={newDeadline}
+                onChange={(e) => setNewDeadline(e.target.value)}
+                className="bg-transparent border-b border-border/60 focus:border-foreground/60 outline-none text-xs py-1 text-foreground/90 tabular-nums [color-scheme:dark]"
+              />
+              {newDeadline && (
+                <button
+                  type="button"
+                  onClick={() => setNewDeadline("")}
+                  className="text-muted-foreground/60 hover:text-foreground"
+                  aria-label="Clear deadline"
+                >
+                  <X className="h-3 w-3" strokeWidth={1.75} />
+                </button>
+              )}
+            </label>
           </div>
         </div>
       )}
+
 
       {active.length === 0 && !adding ? (
         <div className="rounded-lg border border-dashed border-border/70 py-8 text-center">
@@ -355,6 +403,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
               onSaveText={(text) => withBusy(g.id, () => updateGoal(projectId, g.id, { text }))}
               onSaveTarget={(m) => withBusy(g.id, () => updateGoal(projectId, g.id, { targetMinutes: m }))}
               onSaveColor={(c) => withBusy(g.id, () => updateGoal(projectId, g.id, { color: c }))}
+              onSaveDeadline={(d) => withBusy(g.id, () => updateGoal(projectId, g.id, { deadline: d }))}
               onStartDone={() => startDone(g.id)}
               onCancelDone={() => cancelDone(g.id)}
               onDelete={() => {
@@ -412,6 +461,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
                       {fmtHM(g.targetMinutes)}
                     </span>
                   )}
+                  {g.deadline && <DeadlineBadge deadline={g.deadline} />}
                   <button
                     onClick={() => void withBusy(g.id, () => deleteGoal(projectId, g.id))}
                     disabled={busyIds.has(g.id)}
@@ -443,6 +493,7 @@ interface RowProps {
   onSaveText: (t: string) => Promise<boolean>;
   onSaveTarget: (m: number) => Promise<boolean>;
   onSaveColor: (c: string) => Promise<boolean>;
+  onSaveDeadline: (d: string | null) => Promise<boolean>;
   onStartDone: () => void;
   onCancelDone: () => void;
   onDelete: () => void;
@@ -465,6 +516,7 @@ function GoalRow({
   onSaveText,
   onSaveTarget,
   onSaveColor,
+  onSaveDeadline,
   onStartDone,
   onCancelDone,
   onDelete,
@@ -621,6 +673,11 @@ function GoalRow({
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50">no target</span>
         )}
 
+        {!editing && !isPending && goal.deadline && (
+          <DeadlineBadge deadline={goal.deadline} />
+        )}
+
+
         {!isPending && (editing ? (
           <>
             <button
@@ -652,8 +709,28 @@ function GoalRow({
       </div>
 
       {editing && (
-        <div className="relative px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60">
+        <div className="relative px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60 flex-wrap">
           <ColorPalette value={goal.color} onChange={onSaveColor} size={16} />
+          <label className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
+            <CalendarIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <span>Deadline</span>
+            <input
+              type="date"
+              value={toDateInputValue(goal.deadline)}
+              onChange={(e) => void onSaveDeadline(e.target.value || null)}
+              className="bg-transparent border-b border-border/60 focus:border-foreground/60 outline-none text-xs py-1 text-foreground/90 tabular-nums [color-scheme:dark]"
+            />
+            {goal.deadline && (
+              <button
+                type="button"
+                onClick={() => void onSaveDeadline(null)}
+                className="text-muted-foreground/60 hover:text-foreground"
+                aria-label="Clear deadline"
+              >
+                <X className="h-3 w-3" strokeWidth={1.75} />
+              </button>
+            )}
+          </label>
           <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/60">Enter to save · Esc to cancel</span>
         </div>
       )}
