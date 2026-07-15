@@ -17,7 +17,10 @@ export interface ProjectGoal {
   done: boolean;
   position: number;
   createdAt: number;
+  /** ISO date string (YYYY-MM-DD) or null. */
+  deadline?: string | null;
 }
+
 
 
 const KEY = "hourglass.project_goals.v1";
