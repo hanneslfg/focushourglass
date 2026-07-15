@@ -708,8 +708,28 @@ function GoalRow({
       </div>
 
       {editing && (
-        <div className="relative px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60">
+        <div className="relative px-4 pb-3 pt-1 flex items-center justify-between gap-3 border-t border-border/60 flex-wrap">
           <ColorPalette value={goal.color} onChange={onSaveColor} size={16} />
+          <label className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
+            <CalendarIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+            <span>Deadline</span>
+            <input
+              type="date"
+              value={toDateInputValue(goal.deadline)}
+              onChange={(e) => void onSaveDeadline(e.target.value || null)}
+              className="bg-transparent border-b border-border/60 focus:border-foreground/60 outline-none text-xs py-1 text-foreground/90 tabular-nums [color-scheme:dark]"
+            />
+            {goal.deadline && (
+              <button
+                type="button"
+                onClick={() => void onSaveDeadline(null)}
+                className="text-muted-foreground/60 hover:text-foreground"
+                aria-label="Clear deadline"
+              >
+                <X className="h-3 w-3" strokeWidth={1.75} />
+              </button>
+            )}
+          </label>
           <span className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground/60">Enter to save · Esc to cancel</span>
         </div>
       )}
