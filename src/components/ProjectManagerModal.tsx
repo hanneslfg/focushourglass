@@ -59,15 +59,18 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
   async function commitNew() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const saved = await addProject(trimmed, color);
+    const goal = longTermGoal.trim();
+    const saved = await addProject(trimmed, color, goal ? goal : null);
     if (!saved) return;
     setName("");
+    setLongTermGoal("");
   }
 
   function startEdit(p: ProjectTag) {
     setEditingId(p.id);
     setEditName(p.name);
     setEditColor(p.color);
+    setEditGoal(p.longTermGoal ?? "");
   }
   async function commitEdit() {
     if (!editingId) return;
@@ -76,10 +79,16 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
       setEditingId(null);
       return;
     }
-    const ok = await updateProject(editingId, { name: trimmed, color: editColor });
+    const goal = editGoal.trim();
+    const ok = await updateProject(editingId, {
+      name: trimmed,
+      color: editColor,
+      longTermGoal: goal ? goal : null,
+    });
     if (!ok) return;
     setEditingId(null);
   }
+
 
   if (!open || typeof document === "undefined") return null;
 
