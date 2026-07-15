@@ -247,14 +247,47 @@ async function renameProject(
       return false;
     }
 
-    // 2. Goals: project_tag stores the slug id.
-    const { error: goalErr } = await supabase
-      .from("goals")
-      .update({ project_tag: newId })
-      .eq("user_id", authUid)
-      .eq("project_tag", oldId);
-    if (goalErr) {
-      console.error("[projects] rename: goals update failed:", goalErr.message);
+    // 2. Goals: cascade rename. project_tag may store the label (goals
+    //    created via ProjectGoalsSection use the active project name) OR
+    //    the slug id (older goals). Migrate every match to the new label
+    //    so goals never orphan after a rename.
+    const tagsToMigrate = Array.from(new Set([oldName, oldId].filter(Boolean)));
+    if (tagsToMigrate.length) {
+      const { error: goalErr } = await supabase
+        .from("goals")
+        .update({ project_tag: newName })
+        .eq("user_id", authUid)
+        .in("project_tag", tagsToMigrate);
+      if (goalErr) {
+        console.error("[projects] rename: goals update failed:", goalErr.message);
+      }
+    }
+
+    // 2b. Local goal cache — rewrite projectId on any matching rows so
+    //     the UI reflects the rename immediately (before next hydrate).
+    try {
+      const GOALS_KEY = "hourglass.project_goals.v1";
+      const raw = safeStorage.getItem(GOALS_KEY);
+      if (raw) {
+        const bag = JSON.parse(raw) as Record<string, Array<{ projectId?: string }>>;
+        let changed = false;
+        for (const key of Object.keys(bag)) {
+          bag[key] = (bag[key] ?? []).map((g) => {
+            const tag = (g.projectId ?? "").trim();
+            if (tag === oldName || tag === oldId) {
+              changed = true;
+              return { ...g, projectId: newName };
+            }
+            return g;
+          });
+        }
+        if (changed) {
+          safeStorage.setItem(GOALS_KEY, JSON.stringify(bag));
+          window.dispatchEvent(new Event("hourglass:goals"));
+        }
+      }
+    } catch (e) {
+      console.warn("[projects] rename: local goal rewrite failed:", e);
     }
   }
 
