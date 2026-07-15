@@ -672,6 +672,11 @@ function GoalRow({
           <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/50">no target</span>
         )}
 
+        {!editing && !isPending && goal.deadline && (
+          <DeadlineBadge deadline={goal.deadline} />
+        )}
+
+
         {!isPending && (editing ? (
           <>
             <button
