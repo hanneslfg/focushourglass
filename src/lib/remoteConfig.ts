@@ -127,8 +127,10 @@ function settingFromRemote(r: RemoteProjectSetting): ProjectSetting {
     projectTag: r.project_tag,
     color: r.color ?? undefined,
     hidden: Boolean(r.is_deleted),
+    longTermGoal: r.long_term_goal ?? null,
   };
 }
+
 
 function goalPayload(
   uid: string,
