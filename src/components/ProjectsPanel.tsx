@@ -313,15 +313,23 @@ function ProjectDetail({
         </button>
       </div>
 
-      <header className="flex items-center gap-3">
-        <span
-          className="h-4 w-4 rounded-full shrink-0"
-          style={{ background: project.color }}
-        />
-        <h3 className="font-display text-2xl tracking-tight truncate">
-          {project.name}
-        </h3>
+      <header>
+        <div className="flex items-center gap-3">
+          <span
+            className="h-4 w-4 rounded-full shrink-0"
+            style={{ background: project.color }}
+          />
+          <h3 className="font-display text-2xl tracking-tight truncate">
+            {project.name}
+          </h3>
+        </div>
+        {project.longTermGoal && (
+          <p className="mt-1.5 ml-7 text-xs italic text-muted-foreground leading-relaxed">
+            {project.longTermGoal}
+          </p>
+        )}
       </header>
+
 
       <div className="grid grid-cols-2 gap-2">
         <Stat label="Total time" value={fmtHours(totalMin)} />

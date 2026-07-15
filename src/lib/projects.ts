@@ -16,7 +16,9 @@ export interface ProjectTag {
   id: string;
   name: string;
   color: string;
+  longTermGoal?: string | null;
 }
+
 
 const KEY = "hourglass.projects.v1";
 const SETTINGS_KEY = "hourglass.project_settings.v1";
@@ -116,12 +118,17 @@ export function getProjects(): ProjectTag[] {
       id,
       name,
       color: settingColor || localColor || s.projectColor || colorForProjectName(name),
+      longTermGoal: settings[id]?.longTermGoal ?? null,
     });
   }
   for (const [id, p] of locals) {
     if (merged.has(id)) continue;
     const settingColor = settings[id]?.color;
-    merged.set(id, settingColor ? { ...p, color: settingColor } : p);
+    merged.set(id, {
+      ...p,
+      color: settingColor || p.color,
+      longTermGoal: settings[id]?.longTermGoal ?? p.longTermGoal ?? null,
+    });
   }
   for (const [id, setting] of Object.entries(settings)) {
     if (setting.hidden || merged.has(id)) continue;
@@ -129,20 +136,32 @@ export function getProjects(): ProjectTag[] {
       id,
       name: id.replace(/[-_]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()),
       color: setting.color || colorForProjectName(id),
+      longTermGoal: setting.longTermGoal ?? null,
     });
   }
   return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function addProject(name: string, color?: string): Promise<ProjectTag | null> {
+
+export async function addProject(
+  name: string,
+  color?: string,
+  longTermGoal?: string | null,
+): Promise<ProjectTag | null> {
   const trimmed = name.trim().slice(0, 30);
   if (!trimmed) return null;
   const id = projectIdFromName(trimmed);
   const existing = getProjects().find((p) => p.id === id);
-  if (existing && !color) return existing;
+  if (existing && !color && longTermGoal === undefined) return existing;
   const finalColor = color || existing?.color || colorForProjectName(trimmed);
-  const tag: ProjectTag = { id, name: trimmed, color: finalColor };
-  const saved = await patchSetting(id, { hidden: false, color: finalColor });
+  const finalGoal =
+    longTermGoal === undefined ? existing?.longTermGoal ?? null : longTermGoal;
+  const tag: ProjectTag = { id, name: trimmed, color: finalColor, longTermGoal: finalGoal };
+  const saved = await patchSetting(id, {
+    hidden: false,
+    color: finalColor,
+    longTermGoal: finalGoal,
+  });
   if (!saved) return null;
   const list = readLocal();
   if (!list.some((p) => projectIdFromName(p.name) === id)) {
@@ -158,10 +177,12 @@ export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, 
 
   if (isRename) {
     console.log("Updating project ID:", id, "with new name:", newName);
-    return renameProject(id, currentName!, newName!, patch.color);
+    return renameProject(id, currentName!, newName!, patch.color, patch.longTermGoal);
   }
 
-  const saved = await patchSetting(id, { color: patch.color, hidden: false });
+  const settingPatch: Partial<ProjectSetting> = { color: patch.color, hidden: false };
+  if (patch.longTermGoal !== undefined) settingPatch.longTermGoal = patch.longTermGoal;
+  const saved = await patchSetting(id, settingPatch);
   if (!saved) return false;
   const list = readLocal();
   const existing = list.find((p) => projectIdFromName(p.name) === id);
@@ -177,6 +198,7 @@ export async function updateProject(id: string, patch: Partial<Omit<ProjectTag, 
   }
   return true;
 }
+
 
 /**
  * Rename a project in place. Since the project id is a slug derived from the
@@ -194,10 +216,15 @@ async function renameProject(
   oldName: string,
   newName: string,
   color?: string,
+  longTermGoal?: string | null,
 ): Promise<boolean> {
   const newId = projectIdFromName(newName);
+  const settingsBag = readSettings();
   const finalColor =
-    color || readSettings()[oldId]?.color || colorForProjectName(newName);
+    color || settingsBag[oldId]?.color || colorForProjectName(newName);
+  const finalGoal =
+    longTermGoal === undefined ? settingsBag[oldId]?.longTermGoal ?? null : longTermGoal;
+
 
   const { supabase } = await import("./supabase");
   let authUid: string | null = null;
@@ -233,7 +260,12 @@ async function renameProject(
 
   // 3. project_settings: new row visible with the chosen color, old row hidden
   //    so getProjects() no longer synthesizes it back into the list.
-  const savedNew = await patchSetting(newId, { color: finalColor, hidden: false });
+  const savedNew = await patchSetting(newId, {
+    color: finalColor,
+    hidden: false,
+    longTermGoal: finalGoal,
+  });
+
   if (!savedNew) return false;
   if (oldId !== newId) {
     await patchSetting(oldId, { hidden: true });

@@ -27,9 +27,12 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
   const [projects, setProjects] = useState<ProjectTag[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState(TAG_COLORS[0]);
+  const [longTermGoal, setLongTermGoal] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState(TAG_COLORS[0]);
+  const [editGoal, setEditGoal] = useState("");
+
 
   useEffect(() => {
     if (!open) return;
@@ -56,15 +59,18 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
   async function commitNew() {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const saved = await addProject(trimmed, color);
+    const goal = longTermGoal.trim();
+    const saved = await addProject(trimmed, color, goal ? goal : null);
     if (!saved) return;
     setName("");
+    setLongTermGoal("");
   }
 
   function startEdit(p: ProjectTag) {
     setEditingId(p.id);
     setEditName(p.name);
     setEditColor(p.color);
+    setEditGoal(p.longTermGoal ?? "");
   }
   async function commitEdit() {
     if (!editingId) return;
@@ -73,10 +79,16 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
       setEditingId(null);
       return;
     }
-    const ok = await updateProject(editingId, { name: trimmed, color: editColor });
+    const goal = editGoal.trim();
+    const ok = await updateProject(editingId, {
+      name: trimmed,
+      color: editColor,
+      longTermGoal: goal ? goal : null,
+    });
     if (!ok) return;
     setEditingId(null);
   }
+
 
   if (!open || typeof document === "undefined") return null;
 
@@ -146,7 +158,15 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
               />
             ))}
           </div>
+          <textarea
+            value={longTermGoal}
+            onChange={(e) => setLongTermGoal(e.target.value.slice(0, 240))}
+            placeholder="Why / Long-term Goal (optional) — e.g., To graduate with honors and build my own company..."
+            rows={2}
+            className="mt-4 w-full bg-transparent outline-none text-[13px] italic text-white/80 placeholder:text-white/25 border-t border-white/[0.06] pt-3 resize-none leading-relaxed"
+          />
         </div>
+
 
         {/* Divider — single hairline, no card borders elsewhere */}
         <div className="h-px mx-7" style={{ background: "rgba(255,255,255,0.06)" }} />
@@ -207,7 +227,15 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
                         />
                       ))}
                     </div>
+                    <textarea
+                      value={editGoal}
+                      onChange={(e) => setEditGoal(e.target.value.slice(0, 240))}
+                      placeholder="Why / Long-term Goal (optional)"
+                      rows={2}
+                      className="mt-3 ml-5 w-[calc(100%-1.25rem)] bg-transparent outline-none text-[12px] italic text-white/75 placeholder:text-white/25 resize-none leading-relaxed"
+                    />
                   </div>
+
                 ) : (
                   <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors">
                     <span
@@ -221,10 +249,16 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
                           onClose();
                         }
                       }}
-                      className="flex-1 text-left text-sm text-white/90 truncate"
+                      className="flex-1 text-left min-w-0"
                     >
-                      {p.name}
+                      <div className="text-sm text-white/90 truncate">{p.name}</div>
+                      {p.longTermGoal && (
+                        <div className="text-[11px] italic text-white/40 truncate mt-0.5">
+                          {p.longTermGoal}
+                        </div>
+                      )}
                     </button>
+
                     <button
                       onClick={() => startEdit(p)}
                       className="h-7 w-7 rounded-full flex items-center justify-center text-white/30 hover:text-white opacity-0 group-hover:opacity-100 transition-all"
