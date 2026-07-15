@@ -227,7 +227,15 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
                         />
                       ))}
                     </div>
+                    <textarea
+                      value={editGoal}
+                      onChange={(e) => setEditGoal(e.target.value.slice(0, 240))}
+                      placeholder="Why / Long-term Goal (optional)"
+                      rows={2}
+                      className="mt-3 ml-5 w-[calc(100%-1.25rem)] bg-transparent outline-none text-[12px] italic text-white/75 placeholder:text-white/25 resize-none leading-relaxed"
+                    />
                   </div>
+
                 ) : (
                   <div className="flex items-center gap-3 px-5 py-2.5 rounded-lg hover:bg-white/[0.04] transition-colors">
                     <span
