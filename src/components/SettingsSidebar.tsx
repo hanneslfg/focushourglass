@@ -11,7 +11,10 @@ import {
   Target,
   Eye,
   Languages,
+  Sparkles,
+  Check,
 } from "lucide-react";
+import { usePremium } from "@/lib/premium";
 import {
   getSettings,
   setSettings,
@@ -99,6 +102,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SettingsPanel() {
   const { t, i18n } = useTranslation();
+  const { isPremium, isPaywallEnabled, triggerPaywall } = usePremium();
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
     defaultDailyGoal: 180,
@@ -181,6 +185,39 @@ function SettingsPanel() {
 
   return (
     <div className="space-y-7">
+      {isPaywallEnabled && (
+        <section>
+          <SectionTitle>Premium</SectionTitle>
+          {isPremium ? (
+            <div className="mt-3 flex items-center gap-2.5 rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/[0.06] px-4 py-3">
+              <Sparkles className="h-4 w-4 text-[#E2B05C]" strokeWidth={1.75} />
+              <div className="flex-1">
+                <div className="text-sm text-white/90 font-medium">Hourglass Premium active</div>
+                <div className="text-[11px] text-white/50 mt-0.5">Thank you for supporting the project.</div>
+              </div>
+              <Check className="h-4 w-4 text-[#E2B05C]" strokeWidth={2} />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={triggerPaywall}
+              className="mt-3 w-full text-left rounded-xl p-[1px] bg-gradient-to-b from-[#E2B05C]/70 via-[#E2B05C]/25 to-[#E2B05C]/50 shadow-[0_10px_30px_-15px_rgba(226,176,92,0.55)] transition-all hover:from-[#F0C97A]/80 hover:to-[#C8933F]/70 active:scale-[0.99] touch-manipulation"
+            >
+              <div className="rounded-[11px] bg-[#0F0F0F] px-4 py-3.5 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-b from-[#F0C97A] to-[#C8933F] flex items-center justify-center shrink-0">
+                  <Sparkles className="h-4 w-4 text-black" strokeWidth={2} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-[#E2B05C]">Upgrade to Premium</div>
+                  <div className="text-[11px] text-white/55 mt-0.5">Unlimited projects, reports, white noise & more.</div>
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.22em] text-[#E2B05C]/80 shrink-0">Go</span>
+              </div>
+            </button>
+          )}
+        </section>
+      )}
+
       <section>
         <SectionTitle>{t("settings.language")}</SectionTitle>
         <div className="mt-3 flex items-center gap-2">
