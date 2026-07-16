@@ -30,6 +30,11 @@ export const PremiumDatePicker: React.FC<PremiumDatePickerProps> = ({
   placeholder = "Set deadline…",
   align = "left",
 }) => {
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const selectedDate = parseIso(value);
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date());
@@ -85,6 +90,18 @@ export const PremiumDatePicker: React.FC<PremiumDatePickerProps> = ({
     date.getDate() === selectedDate.getDate() &&
     date.getMonth() === selectedDate.getMonth() &&
     date.getFullYear() === selectedDate.getFullYear();
+
+  if (!hasMounted) {
+    return (
+      <div
+        className="flex items-center gap-2 min-w-[160px] h-9 px-3 rounded-lg border border-white/5 bg-[#0F0F0F]/60"
+        aria-hidden="true"
+      >
+        <Calendar className="w-3.5 h-3.5 text-white/40" strokeWidth={1.75} />
+        <span className="text-xs text-white/40">{placeholder}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={containerRef}>
