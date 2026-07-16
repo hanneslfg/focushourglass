@@ -18,6 +18,7 @@ import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
+import { PremiumProvider } from "@/lib/premium";
 import { supabase } from "@/lib/supabase";
 import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
@@ -185,11 +186,13 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <TimerProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster position="bottom-center" />
-        <MilestoneOverlay />
-        <OnboardingOverlay />
+        <PremiumProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster position="bottom-center" />
+          <MilestoneOverlay />
+          <OnboardingOverlay />
+        </PremiumProvider>
       </TimerProvider>
     </QueryClientProvider>
   );

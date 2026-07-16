@@ -11,7 +11,10 @@ import {
   Target,
   Eye,
   Languages,
+  Sparkles,
+  Check,
 } from "lucide-react";
+import { usePremium } from "@/lib/premium";
 import {
   getSettings,
   setSettings,
