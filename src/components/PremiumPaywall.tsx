@@ -6,7 +6,7 @@ import { Check, Sparkles, X } from "lucide-react";
  * When true, `<PremiumPaywall />` renders. When false, the component
  * short-circuits to null and nothing ships to users.
  */
-export const ENABLE_PAYWALL = false;
+export const ENABLE_PAYWALL = true;
 
 type Plan = "monthly" | "yearly" | "lifetime";
 
