@@ -91,6 +91,18 @@ export const PremiumDatePicker: React.FC<PremiumDatePickerProps> = ({
     date.getMonth() === selectedDate.getMonth() &&
     date.getFullYear() === selectedDate.getFullYear();
 
+  if (!hasMounted) {
+    return (
+      <div
+        className="flex items-center gap-2 min-w-[160px] h-9 px-3 rounded-lg border border-white/5 bg-[#0F0F0F]/60"
+        aria-hidden="true"
+      >
+        <Calendar className="w-3.5 h-3.5 text-white/40" strokeWidth={1.75} />
+        <span className="text-xs text-white/40">{placeholder}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <div
