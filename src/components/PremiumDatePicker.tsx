@@ -30,6 +30,11 @@ export const PremiumDatePicker: React.FC<PremiumDatePickerProps> = ({
   placeholder = "Set deadline…",
   align = "left",
 }) => {
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const selectedDate = parseIso(value);
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(selectedDate ?? new Date());
