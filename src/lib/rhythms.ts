@@ -105,20 +105,46 @@ export function getRhythm(id: string): Rhythm | null {
 }
 
 export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
+  console.log("[rhythms] saveCustomRhythm start", rhythm);
   const res = await upsertRhythmRemote(rhythm);
-  if (!res.ok || !res.data) return null;
-  const saved = res.data;
+  console.log("[rhythms] upsertRhythmRemote result", res);
+
+  let saved: Rhythm | null = res.ok && res.data ? res.data : null;
+
+  // Guest / not signed in → persist locally so the rhythm is not lost.
+  if (!saved && res.notAuthed) {
+    const id =
+      rhythm.id && rhythm.id.length > 0
+        ? rhythm.id
+        : typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    saved = { ...rhythm, id, builtin: false };
+    console.log("[rhythms] guest mode — saving rhythm to localStorage", saved);
+  }
+
+  if (!saved) {
+    console.error("[rhythms] saveCustomRhythm failed", res.error);
+    return null;
+  }
+
   const s = read();
-  const idx = s.custom.findIndex((r) => r.id === rhythm.id || r.id === saved.id);
+  const idx = s.custom.findIndex((r) => r.id === rhythm.id || r.id === saved!.id);
   if (idx >= 0) s.custom[idx] = saved;
   else s.custom.push(saved);
   write(s);
+  console.log("[rhythms] saveCustomRhythm complete", saved);
   return saved;
 }
 
 export async function deleteCustomRhythm(id: string): Promise<boolean> {
+  console.log("[rhythms] deleteCustomRhythm", id);
   const res = await deleteRhythmRemote(id);
-  if (!res.ok) return false;
+  console.log("[rhythms] deleteRhythmRemote result", res);
+  if (!res.ok && !res.notAuthed) {
+    console.error("[rhythms] deleteCustomRhythm failed", res.error);
+    return false;
+  }
   const s = read();
   s.custom = s.custom.filter((r) => r.id !== id);
   if (s.activeId === id) {
