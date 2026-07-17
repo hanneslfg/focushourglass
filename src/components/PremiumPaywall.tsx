@@ -13,7 +13,8 @@ type Plan = "monthly" | "yearly" | "lifetime";
 interface PremiumPaywallProps {
   open?: boolean;
   onClose?: () => void;
-  onUpgrade?: (plan: Plan) => void;
+  onUpgrade?: (plan: Plan) => void | Promise<void>;
+  isLoading?: boolean;
 }
 
 const FREE_FEATURES = [
@@ -62,6 +63,7 @@ export function PremiumPaywall({
   open = true,
   onClose,
   onUpgrade,
+  isLoading = false,
 }: PremiumPaywallProps) {
   const [plan, setPlan] = useState<Plan>("yearly");
 
@@ -212,9 +214,10 @@ export function PremiumPaywall({
             <button
               type="button"
               onClick={() => onUpgrade?.(plan)}
-              className="mt-5 w-full h-12 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] shadow-[0_10px_30px_-10px_rgba(226,176,92,0.6)] transition-all active:scale-[0.99]"
+              disabled={isLoading}
+              className="mt-5 w-full h-12 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] shadow-[0_10px_30px_-10px_rgba(226,176,92,0.6)] transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Upgrade to Premium
+              {isLoading ? "Redirecting to Stripe…" : "Upgrade to Premium"}
             </button>
             <p className="mt-2 text-center text-[10px] uppercase tracking-[0.24em] text-white/35">
               Cancel anytime · Secure checkout
