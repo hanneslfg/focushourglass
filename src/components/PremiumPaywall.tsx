@@ -13,7 +13,8 @@ type Plan = "monthly" | "yearly" | "lifetime";
 interface PremiumPaywallProps {
   open?: boolean;
   onClose?: () => void;
-  onUpgrade?: (plan: Plan) => void;
+  onUpgrade?: (plan: Plan) => void | Promise<void>;
+  isLoading?: boolean;
 }
 
 const FREE_FEATURES = [
@@ -62,6 +63,7 @@ export function PremiumPaywall({
   open = true,
   onClose,
   onUpgrade,
+  isLoading = false,
 }: PremiumPaywallProps) {
   const [plan, setPlan] = useState<Plan>("yearly");
 
