@@ -38,24 +38,38 @@ export interface Session {
 
 const KEY = "hourglass.sessions.v1";
 
+function dedupe(list: Session[]): Session[] {
+  const byId = new Map<string, Session>();
+  const byKey = new Map<string, Session>();
+  for (const s of list) {
+    if (s.id && byId.has(s.id)) continue;
+    const key = `${s.task}|${(s.startedAt ?? "").slice(0, 19)}|${(s.completedAt ?? "").slice(0, 19)}`;
+    if (byKey.has(key)) continue;
+    if (s.id) byId.set(s.id, s);
+    byKey.set(key, s);
+  }
+  return Array.from(byKey.values());
+}
+
 function read(): Session[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = safeStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Session[]) : [];
+    return raw ? dedupe(JSON.parse(raw) as Session[]) : [];
   } catch {
     return [];
   }
 }
 
 function write(list: Session[]) {
-  safeStorage.setItem(KEY, JSON.stringify(list));
+  safeStorage.setItem(KEY, JSON.stringify(dedupe(list)));
   window.dispatchEvent(new Event("hourglass:sessions"));
 }
 
 export function getSessions(): Session[] {
-  return read().sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1));
+  return dedupe(read()).sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1));
 }
+
 
 export function addSession(s: Session) {
   write([...read(), s]);

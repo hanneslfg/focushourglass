@@ -371,6 +371,47 @@ export async function getActiveSyncUserId(): Promise<string> {
  *
  * (Plus matching SELECT/UPDATE/DELETE policies scoped to auth.uid() = user_id.)
  */
+const RECENT_WRITES_KEY = "hourglass.recent_session_writes.v1";
+const RECENT_WRITE_TTL_MS = 30_000;
+const inFlightWrites = new Set<string>();
+
+function writeDedupeKey(s: RemoteSession, userId: string): string {
+  return `${userId}|${cleanIso(s.started_at)}|${cleanText(s.task_name)}`;
+}
+
+function readRecentWrites(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = safeStorage.getItem(RECENT_WRITES_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    const now = Date.now();
+    const fresh: Record<string, number> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "number" && now - v < RECENT_WRITE_TTL_MS) fresh[k] = v;
+    }
+    return fresh;
+  } catch {
+    return {};
+  }
+}
+
+function markRecentWrite(key: string) {
+  if (typeof window === "undefined") return;
+  const map = readRecentWrites();
+  map[key] = Date.now();
+  try {
+    safeStorage.setItem(RECENT_WRITES_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
+function wasRecentlyWritten(key: string): boolean {
+  const map = readRecentWrites();
+  const ts = map[key];
+  return typeof ts === "number" && Date.now() - ts < RECENT_WRITE_TTL_MS;
+}
+
 export async function saveSessionRemote(s: RemoteSession) {
   let authUserId: string | null = null;
   try {
@@ -389,7 +430,38 @@ export async function saveSessionRemote(s: RemoteSession) {
     return { ok: false, queued: true, error: "not-authenticated" } as const;
   }
 
+  const dedupeKey = writeDedupeKey(s, authUserId);
+
+  // 1) In-flight lock — another call in this tab is already writing this session.
+  if (inFlightWrites.has(dedupeKey)) {
+    console.warn("[supabase] saveSession skipped — write already in flight:", dedupeKey);
+    return { ok: false, queued: false, error: "in-flight-duplicate" } as const;
+  }
+  // 2) Cross-tab recent-write cache (localStorage).
+  if (wasRecentlyWritten(dedupeKey)) {
+    console.warn("[supabase] saveSession skipped — recently written duplicate:", dedupeKey);
+    return { ok: true, queued: false, deduped: true } as const;
+  }
+
+  inFlightWrites.add(dedupeKey);
   try {
+    // 3) DB pre-check — does a row for this (user_id, started_at) already exist?
+    try {
+      const { data: existing, error: preErr } = await supabase
+        .from("sessions")
+        .select("id")
+        .eq("user_id", authUserId)
+        .eq("started_at", cleanIso(s.started_at))
+        .limit(1);
+      if (!preErr && existing && existing.length > 0) {
+        console.warn("[supabase] saveSession aborted — row already exists in DB:", dedupeKey);
+        markRecentWrite(dedupeKey);
+        return { ok: true, queued: false, deduped: true } as const;
+      }
+    } catch (e) {
+      console.warn("[supabase] pre-insert dedupe check failed (continuing):", e);
+    }
+
     const { data, error, payload } = await insertSessionPayload(supabase, s, authUserId, { select: true });
     if (error) {
       console.error("Failing payload:", payload);
@@ -402,6 +474,12 @@ export async function saveSessionRemote(s: RemoteSession) {
           "[supabase] ⚠ RLS BLOCKER: Add an INSERT policy on public.sessions for authenticated users (see saveSessionRemote docs).",
         );
       }
+      // Unique-constraint violation from a concurrent tab → treat as success.
+      if (error.code === "23505") {
+        console.warn("[supabase] saveSession dedup — unique constraint hit:", error.message);
+        markRecentWrite(dedupeKey);
+        return { ok: true, queued: false, deduped: true } as const;
+      }
       if (isPermanentBadPayloadError(error)) {
         console.error("[supabase] Dropping invalid session payload instead of retrying forever.");
         return { ok: false, queued: false, error: error.message } as const;
@@ -409,12 +487,15 @@ export async function saveSessionRemote(s: RemoteSession) {
       queuePending(s);
       return { ok: false, queued: true, error: error.message } as const;
     }
+    markRecentWrite(dedupeKey);
     console.log("[supabase] saveSession OK", data);
     return { ok: true, queued: false } as const;
   } catch (e) {
     console.error("[supabase] saveSession threw:", e);
     queuePending(s);
     return { ok: false, queued: true, error: String(e) } as const;
+  } finally {
+    inFlightWrites.delete(dedupeKey);
   }
 }
 
