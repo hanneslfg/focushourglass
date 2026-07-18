@@ -67,8 +67,8 @@ async function verifyStripeSignature(
 }
 
 async function setPremium(userId: string, isPremium: boolean) {
-  const url = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = process.env.HG_SUPABASE_URL;
+  const serviceKey = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     console.error("[stripe-webhook] Supabase env missing");
     throw new Error("Supabase not configured");

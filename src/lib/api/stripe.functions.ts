@@ -64,8 +64,8 @@ async function verifySupabaseUser(accessToken: string): Promise<{
   id: string;
   email: string | null;
 }> {
-  const url = process.env.SUPABASE_URL;
-  const anon = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const url = process.env.HG_SUPABASE_URL;
+  const anon = process.env.HG_SUPABASE_ANON_KEY;
   if (!url || !anon) {
     console.error("[stripe] SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY missing on server");
     throw new Error("Server auth not configured");
