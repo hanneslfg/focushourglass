@@ -948,17 +948,23 @@ export function AnalyticsView({
                 m === "year" ? "Year" :
                 m === "all" ? "All-Time" : "Custom";
 
+              const locked = m === "custom" && !isPremium;
               return (
                 <button
                   key={m}
-                  onClick={() => { setMode(m); if (m === "week") setWeekOffset(0); }}
-                  className="px-4 py-1.5 rounded-full text-[11px] uppercase tracking-[0.22em] transition-all"
+                  onClick={() => {
+                    if (locked) { triggerPaywall(); return; }
+                    setMode(m); if (m === "week") setWeekOffset(0);
+                  }}
+                  className="px-4 py-1.5 rounded-full text-[11px] uppercase tracking-[0.22em] transition-all inline-flex items-center gap-1.5"
                   style={{
                     background: active ? "rgba(245,158,11,0.18)" : "transparent",
-                    color: active ? "rgb(251,191,36)" : "rgba(255,255,255,0.55)",
+                    color: active ? "rgb(251,191,36)" : locked ? "rgba(226,176,92,0.7)" : "rgba(255,255,255,0.55)",
                     boxShadow: active ? "0 0 12px rgba(245,158,11,0.25)" : "none",
                   }}
+                  title={locked ? "Premium: custom date range" : undefined}
                 >
+                  {locked && <Lock className="h-3 w-3" strokeWidth={2} />}
                   {label}
                 </button>
               );
