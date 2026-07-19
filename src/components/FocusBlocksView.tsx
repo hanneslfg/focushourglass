@@ -13,7 +13,12 @@ import {
   Pencil,
   X,
   Check,
+  Lock,
+  Sparkles,
 } from "lucide-react";
+import { usePremium } from "@/lib/premium";
+
+const FREE_CUSTOM_RHYTHM_LIMIT = 3;
 import {
   BUILTIN_RHYTHMS,
   activateRhythm,
