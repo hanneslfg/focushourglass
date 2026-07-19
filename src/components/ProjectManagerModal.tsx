@@ -60,9 +60,15 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
     [projects],
   );
 
+  const atLimit = !isPremium && projects.length >= FREE_PROJECT_LIMIT;
+
   async function commitNew() {
     const trimmed = name.trim();
     if (!trimmed) return;
+    if (atLimit) {
+      triggerPaywall();
+      return;
+    }
     const goal = longTermGoal.trim();
     const saved = await addProject(trimmed, color, goal ? goal : null);
     if (!saved) return;
