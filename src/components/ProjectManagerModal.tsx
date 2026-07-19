@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Plus, Trash2, X, Pencil } from "lucide-react";
+import { Check, Plus, Trash2, X, Pencil, Lock, Sparkles } from "lucide-react";
 import {
   addProject,
   deleteProject,
@@ -9,6 +9,9 @@ import {
   TAG_COLORS,
   type ProjectTag,
 } from "@/lib/projects";
+import { usePremium } from "@/lib/premium";
+
+const FREE_PROJECT_LIMIT = 3;
 
 interface Props {
   open: boolean;
