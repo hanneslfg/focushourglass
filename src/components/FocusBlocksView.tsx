@@ -51,6 +51,7 @@ export function FocusBlocksView() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [editing, setEditing] = useState<Rhythm | null>(null);
+  const { isPremium, triggerPaywall } = usePremium();
 
   useEffect(() => {
     const sync = () => {
