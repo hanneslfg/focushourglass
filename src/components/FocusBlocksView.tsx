@@ -83,6 +83,11 @@ export function FocusBlocksView() {
   }
 
   function handleNewCustom() {
+    const currentCustoms = getAllRhythms().filter((r) => !r.builtin).length;
+    if (!isPremium && currentCustoms >= FREE_CUSTOM_RHYTHM_LIMIT) {
+      triggerPaywall();
+      return;
+    }
     const id = `custom.${crypto.randomUUID()}`;
     setEditing({
       id,
