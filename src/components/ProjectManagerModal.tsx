@@ -27,6 +27,7 @@ interface Props {
  * anywhere else that needs full project management without leaving context.
  */
 export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
+  const { isPremium, triggerPaywall } = usePremium();
   const [projects, setProjects] = useState<ProjectTag[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState(TAG_COLORS[0]);
