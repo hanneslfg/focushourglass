@@ -624,6 +624,7 @@ export function AnalyticsView({
     });
   };
   const [mode, setMode] = useState<RangeMode>("month");
+  const { isPremium, triggerPaywall } = usePremium();
   const [weekOffset, setWeekOffset] = useState(0);
   const today = useMemo(() => effectiveToday(), []);
   const [customStart, setCustomStart] = useState<string>(isoDate(addDays(today, -29)));
