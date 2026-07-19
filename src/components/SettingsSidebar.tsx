@@ -13,6 +13,7 @@ import {
   Languages,
   Sparkles,
   Check,
+  Lock,
 } from "lucide-react";
 import { usePremium } from "@/lib/premium";
 import {
@@ -275,29 +276,40 @@ function SettingsPanel() {
       </section>
 
       <section>
-        <SectionTitle>{t("settings.warmup")}</SectionTitle>
+        <SectionTitle>Focus Warm-up Calibration</SectionTitle>
         <button
-          onClick={() => setSettings({ warmupEnabled: !settings.warmupEnabled })}
+          onClick={() => {
+            if (!isPremium && !settings.warmupEnabled) {
+              triggerPaywall();
+              return;
+            }
+            setSettings({ warmupEnabled: !settings.warmupEnabled });
+          }}
           className="mt-3 w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors touch-manipulation"
         >
           <span className="flex items-center gap-2.5 text-sm">
             <Eye className="h-4 w-4" strokeWidth={1.5} />
             {t("settings.warmupToggle")}
+            {!isPremium && (
+              <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.2em] text-[#E2B05C]/90 border border-[#E2B05C]/40 rounded-full px-1.5 py-0.5 ml-1">
+                <Lock className="h-2.5 w-2.5" strokeWidth={2.25} /> Premium
+              </span>
+            )}
           </span>
           <span
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              settings.warmupEnabled ? "bg-primary" : "bg-border"
+              settings.warmupEnabled && isPremium ? "bg-primary" : "bg-border"
             }`}
           >
             <span
               className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${
-                settings.warmupEnabled ? "translate-x-[18px]" : "translate-x-1"
+                settings.warmupEnabled && isPremium ? "translate-x-[18px]" : "translate-x-1"
               }`}
             />
           </span>
         </button>
         <p className="mt-2 text-[11px] text-muted-foreground/70">
-          {t("settings.warmupHint")}
+          A pre-session breathing & focus calibration ritual to prime your attention before the timer starts. {t("settings.warmupHint")}
         </p>
       </section>
 

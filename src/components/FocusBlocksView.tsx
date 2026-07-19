@@ -13,7 +13,12 @@ import {
   Pencil,
   X,
   Check,
+  Lock,
+  Sparkles,
 } from "lucide-react";
+import { usePremium } from "@/lib/premium";
+
+const FREE_CUSTOM_RHYTHM_LIMIT = 3;
 import {
   BUILTIN_RHYTHMS,
   activateRhythm,
@@ -46,6 +51,7 @@ export function FocusBlocksView() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [editing, setEditing] = useState<Rhythm | null>(null);
+  const { isPremium, triggerPaywall } = usePremium();
 
   useEffect(() => {
     const sync = () => {
@@ -77,6 +83,11 @@ export function FocusBlocksView() {
   }
 
   function handleNewCustom() {
+    const currentCustoms = getAllRhythms().filter((r) => !r.builtin).length;
+    if (!isPremium && currentCustoms >= FREE_CUSTOM_RHYTHM_LIMIT) {
+      triggerPaywall();
+      return;
+    }
     const id = `custom.${crypto.randomUUID()}`;
     setEditing({
       id,
@@ -127,15 +138,41 @@ export function FocusBlocksView() {
 
       {/* Custom */}
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <SectionLabel>{t("focusBlocks.yourRhythms")}</SectionLabel>
-          <button
-            onClick={handleNewCustom}
-            className="inline-flex items-center gap-1.5 text-xs px-3 min-h-9 rounded-md border border-border hover:border-foreground/60 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> {t("focusBlocks.newRhythm")}
-          </button>
-        </div>
+        {(() => {
+          const atLimit = !isPremium && customs.length >= FREE_CUSTOM_RHYTHM_LIMIT;
+          return (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <SectionLabel>{t("focusBlocks.yourRhythms")}</SectionLabel>
+                <button
+                  onClick={handleNewCustom}
+                  className="inline-flex items-center gap-1.5 text-xs px-3 min-h-9 rounded-md border border-border hover:border-foreground/60 transition-colors"
+                  title={atLimit ? "Free plan is limited to 3 custom rhythms" : undefined}
+                >
+                  {atLimit ? (
+                    <Lock className="h-3.5 w-3.5 text-[#E2B05C]" strokeWidth={1.75} />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  )}{" "}
+                  {t("focusBlocks.newRhythm")}
+                </button>
+              </div>
+              {atLimit && (
+                <button
+                  type="button"
+                  onClick={triggerPaywall}
+                  className="mb-3 w-full flex items-center gap-2.5 rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/[0.06] px-3 py-2.5 text-left hover:bg-[#E2B05C]/[0.12] transition-colors"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-[#E2B05C] shrink-0" strokeWidth={1.75} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] text-[#E2B05C] font-medium">Upgrade for unlimited custom rhythms</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Free plan is limited to {FREE_CUSTOM_RHYTHM_LIMIT}.</div>
+                  </div>
+                </button>
+              )}
+            </>
+          );
+        })()}
         {customs.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/70 bg-background/30 px-6 py-10 text-center">
             <p className="text-sm text-muted-foreground">
