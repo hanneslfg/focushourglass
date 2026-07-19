@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Check, Trash2, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
+import { Check, Trash2, Calendar as CalendarIcon, AlertTriangle, Lock } from "lucide-react";
+import { usePremium } from "@/lib/premium";
 import { formatDeadline } from "@/lib/deadline";
 import { getSessions, hydrateFromRemote, dayKey, removeSession, sessionGoalTexts, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
