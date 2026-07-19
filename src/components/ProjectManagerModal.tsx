@@ -150,11 +150,25 @@ export function ProjectManagerModal({ open, onClose, onSelect }: Props) {
               onClick={commitNew}
               disabled={!name.trim()}
               className="h-8 w-8 rounded-full flex items-center justify-center text-white/70 hover:text-white disabled:opacity-30 transition-colors"
-              aria-label="Create project"
+              aria-label={atLimit ? "Upgrade to add more projects" : "Create project"}
+              title={atLimit ? "Free plan is limited to 3 projects — upgrade for unlimited" : undefined}
             >
-              <Plus className="h-4 w-4" strokeWidth={1.75} />
+              {atLimit ? <Lock className="h-4 w-4 text-[#E2B05C]" strokeWidth={1.75} /> : <Plus className="h-4 w-4" strokeWidth={1.75} />}
             </button>
           </div>
+          {atLimit && (
+            <button
+              type="button"
+              onClick={triggerPaywall}
+              className="mt-3 w-full flex items-center gap-2.5 rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/[0.06] px-3 py-2.5 text-left hover:bg-[#E2B05C]/[0.12] transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#E2B05C] shrink-0" strokeWidth={1.75} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] text-[#E2B05C] font-medium">Upgrade for unlimited projects</div>
+                <div className="text-[10px] text-white/50 mt-0.5">Free plan is limited to {FREE_PROJECT_LIMIT}.</div>
+              </div>
+            </button>
+          )}
           <div className="mt-4 flex flex-wrap gap-2">
             {TAG_COLORS.map((c) => (
               <button
