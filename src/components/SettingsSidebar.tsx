@@ -13,6 +13,7 @@ import {
   Languages,
   Sparkles,
   Check,
+  Lock,
 } from "lucide-react";
 import { usePremium } from "@/lib/premium";
 import {
