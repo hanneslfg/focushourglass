@@ -24,7 +24,7 @@ export function PremiumPaywall({
   isLoading = false,
 }: PremiumPaywallProps) {
   const [step, setStep] = useState<Step>(1);
-  const [plan, setPlan] = useState<Exclude<Plan, "lifetime">>("yearly");
+  const [plan, setPlan] = useState<Plan>("yearly");
   const [exitSheet, setExitSheet] = useState(false);
   const [exitOffered, setExitOffered] = useState(false);
 
