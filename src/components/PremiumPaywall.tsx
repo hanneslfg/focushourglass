@@ -24,7 +24,7 @@ export function PremiumPaywall({
   isLoading = false,
 }: PremiumPaywallProps) {
   const [step, setStep] = useState<Step>(1);
-  const [plan, setPlan] = useState<Exclude<Plan, "lifetime">>("yearly");
+  const [plan, setPlan] = useState<Plan>("yearly");
   const [exitSheet, setExitSheet] = useState(false);
   const [exitOffered, setExitOffered] = useState(false);
 
@@ -258,79 +258,166 @@ function Page2({ onNext }: { onNext: () => void }) {
 }
 
 /* ─────────────────────────── PAGE 3 ─────────────────────────── */
+const PLANS: Array<{
+  id: Plan;
+  title: string;
+  price: string;
+  sub: string;
+  hint: string;
+  badge?: string;
+}> = [
+  {
+    id: "yearly",
+    title: "Yearly",
+    price: "€39",
+    sub: "/ year",
+    hint: "€3.25/mo · Save 35%",
+    badge: "Best Value",
+  },
+  {
+    id: "monthly",
+    title: "Monthly",
+    price: "€4.99",
+    sub: "/ month",
+    hint: "Flexible, cancel anytime",
+  },
+  {
+    id: "lifetime",
+    title: "Lifetime",
+    price: "€102",
+    sub: "one-time",
+    hint: "Pay once. Yours forever.",
+  },
+];
+
+const COMPARISON: Array<{ feature: string; free: string; premium: string }> = [
+  { feature: "Pricing", free: "€0.00", premium: "€4.99/mo · €39/yr · €102 lifetime" },
+  { feature: "Core productivity timer", free: "yes", premium: "yes" },
+  { feature: "Seamless cloud sync (Web & Mobile)", free: "yes", premium: "yes" },
+  { feature: "Daily focus streaks", free: "yes", premium: "yes" },
+  { feature: "Active projects & tags", free: "Up to 3 projects", premium: "Unlimited" },
+  {
+    feature: "Daily Focus Budget (3-Hourglass system)",
+    free: "Standard time tracking",
+    premium: "Full system unlocked",
+  },
+  {
+    feature: "Focus Calibration Protocol (Huberman-inspired)",
+    free: "no",
+    premium: "Prime your neural circuits before every block",
+  },
+  {
+    feature: "Analytics & historical data",
+    free: "Week / Month",
+    premium: "Lifetime + custom timeframes",
+  },
+  { feature: "Weekly performance reports", free: "no", premium: "Automated insights to inbox" },
+  {
+    feature: "Curated audio soundscapes",
+    free: "Basic audio",
+    premium: "Brown noise · Binaural · Lofi · Ambient",
+  },
+  { feature: "Exclusive VIP bonus", free: "no", premium: "4.5h Deep Focus Blueprint" },
+];
+
+function Cell({ value, premium = false }: { value: string; premium?: boolean }) {
+  if (value === "yes") {
+    return (
+      <span
+        className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${
+          premium ? "bg-[#E2B05C] text-black" : "bg-white/10 text-white/80"
+        }`}
+      >
+        <Check className="h-3 w-3" strokeWidth={3} />
+      </span>
+    );
+  }
+  if (value === "no") {
+    return <span className="text-white/25">—</span>;
+  }
+  return (
+    <span className={premium ? "text-white/85" : "text-white/55"}>
+      {value}
+    </span>
+  );
+}
+
 function Page3({
   plan,
   setPlan,
   onStart,
   isLoading,
 }: {
-  plan: "monthly" | "yearly";
-  setPlan: (p: "monthly" | "yearly") => void;
+  plan: Plan;
+  setPlan: (p: Plan) => void;
   onStart: () => void;
   isLoading: boolean;
 }) {
+  const ctaLabel =
+    plan === "lifetime" ? "Get Lifetime Access" : "Start 7-Day Free Trial";
+
   return (
     <div className="px-6 sm:px-10 pt-16 pb-8">
       <div className="text-center max-w-xl mx-auto">
         <h2 className="font-display text-3xl sm:text-4xl tracking-tight text-white">
           Choose your focus plan.
         </h2>
-        <p className="mt-2 text-sm text-white/55">Start your risk-free 7-day trial.</p>
-      </div>
-
-      {/* Cards */}
-      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
-        <PlanCard
-          selected={plan === "yearly"}
-          onClick={() => setPlan("yearly")}
-          badge="Best Value"
-          title="Yearly Access"
-          price="€39"
-          sub="/ year"
-          hint="Just €3.25 / month"
-        />
-        <PlanCard
-          selected={plan === "monthly"}
-          onClick={() => setPlan("monthly")}
-          title="Monthly Access"
-          price="€4.99"
-          sub="/ month"
-          hint="Flexible, cancel anytime"
-        />
-      </div>
-
-      {/* Feature comparison */}
-      <div className="mt-8 max-w-xl mx-auto rounded-xl border border-white/5 bg-white/[0.02] p-5">
-        <div className="text-[10px] uppercase tracking-[0.28em] text-white/45">
-          Free tier includes
-        </div>
-        <p className="mt-2 text-[13px] text-white/65 leading-relaxed">
-          Core productivity timer · App/Browser cloud sync · Daily streaks · Max. 3 active projects
+        <p className="mt-2 text-sm text-white/55">
+          Risk-free 7-day trial on subscriptions. Lifetime is a one-time purchase.
         </p>
+      </div>
 
-        <div className="mt-5 h-px bg-white/5" />
+      {/* Plan cards */}
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+        {PLANS.map((p) => (
+          <PlanCard
+            key={p.id}
+            selected={plan === p.id}
+            onClick={() => setPlan(p.id)}
+            badge={p.badge}
+            title={p.title}
+            price={p.price}
+            sub={p.sub}
+            hint={p.hint}
+          />
+        ))}
+      </div>
 
-        <div className="mt-5 text-[10px] uppercase tracking-[0.28em] text-[#E2B05C]/80">
-          Premium unlocks
+      {/* Comparison table */}
+      <div className="mt-8 max-w-2xl mx-auto rounded-xl border border-white/5 bg-white/[0.02] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-[12.5px]">
+            <thead>
+              <tr className="border-b border-white/5">
+                <th className="py-3 px-4 font-normal text-[10px] uppercase tracking-[0.24em] text-white/40">
+                  Feature
+                </th>
+                <th className="py-3 px-4 font-normal text-[10px] uppercase tracking-[0.24em] text-white/40">
+                  Free
+                </th>
+                <th className="py-3 px-4 font-normal text-[10px] uppercase tracking-[0.24em] text-[#E2B05C] bg-[#E2B05C]/[0.05] border-l border-r border-[#E2B05C]/25">
+                  Premium
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON.map((row, i) => (
+                <tr
+                  key={row.feature}
+                  className={i !== COMPARISON.length - 1 ? "border-b border-white/[0.04]" : ""}
+                >
+                  <td className="py-2.5 px-4 text-white/70">{row.feature}</td>
+                  <td className="py-2.5 px-4">
+                    <Cell value={row.free} />
+                  </td>
+                  <td className="py-2.5 px-4 bg-[#E2B05C]/[0.04] border-l border-r border-[#E2B05C]/20">
+                    <Cell value={row.premium} premium />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <ul className="mt-3 space-y-2.5">
-          {[
-            ["⏳", "The Daily Focus Budget", "Full 3-hourglass visualization system for instant mental relief."],
-            ["📂", "Unlimited projects & tags", "No artificial boundaries to limit your growth."],
-            ["📊", "Deep analytics", "Unlimited historical data tracking and custom timeframes."],
-            ["🎧", "Premium soundscapes", "High-quality white noise, ambient, binaural beats, and lofi tracks."],
-            ["📩", "Weekly performance reports", "Automated focus insights delivered straight to your email."],
-            ["📘", "Exclusive bonus", "The 4.5h Deep Focus Blueprint + implementation playbook."],
-          ].map(([icon, title, body]) => (
-            <li key={title} className="flex items-start gap-3 text-[13px] text-white/75">
-              <span className="text-base leading-none mt-0.5" aria-hidden>{icon}</span>
-              <span>
-                <span className="text-white font-medium">{title}: </span>
-                <span className="text-white/60">{body}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
 
       {/* CTA */}
@@ -342,11 +429,13 @@ function Page3({
           className="w-full h-13 py-3.5 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] shadow-[0_10px_30px_-10px_rgba(226,176,92,0.6)] transition-all active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
         >
           {isLoading ? "Redirecting to Stripe…" : (
-            <>Start free trial <ArrowRight className="h-4 w-4" /></>
+            <>{ctaLabel} <ArrowRight className="h-4 w-4" /></>
           )}
         </button>
         <p className="mt-2 text-center text-[11px] text-white/40">
-          No commitment. Cancel anytime.
+          {plan === "lifetime"
+            ? "One-time payment. No subscription. Lifetime updates."
+            : "No commitment. Cancel anytime."}
         </p>
       </div>
     </div>
