@@ -98,6 +98,9 @@ export function TimerView() {
   return (
     <div className="flex-1 flex items-start md:items-center justify-center px-4 md:px-6 pt-28 pb-6 md:py-10">
       <div className="w-full max-w-md flex flex-col items-center gap-6 md:gap-10">
+        {/* Daily Focus Budget widget */}
+        {mounted && <DailyFocusBudget />}
+
         {/* Rhythm indicator (Focus Blocks) — minimal floating pill */}
         {mounted && rhythm && (
           <div
