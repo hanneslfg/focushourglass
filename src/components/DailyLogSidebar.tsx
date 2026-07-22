@@ -14,6 +14,7 @@ import { AddSessionModal } from "./AddSessionModal";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
 import { DailyFocusBudget } from "./DailyFocusBudget";
+import { DailyStreakWidget } from "./DailyStreakWidget";
 
 
 
