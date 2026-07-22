@@ -142,8 +142,10 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       closePaywall,
       startCheckout,
       isCheckoutLoading,
+      refreshPremium,
+      setPremiumLocal,
     }),
-    [isPremium, isPaywallOpen, triggerPaywall, closePaywall, startCheckout, isCheckoutLoading],
+    [isPremium, isPaywallOpen, triggerPaywall, closePaywall, startCheckout, isCheckoutLoading, refreshPremium, setPremiumLocal],
   );
 
   return (
