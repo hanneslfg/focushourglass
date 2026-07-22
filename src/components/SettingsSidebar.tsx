@@ -257,6 +257,39 @@ function SettingsPanel() {
         </section>
       )}
 
+      {!isPremium && (
+        <section>
+          <SectionTitle>Developer Access</SectionTitle>
+          <div className="mt-3 flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+            <input
+              type="password"
+              value={devCode}
+              onChange={(e) => setDevCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void submitDevCode();
+              }}
+              placeholder="Enter access code"
+              autoComplete="off"
+              className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-foreground/60 font-mono tracking-wider"
+            />
+            <button
+              type="button"
+              onClick={submitDevCode}
+              disabled={devSubmitting || !devCode.trim()}
+              className="px-3 py-2 rounded-md border border-border text-xs uppercase tracking-[0.18em] hover:border-foreground/60 disabled:opacity-40 transition-colors"
+            >
+              {devSubmitting ? "…" : "Unlock"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground/70">
+            Internal bypass for developers &amp; early collaborators.
+          </p>
+        </section>
+      )}
+
+
+
       <section>
         <SectionTitle>{t("settings.language")}</SectionTitle>
         <div className="mt-3 flex items-center gap-2">
