@@ -21,6 +21,8 @@ interface PremiumContextValue {
   closePaywall: () => void;
   startCheckout: (plan: Plan) => Promise<void>;
   isCheckoutLoading: boolean;
+  refreshPremium: () => Promise<void>;
+  setPremiumLocal: (v: boolean) => void;
 }
 
 const PremiumContext = createContext<PremiumContextValue | null>(null);
