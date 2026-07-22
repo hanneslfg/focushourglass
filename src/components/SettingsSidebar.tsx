@@ -14,7 +14,10 @@ import {
   Sparkles,
   Check,
   Lock,
+  KeyRound,
 } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { usePremium } from "@/lib/premium";
 import {
   getSettings,
