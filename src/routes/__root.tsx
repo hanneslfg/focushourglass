@@ -193,6 +193,7 @@ function RootComponent() {
           <Toaster position="bottom-center" />
           <MilestoneOverlay />
           <OnboardingOverlay />
+          <Day5RewardOverlay />
         </PremiumProvider>
       </TimerProvider>
     </QueryClientProvider>
