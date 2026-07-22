@@ -6,7 +6,7 @@ import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { AmbientSound } from "./AmbientSound";
 import { VisualWarmup } from "./VisualWarmup";
-import { DailyFocusBudget } from "./DailyFocusBudget";
+
 
 
 import { ProjectGoalPicker } from "./ProjectGoalPicker";
