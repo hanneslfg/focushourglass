@@ -13,6 +13,7 @@ import { useSyncState } from "@/lib/useRealtimeSessions";
 import { AddSessionModal } from "./AddSessionModal";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
+import { DailyFocusBudget } from "./DailyFocusBudget";
 
 
 
@@ -182,6 +183,11 @@ export function DailyLogSidebar() {
                   {streak === 1 ? "day" : "days"}
                 </span>
               </div>
+            </section>
+
+            {/* Daily Focus Budget — biological upper boundary */}
+            <section className="flex justify-center">
+              <DailyFocusBudget />
             </section>
 
             {/* Center: Goal progress */}

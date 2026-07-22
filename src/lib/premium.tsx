@@ -21,6 +21,8 @@ interface PremiumContextValue {
   closePaywall: () => void;
   startCheckout: (plan: Plan) => Promise<void>;
   isCheckoutLoading: boolean;
+  refreshPremium: () => Promise<void>;
+  setPremiumLocal: (v: boolean) => void;
 }
 
 const PremiumContext = createContext<PremiumContextValue | null>(null);
@@ -74,6 +76,27 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const refreshPremium = useCallback(async () => {
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess.session?.user?.id;
+    if (!userId) {
+      setIsPremium(false);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("is_premium")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) {
+      console.error("[premium] refresh failed", error);
+      return;
+    }
+    setIsPremium(Boolean(data?.is_premium));
+  }, []);
+
+  const setPremiumLocal = useCallback((v: boolean) => setIsPremium(v), []);
+
   const triggerPaywall = useCallback(() => {
     if (!ENABLE_PAYWALL) return;
     if (isPremium) return;
@@ -119,8 +142,10 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       closePaywall,
       startCheckout,
       isCheckoutLoading,
+      refreshPremium,
+      setPremiumLocal,
     }),
-    [isPremium, isPaywallOpen, triggerPaywall, closePaywall, startCheckout, isCheckoutLoading],
+    [isPremium, isPaywallOpen, triggerPaywall, closePaywall, startCheckout, isCheckoutLoading, refreshPremium, setPremiumLocal],
   );
 
   return (
@@ -147,6 +172,8 @@ export function usePremium(): PremiumContextValue {
       closePaywall: () => {},
       startCheckout: async () => {},
       isCheckoutLoading: false,
+      refreshPremium: async () => {},
+      setPremiumLocal: () => {},
     };
   }
   return ctx;

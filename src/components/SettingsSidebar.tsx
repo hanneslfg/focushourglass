@@ -14,7 +14,10 @@ import {
   Sparkles,
   Check,
   Lock,
+  KeyRound,
 } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { usePremium } from "@/lib/premium";
 import {
   getSettings,
@@ -103,7 +106,42 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SettingsPanel() {
   const { t, i18n } = useTranslation();
-  const { isPremium, isPaywallEnabled, triggerPaywall } = usePremium();
+  const { isPremium, isPaywallEnabled, triggerPaywall, setPremiumLocal, refreshPremium } = usePremium();
+  const [devCode, setDevCode] = useState("");
+  const [devSubmitting, setDevSubmitting] = useState(false);
+
+  async function submitDevCode() {
+    const code = devCode.trim();
+    if (!code) return;
+    if (code !== "HANNES_LIFETIME_2026") {
+      toast.error("Invalid developer code");
+      return;
+    }
+    setDevSubmitting(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess.session?.user?.id;
+      if (!userId) {
+        toast.error("Please sign in first to unlock premium.");
+        return;
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_premium: true })
+        .eq("user_id", userId);
+      if (error) {
+        console.error("[dev-bypass] update failed", error);
+        toast.error("Could not unlock premium. Please try again.");
+        return;
+      }
+      setPremiumLocal(true);
+      await refreshPremium();
+      setDevCode("");
+      toast.success("Developer Access Granted: Lifetime Premium Unlocked! ⏳");
+    } finally {
+      setDevSubmitting(false);
+    }
+  }
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
     defaultDailyGoal: 180,
@@ -218,6 +256,39 @@ function SettingsPanel() {
           )}
         </section>
       )}
+
+      {!isPremium && (
+        <section>
+          <SectionTitle>Developer Access</SectionTitle>
+          <div className="mt-3 flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+            <input
+              type="password"
+              value={devCode}
+              onChange={(e) => setDevCode(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void submitDevCode();
+              }}
+              placeholder="Enter access code"
+              autoComplete="off"
+              className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-foreground/60 font-mono tracking-wider"
+            />
+            <button
+              type="button"
+              onClick={submitDevCode}
+              disabled={devSubmitting || !devCode.trim()}
+              className="px-3 py-2 rounded-md border border-border text-xs uppercase tracking-[0.18em] hover:border-foreground/60 disabled:opacity-40 transition-colors"
+            >
+              {devSubmitting ? "…" : "Unlock"}
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground/70">
+            Internal bypass for developers &amp; early collaborators.
+          </p>
+        </section>
+      )}
+
+
 
       <section>
         <SectionTitle>{t("settings.language")}</SectionTitle>
