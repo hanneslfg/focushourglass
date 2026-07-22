@@ -185,6 +185,11 @@ export function DailyLogSidebar() {
               </div>
             </section>
 
+            {/* Daily Focus Budget — biological upper boundary */}
+            <section className="flex justify-center">
+              <DailyFocusBudget />
+            </section>
+
             {/* Center: Goal progress */}
             <section className="rounded-md border border-border bg-background/40 px-4 py-3.5">
               <div className="flex items-baseline justify-between gap-2">
