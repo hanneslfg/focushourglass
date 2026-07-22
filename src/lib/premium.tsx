@@ -172,6 +172,8 @@ export function usePremium(): PremiumContextValue {
       closePaywall: () => {},
       startCheckout: async () => {},
       isCheckoutLoading: false,
+      refreshPremium: async () => {},
+      setPremiumLocal: () => {},
     };
   }
   return ctx;
