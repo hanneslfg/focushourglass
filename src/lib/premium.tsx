@@ -76,6 +76,27 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const refreshPremium = useCallback(async () => {
+    const { data: sess } = await supabase.auth.getSession();
+    const userId = sess.session?.user?.id;
+    if (!userId) {
+      setIsPremium(false);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("is_premium")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) {
+      console.error("[premium] refresh failed", error);
+      return;
+    }
+    setIsPremium(Boolean(data?.is_premium));
+  }, []);
+
+  const setPremiumLocal = useCallback((v: boolean) => setIsPremium(v), []);
+
   const triggerPaywall = useCallback(() => {
     if (!ENABLE_PAYWALL) return;
     if (isPremium) return;
