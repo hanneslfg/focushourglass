@@ -40,7 +40,7 @@ export function DailyLogSidebar() {
   const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
   const [override, setOverride] = useState<number | null>(null);
-  const [streak, setStreak] = useState(0);
+  const [, setStreak] = useState(0);
 
 
   const syncState = useSyncState();
