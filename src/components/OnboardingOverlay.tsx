@@ -1,30 +1,67 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 
 const STORAGE_KEY = "hourglass_onboarding_completed";
+const PROFILE_KEY = "hourglass_onboarding_profile";
 
-const slides = [
-  {
-    eyebrow: "Welcome",
-    title: "Welcome to Hourglass",
-    body: "Flip the glass, enter the flow state.",
-  },
-  {
-    eyebrow: "Organize",
-    title: "Set your intention",
-    body: "Create a project and define your goals before you start.",
-  },
-  {
-    eyebrow: "Focus",
-    title: "Execute",
-    body: "Start the timer. No distractions, just execution.",
-  },
+type Persona = "university" | "entrepreneur" | "mastery" | "knowledge";
+type Pain = "1-2" | "3-4" | "5+";
+
+const PERSONAS: { id: Persona; label: string; emoji: string }[] = [
+  { id: "university", emoji: "🎓", label: "University & Exams" },
+  { id: "entrepreneur", emoji: "🚀", label: "Entrepreneurship & Coding" },
+  { id: "mastery", emoji: "🧠", label: "Personal Mastery" },
+  { id: "knowledge", emoji: "⚡", label: "Knowledge Work" },
 ];
+
+const PAIN_OPTIONS: { id: Pain; label: string }[] = [
+  { id: "1-2", label: "1–2 Hours" },
+  { id: "3-4", label: "3–4 Hours" },
+  { id: "5+", label: "5+ Hours" },
+];
+
+function suggestBlocks(personas: Persona[]): number {
+  if (personas.includes("entrepreneur")) return 3;
+  if (personas.includes("knowledge")) return 3;
+  if (personas.includes("university")) return 2;
+  return 2;
+}
+
+function playChime() {
+  try {
+    const AC = (window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext)!;
+    const ctx = new AC();
+    const now = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.18, now + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.9);
+    g.connect(ctx.destination);
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((f, i) => {
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = f;
+      o.connect(g);
+      o.start(now + i * 0.12);
+      o.stop(now + 2);
+    });
+    setTimeout(() => ctx.close(), 2200);
+  } catch {
+    /* noop */
+  }
+}
 
 export function OnboardingOverlay() {
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1);
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [pain, setPain] = useState<Pain | null>(null);
+  const [flipped, setFlipped] = useState(false);
+  const [blocks, setBlocks] = useState(2);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,14 +83,35 @@ export function OnboardingOverlay() {
     };
   }, []);
 
-  async function complete() {
+  useEffect(() => {
+    setBlocks(suggestBlocks(personas));
+  }, [personas]);
+
+  async function finish() {
+    const profile = { personas, pain, dailyBlocks: blocks };
     safeStorage.setItem(STORAGE_KEY, "true");
+    safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    // Save target minutes to settings (blocks × 90min)
+    try {
+      const raw = safeStorage.getItem("hourglass_settings");
+      const settings = raw ? JSON.parse(raw) : {};
+      settings.defaultDailyGoal = blocks * 90;
+      safeStorage.setItem("hourglass_settings", JSON.stringify(settings));
+      window.dispatchEvent(new Event("hourglass:settings"));
+    } catch {
+      /* noop */
+    }
     setOpen(false);
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         await supabase.auth.updateUser({
-          data: { has_completed_onboarding: true },
+          data: {
+            has_completed_onboarding: true,
+            personas,
+            daily_pain_hours: pain,
+            daily_focus_blocks: blocks,
+          },
         });
       }
     } catch (e) {
@@ -61,81 +119,336 @@ export function OnboardingOverlay() {
     }
   }
 
+  function togglePersona(p: Persona) {
+    setPersonas((cur) =>
+      cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p],
+    );
+  }
+
+  const canAdvance = useMemo(() => {
+    if (step === 2) return personas.length > 0;
+    if (step === 3) return pain !== null;
+    if (step === 4) return flipped;
+    return true;
+  }, [step, personas, pain, flipped]);
+
+  function handleTapHourglass() {
+    if (flipped) return;
+    setFlipped(true);
+    try {
+      navigator.vibrate?.([30, 40, 60]);
+    } catch {
+      /* noop */
+    }
+    playChime();
+  }
+
   if (!open) return null;
 
-  const s = slides[step];
-  const isLast = step === slides.length - 1;
+  const totalSteps = 5;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl animate-in fade-in duration-500">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-500">
       <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-neutral-950/95 to-black/95 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]">
-        {/* subtle top glow */}
-        <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[120%] -translate-x-1/2 rounded-full bg-white/[0.04] blur-3xl" />
+        <div className="pointer-events-none absolute -top-24 left-1/2 h-48 w-[120%] -translate-x-1/2 rounded-full bg-amber-300/[0.05] blur-3xl" />
 
-        <div className="relative px-10 pt-14 pb-8">
-          <div key={step} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
-              {s.eyebrow}
-            </p>
-            <h2
-              className="mt-4 text-3xl font-light tracking-tight text-white"
-              style={{ fontFamily: '"Cormorant Garamond", serif' }}
-            >
-              {s.title}
-            </h2>
-            <p className="mt-4 text-sm leading-relaxed text-white/60">{s.body}</p>
-          </div>
-
-          {/* progress dots */}
-          <div className="mt-10 flex items-center gap-1.5">
-            {slides.map((_, i) => (
+        <div className="relative px-8 pt-12 pb-6 md:px-10 md:pt-14">
+          {/* progress dots (top) */}
+          <div className="mb-8 flex items-center gap-1.5">
+            {Array.from({ length: totalSteps }).map((_, i) => (
               <span
                 key={i}
                 className={`h-[2px] transition-all duration-500 ${
-                  i === step ? "w-8 bg-white/80" : "w-4 bg-white/15"
+                  i + 1 === step
+                    ? "w-8 bg-amber-300/80"
+                    : i + 1 < step
+                      ? "w-4 bg-white/40"
+                      : "w-4 bg-white/10"
                 }`}
               />
             ))}
           </div>
+
+          <div key={step} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {step === 1 && (
+              <div className="text-center">
+                <AnimatedHourglass />
+                <p className="mt-6 text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Focus Hourglass
+                </p>
+                <h2
+                  className="mt-4 text-3xl md:text-4xl font-light tracking-tight text-white leading-tight"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  Stop Procrastinating.<br />Start Feeling Genuinely Productive.
+                </h2>
+                <p className="mt-4 text-sm leading-relaxed text-white/60">
+                  Focus Hourglass breaks passive fake-work habits into undeniable
+                  execution blocks—so you can close your desk with absolute peace of mind.
+                </p>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Persona · Multi-select
+                </p>
+                <h2
+                  className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  What is your primary focus battlefield?
+                </h2>
+                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {PERSONAS.map((p) => {
+                    const active = personas.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => togglePersona(p.id)}
+                        className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all ${
+                          active
+                            ? "border-amber-300/60 bg-amber-300/[0.06] text-white shadow-[0_0_24px_-8px_rgba(226,176,92,0.4)]"
+                            : "border-white/10 bg-white/[0.02] text-white/75 hover:border-white/25"
+                        }`}
+                      >
+                        <span className="text-lg">{p.emoji}</span>
+                        <span className="text-sm">{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Pain Quantification
+                </p>
+                <h2
+                  className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  How many hours do you lose daily to "Library Illusion" or passive scrolling?
+                </h2>
+                <div className="mt-6 space-y-2">
+                  {PAIN_OPTIONS.map((o) => {
+                    const active = pain === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setPain(o.id)}
+                        className={`w-full rounded-xl border px-4 py-3.5 text-left text-sm transition-all ${
+                          active
+                            ? "border-amber-300/60 bg-amber-300/[0.06] text-white"
+                            : "border-white/10 bg-white/[0.02] text-white/75 hover:border-white/25"
+                        }`}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {step === 4 && (
+              <div className="text-center">
+                <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Aha-Moment
+                </p>
+                <h2
+                  className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  Tap to flip your first 90-minute execution block.
+                </h2>
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={handleTapHourglass}
+                    aria-label="Flip the hourglass"
+                    className={`group relative transition-transform duration-700 ${
+                      flipped ? "rotate-180" : "hover:scale-105"
+                    }`}
+                    style={{ transformOrigin: "center" }}
+                  >
+                    <AnimatedHourglass filling={flipped} size={140} />
+                  </button>
+                </div>
+                <p
+                  className={`mt-5 text-sm transition-all duration-500 ${
+                    flipped ? "text-amber-300 opacity-100" : "text-white/40 opacity-70"
+                  }`}
+                >
+                  {flipped
+                    ? "Aha! That's what true neural focus feels like."
+                    : "Tap the hourglass above to feel the shift."}
+                </p>
+              </div>
+            )}
+
+            {step === 5 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Your Daily Target
+                </p>
+                <h2
+                  className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  Suggested execution goal
+                </h2>
+
+                <div className="mt-6 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setBlocks((n) => Math.max(1, n - 1))}
+                    className="h-10 w-10 rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white transition"
+                  >
+                    −
+                  </button>
+                  <div className="text-center">
+                    <div className="font-light text-6xl text-white tabular-nums" style={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                      {blocks}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-[0.28em] text-white/45 mt-1">
+                      Hourglasses / day
+                    </div>
+                    <div className="text-xs text-white/50 mt-1 tabular-nums">
+                      {blocks * 90} min · {(blocks * 90 / 60).toFixed(1)} hrs
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBlocks((n) => Math.min(3, n + 1))}
+                    className="h-10 w-10 rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white transition"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className="mt-6 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-4 py-3.5">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-amber-300/80">
+                    Outcome Projection
+                  </p>
+                  <p className="mt-1.5 text-sm text-white/85 leading-relaxed">
+                    Based on your inputs, you will eliminate{" "}
+                    <span className="text-amber-300 font-medium">
+                      ~{(blocks * 90 * 7 / 60).toFixed(1)} hours
+                    </span>{" "}
+                    of passive procrastination and fake-work every single week.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="relative flex items-end justify-between gap-6 border-t border-white/5 bg-black/40 px-10 py-6">
-          {/* Google sign-in CTA (bottom-left) */}
+        <div className="relative flex items-end justify-between gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
           <button
             onClick={() => {
               void signInWithGoogle();
             }}
-            className="group flex max-w-[62%] items-start gap-3 text-left"
+            className="group flex max-w-[55%] items-start gap-3 text-left"
           >
             <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] transition-colors group-hover:border-white/25 group-hover:bg-white/[0.06]">
               <GoogleIcon />
             </span>
             <span className="text-[11px] leading-snug text-white/45 transition-colors group-hover:text-white/70">
               <span className="text-white/75">Secure your progress.</span>{" "}
-              Sign in with Google to sync your sessions and protect your data from being lost.
+              Sign in with Google to sync your sessions.
             </span>
           </button>
 
           <div className="flex items-center gap-2">
-            {!isLast && (
+            {step > 1 && step < 5 && (
               <button
-                onClick={complete}
+                onClick={() => setStep((n) => n - 1)}
                 className="px-3 py-2 text-xs text-white/40 hover:text-white/70 transition-colors"
               >
-                Skip
+                Back
               </button>
             )}
             <button
-              onClick={() => (isLast ? void complete() : setStep((n) => n + 1))}
-              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+              disabled={!canAdvance}
+              onClick={() => {
+                if (step === 5) void finish();
+                else setStep((n) => n + 1);
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(226,176,92,0.25)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {isLast ? "Get Started" : "Continue"}
+              {step === 1 && "Build My Focus Environment"}
+              {step === 2 && "Continue"}
+              {step === 3 && "Continue"}
+              {step === 4 && "Continue"}
+              {step === 5 && "Start My 5-Day Focus Challenge"}
               <span aria-hidden>→</span>
             </button>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function AnimatedHourglass({
+  filling = false,
+  size = 96,
+}: {
+  filling?: boolean;
+  size?: number;
+}) {
+  const p = filling ? 0.72 : 0.15;
+  const topFillY = 8 + (34 - 8) * p;
+  const bottomFillY = 62 - (62 - 40) * p;
+  return (
+    <svg
+      viewBox="0 0 48 72"
+      style={{ height: size * 0.75, width: size * 0.55 }}
+      className="mx-auto text-amber-300/90 drop-shadow-[0_0_18px_rgba(226,176,92,0.35)]"
+      aria-hidden
+    >
+      <defs>
+        <clipPath id="oh-top">
+          <polygon points="8,8 40,8 26,36 22,36" />
+        </clipPath>
+        <clipPath id="oh-bot">
+          <polygon points="22,38 26,38 40,64 8,64" />
+        </clipPath>
+        <linearGradient id="oh-sand" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="oklch(0.9 0.13 82)" />
+          <stop offset="100%" stopColor="oklch(0.7 0.16 62)" />
+        </linearGradient>
+      </defs>
+      <line x1="6" y1="6" x2="42" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+      <line x1="6" y1="66" x2="42" y2="66" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+      <g clipPath="url(#oh-top)">
+        <rect x="0" y={topFillY} width="48" height="40" fill="url(#oh-sand)">
+          <animate attributeName="y" values={`${topFillY};${topFillY + 0.6};${topFillY}`} dur="3s" repeatCount="indefinite" />
+        </rect>
+      </g>
+      <g clipPath="url(#oh-bot)">
+        <rect x="0" y={bottomFillY} width="48" height="40" fill="url(#oh-sand)">
+          <animate attributeName="y" values={`${bottomFillY};${bottomFillY - 0.6};${bottomFillY}`} dur="3s" repeatCount="indefinite" />
+        </rect>
+      </g>
+      <line x1="24" y1="36" x2="24" y2="40" stroke="url(#oh-sand)" strokeWidth="0.8" opacity="0.9">
+        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" />
+      </line>
+      <polygon
+        points="8,8 40,8 26,36 26,38 40,64 8,64 22,38 22,36"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinejoin="round"
+        opacity="0.55"
+      />
+    </svg>
   );
 }
 

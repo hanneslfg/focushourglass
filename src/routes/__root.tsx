@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
+import { Day5RewardOverlay } from "@/components/Day5RewardOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
@@ -192,6 +193,7 @@ function RootComponent() {
           <Toaster position="bottom-center" />
           <MilestoneOverlay />
           <OnboardingOverlay />
+          <Day5RewardOverlay />
         </PremiumProvider>
       </TimerProvider>
     </QueryClientProvider>
