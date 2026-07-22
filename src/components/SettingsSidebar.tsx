@@ -106,7 +106,42 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SettingsPanel() {
   const { t, i18n } = useTranslation();
-  const { isPremium, isPaywallEnabled, triggerPaywall } = usePremium();
+  const { isPremium, isPaywallEnabled, triggerPaywall, setPremiumLocal, refreshPremium } = usePremium();
+  const [devCode, setDevCode] = useState("");
+  const [devSubmitting, setDevSubmitting] = useState(false);
+
+  async function submitDevCode() {
+    const code = devCode.trim();
+    if (!code) return;
+    if (code !== "HANNES_LIFETIME_2026") {
+      toast.error("Invalid developer code");
+      return;
+    }
+    setDevSubmitting(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess.session?.user?.id;
+      if (!userId) {
+        toast.error("Please sign in first to unlock premium.");
+        return;
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_premium: true })
+        .eq("user_id", userId);
+      if (error) {
+        console.error("[dev-bypass] update failed", error);
+        toast.error("Could not unlock premium. Please try again.");
+        return;
+      }
+      setPremiumLocal(true);
+      await refreshPremium();
+      setDevCode("");
+      toast.success("Developer Access Granted: Lifetime Premium Unlocked! ⏳");
+    } finally {
+      setDevSubmitting(false);
+    }
+  }
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
     defaultDailyGoal: 180,
