@@ -554,3 +554,60 @@ function SettingsPanel() {
   );
 }
 
+function CancelConfirmModal({
+  onKeep,
+  onConfirm,
+  isBusy,
+}: {
+  onKeep: () => void;
+  onConfirm: () => void;
+  isBusy: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0A0A0A] p-6 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 shrink-0 rounded-full bg-[#E2B05C]/10 border border-[#E2B05C]/40 flex items-center justify-center">
+            <AlertTriangle className="h-5 w-5 text-[#E2B05C]" strokeWidth={1.75} />
+          </div>
+          <div>
+            <h3 className="font-display text-xl tracking-tight text-white">
+              Are you sure you want to cancel?
+            </h3>
+            <p className="mt-2 text-[13px] text-white/65 leading-relaxed">
+              You will lose access to your <span className="text-white/90">5-Day Focus Analytics</span>,
+              <span className="text-white/90"> Custom Soundscapes</span>, and
+              <span className="text-white/90"> Lifetime Data Backup</span>. Your focus system
+              will be dismantled at the end of the current billing period.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onKeep}
+            disabled={isBusy}
+            className="w-full h-11 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
+          >
+            Keep my focus system
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isBusy}
+            className="w-full h-11 rounded-xl text-sm text-white/60 border border-white/10 hover:border-white/30 hover:text-white/85 transition-all disabled:opacity-60"
+          >
+            {isBusy ? "Cancelling…" : "Confirm cancellation"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
