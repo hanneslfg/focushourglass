@@ -124,3 +124,54 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     console.log("[stripe] session created", session.id);
     return { url: session.url };
   });
+
+/**
+ * Look up whether the user currently has an active Stripe subscription tied
+ * to their Supabase user_id (stored in subscription metadata at checkout).
+ */
+export const findActiveSubscription = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ accessToken: z.string().min(10) }))
+  .handler(async ({ data }) => {
+    const user = await verifySupabaseUser(data.accessToken);
+    const query = encodeURIComponent(
+      `metadata['user_id']:'${user.id}' AND status:'active'`,
+    );
+    const res = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
+      data?: Array<{ id: string; status: string; cancel_at_period_end?: boolean; current_period_end?: number }>;
+    };
+    const sub = res.data?.[0];
+    if (!sub) return { subscription: null as null };
+    return {
+      subscription: {
+        id: sub.id,
+        status: sub.status,
+        cancel_at_period_end: Boolean(sub.cancel_at_period_end),
+        current_period_end: sub.current_period_end ?? null,
+      },
+    };
+  });
+
+/**
+ * Cancel the user's active Stripe subscription at period end so they keep
+ * access until the paid term expires. Idempotent.
+ */
+export const cancelUserSubscription = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ accessToken: z.string().min(10) }))
+  .handler(async ({ data }) => {
+    const user = await verifySupabaseUser(data.accessToken);
+    const query = encodeURIComponent(
+      `metadata['user_id']:'${user.id}' AND status:'active'`,
+    );
+    const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
+      data?: Array<{ id: string }>;
+    };
+    const sub = search.data?.[0];
+    if (!sub) {
+      return { ok: false, error: "No active subscription found for this account." };
+    }
+    const body = new URLSearchParams();
+    body.set("cancel_at_period_end", "true");
+    await stripeFetch(`/subscriptions/${sub.id}`, { method: "POST", body });
+    console.log("[stripe] scheduled cancellation for", sub.id);
+    return { ok: true, subscriptionId: sub.id };
+  });
