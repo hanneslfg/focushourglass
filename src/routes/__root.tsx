@@ -173,8 +173,10 @@ function RootComponent() {
       hydrateFor(data.session?.user?.id ?? null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const uid = session?.user?.id ?? null;
+      handleAccountSwitchIfNeeded(uid);
       if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "INITIAL_SESSION") {
-        hydrateFor(session?.user?.id ?? null);
+        hydrateFor(uid);
       } else if (event === "SIGNED_OUT") {
         lastUserId = null;
       }
