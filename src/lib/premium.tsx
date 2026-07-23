@@ -9,9 +9,21 @@ import {
 } from "react";
 import { PremiumPaywall, ENABLE_PAYWALL } from "@/components/PremiumPaywall";
 import { supabase } from "@/lib/supabase";
-import { createCheckoutSession } from "@/lib/api/stripe.functions";
+import {
+  createCheckoutSession,
+  cancelUserSubscription,
+  findActiveSubscription,
+} from "@/lib/api/stripe.functions";
+import { toast } from "sonner";
 
 type Plan = "monthly" | "yearly" | "lifetime";
+
+export interface ActiveSubscription {
+  id: string;
+  status: string;
+  cancel_at_period_end: boolean;
+  current_period_end: number | null;
+}
 
 interface PremiumContextValue {
   isPremium: boolean;
@@ -23,6 +35,11 @@ interface PremiumContextValue {
   isCheckoutLoading: boolean;
   refreshPremium: () => Promise<void>;
   setPremiumLocal: (v: boolean) => void;
+  restorePurchases: () => Promise<void>;
+  isRestoring: boolean;
+  cancelSubscription: () => Promise<boolean>;
+  isCancelling: boolean;
+  fetchActiveSubscription: () => Promise<ActiveSubscription | null>;
 }
 
 const PremiumContext = createContext<PremiumContextValue | null>(null);
