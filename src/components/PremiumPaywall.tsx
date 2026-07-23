@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ArrowRight, Check } from "lucide-react";
+import { X, ArrowRight, Check, RotateCcw } from "lucide-react";
 
 /**
  * Feature flag — keep FALSE in production until launch.
@@ -13,6 +13,8 @@ interface PremiumPaywallProps {
   onClose?: () => void;
   onUpgrade?: (plan: Plan) => void | Promise<void>;
   isLoading?: boolean;
+  onRestore?: () => void | Promise<void>;
+  isRestoring?: boolean;
 }
 
 type Step = 1 | 2 | 3;
@@ -22,6 +24,8 @@ export function PremiumPaywall({
   onClose,
   onUpgrade,
   isLoading = false,
+  onRestore,
+  isRestoring = false,
 }: PremiumPaywallProps) {
   const [step, setStep] = useState<Step>(1);
   const [plan, setPlan] = useState<Plan>("yearly");
