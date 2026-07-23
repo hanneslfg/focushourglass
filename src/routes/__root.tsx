@@ -20,7 +20,7 @@ import { Day5RewardOverlay } from "@/components/Day5RewardOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
-import { supabase } from "@/lib/supabase";
+import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
 import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
