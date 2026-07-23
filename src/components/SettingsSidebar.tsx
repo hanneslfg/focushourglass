@@ -258,36 +258,65 @@ function SettingsPanel() {
         </section>
       )}
 
-      {!isPremium && (
+      {isPaywallEnabled && (
         <section>
-          <SectionTitle>Developer Access</SectionTitle>
-          <div className="mt-3 flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            <input
-              type="password"
-              value={devCode}
-              onChange={(e) => setDevCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void submitDevCode();
-              }}
-              placeholder="Enter access code"
-              autoComplete="off"
-              className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-foreground/60 font-mono tracking-wider"
-            />
+          <SectionTitle>Subscription</SectionTitle>
+          <div className="mt-3 space-y-2">
             <button
               type="button"
-              onClick={submitDevCode}
-              disabled={devSubmitting || !devCode.trim()}
-              className="px-3 py-2 rounded-md border border-border text-xs uppercase tracking-[0.18em] hover:border-foreground/60 disabled:opacity-40 transition-colors"
+              onClick={() => void restorePurchases()}
+              disabled={isRestoring}
+              className="w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors disabled:opacity-50"
             >
-              {devSubmitting ? "…" : "Unlock"}
+              <span className="flex items-center gap-2.5 text-sm">
+                <RotateCcw className="h-4 w-4" strokeWidth={1.5} />
+                {isRestoring ? "Restoring…" : "Restore purchases"}
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Käufe wiederherstellen
+              </span>
             </button>
+
+            {isPremium && activeSub && (
+              <>
+                {activeSub.cancel_at_period_end ? (
+                  <div className="rounded-md border border-border/60 bg-background/40 px-4 py-3 text-[12px] text-muted-foreground">
+                    Your subscription is set to cancel
+                    {activeSub.current_period_end
+                      ? ` on ${new Date(activeSub.current_period_end * 1000).toLocaleDateString()}`
+                      : " at the end of the paid period"}
+                    . You keep premium access until then.
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmCancelOpen(true)}
+                    disabled={isCancelling}
+                    className="w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-red-500/40 transition-colors disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-2.5 text-sm text-white/85">
+                      <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
+                      Cancel subscription
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Abonnement kündigen
+                    </span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground/70">
-            Internal bypass for developers &amp; early collaborators.
-          </p>
         </section>
       )}
+
+      {confirmCancelOpen && (
+        <CancelConfirmModal
+          onKeep={() => setConfirmCancelOpen(false)}
+          onConfirm={handleConfirmCancel}
+          isBusy={isCancelling}
+        />
+      )}
+
 
 
 
