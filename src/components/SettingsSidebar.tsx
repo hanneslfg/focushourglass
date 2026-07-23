@@ -108,42 +108,41 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SettingsPanel() {
   const { t, i18n } = useTranslation();
-  const { isPremium, isPaywallEnabled, triggerPaywall, setPremiumLocal, refreshPremium } = usePremium();
-  const [devCode, setDevCode] = useState("");
-  const [devSubmitting, setDevSubmitting] = useState(false);
+  const {
+    isPremium,
+    isPaywallEnabled,
+    triggerPaywall,
+    restorePurchases,
+    isRestoring,
+    cancelSubscription,
+    isCancelling,
+    fetchActiveSubscription,
+  } = usePremium();
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [activeSub, setActiveSub] = useState<
+    { cancel_at_period_end: boolean; current_period_end: number | null } | null
+  >(null);
 
-  async function submitDevCode() {
-    const code = devCode.trim();
-    if (!code) return;
-    if (code !== "HANNES_LIFETIME_2026") {
-      toast.error("Invalid developer code");
+  useEffect(() => {
+    if (!isPremium) {
+      setActiveSub(null);
       return;
     }
-    setDevSubmitting(true);
-    try {
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess.session?.user?.id;
-      if (!userId) {
-        toast.error("Please sign in first to unlock premium.");
-        return;
-      }
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_premium: true })
-        .eq("user_id", userId);
-      if (error) {
-        console.error("[dev-bypass] update failed", error);
-        toast.error("Could not unlock premium. Please try again.");
-        return;
-      }
-      setPremiumLocal(true);
-      await refreshPremium();
-      setDevCode("");
-      toast.success("Developer Access Granted: Lifetime Premium Unlocked! ⏳");
-    } finally {
-      setDevSubmitting(false);
-    }
+    let cancelled = false;
+    void fetchActiveSubscription().then((sub) => {
+      if (cancelled) return;
+      setActiveSub(sub ? { cancel_at_period_end: sub.cancel_at_period_end, current_period_end: sub.current_period_end } : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPremium, fetchActiveSubscription, isCancelling]);
+
+  async function handleConfirmCancel() {
+    const ok = await cancelSubscription();
+    if (ok) setConfirmCancelOpen(false);
   }
+
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
     defaultDailyGoal: 180,
