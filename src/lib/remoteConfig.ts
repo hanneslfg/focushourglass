@@ -30,13 +30,8 @@ function describeError(error: SupabaseLikeError | Error | string): string {
 function reportError(op: string, error: SupabaseLikeError | Error | string) {
   const msg = describeError(error);
   console.error(`[remoteConfig] ${op} failed: ${msg}`, error);
-  if (typeof window !== "undefined") {
-    try {
-      window.alert(`Supabase error — ${op}: ${msg}`);
-    } catch {
-      /* noop */
-    }
-  }
+  // Do NOT window.alert — it's blocking and breaks the flow. Callers can
+  // surface a toast when it matters.
 }
 
 async function currentAuthUid(): Promise<string | null> {
