@@ -20,7 +20,7 @@ import { Day5RewardOverlay } from "@/components/Day5RewardOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
-import { supabase } from "@/lib/supabase";
+import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
 import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
@@ -173,8 +173,10 @@ function RootComponent() {
       hydrateFor(data.session?.user?.id ?? null);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      const uid = session?.user?.id ?? null;
+      handleAccountSwitchIfNeeded(uid);
       if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "INITIAL_SESSION") {
-        hydrateFor(session?.user?.id ?? null);
+        hydrateFor(uid);
       } else if (event === "SIGNED_OUT") {
         lastUserId = null;
       }

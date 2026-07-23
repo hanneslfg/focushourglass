@@ -14,10 +14,10 @@ import {
   Sparkles,
   Check,
   Lock,
-  KeyRound,
+  RotateCcw,
+  ShieldOff,
+  AlertTriangle,
 } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
 import { usePremium } from "@/lib/premium";
 import {
   getSettings,
@@ -106,42 +106,41 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SettingsPanel() {
   const { t, i18n } = useTranslation();
-  const { isPremium, isPaywallEnabled, triggerPaywall, setPremiumLocal, refreshPremium } = usePremium();
-  const [devCode, setDevCode] = useState("");
-  const [devSubmitting, setDevSubmitting] = useState(false);
+  const {
+    isPremium,
+    isPaywallEnabled,
+    triggerPaywall,
+    restorePurchases,
+    isRestoring,
+    cancelSubscription,
+    isCancelling,
+    fetchActiveSubscription,
+  } = usePremium();
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [activeSub, setActiveSub] = useState<
+    { cancel_at_period_end: boolean; current_period_end: number | null } | null
+  >(null);
 
-  async function submitDevCode() {
-    const code = devCode.trim();
-    if (!code) return;
-    if (code !== "HANNES_LIFETIME_2026") {
-      toast.error("Invalid developer code");
+  useEffect(() => {
+    if (!isPremium) {
+      setActiveSub(null);
       return;
     }
-    setDevSubmitting(true);
-    try {
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess.session?.user?.id;
-      if (!userId) {
-        toast.error("Please sign in first to unlock premium.");
-        return;
-      }
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_premium: true })
-        .eq("user_id", userId);
-      if (error) {
-        console.error("[dev-bypass] update failed", error);
-        toast.error("Could not unlock premium. Please try again.");
-        return;
-      }
-      setPremiumLocal(true);
-      await refreshPremium();
-      setDevCode("");
-      toast.success("Developer Access Granted: Lifetime Premium Unlocked! ⏳");
-    } finally {
-      setDevSubmitting(false);
-    }
+    let cancelled = false;
+    void fetchActiveSubscription().then((sub) => {
+      if (cancelled) return;
+      setActiveSub(sub ? { cancel_at_period_end: sub.cancel_at_period_end, current_period_end: sub.current_period_end } : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPremium, fetchActiveSubscription, isCancelling]);
+
+  async function handleConfirmCancel() {
+    const ok = await cancelSubscription();
+    if (ok) setConfirmCancelOpen(false);
   }
+
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
     defaultDailyGoal: 180,
@@ -257,36 +256,65 @@ function SettingsPanel() {
         </section>
       )}
 
-      {!isPremium && (
+      {isPaywallEnabled && (
         <section>
-          <SectionTitle>Developer Access</SectionTitle>
-          <div className="mt-3 flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            <input
-              type="password"
-              value={devCode}
-              onChange={(e) => setDevCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void submitDevCode();
-              }}
-              placeholder="Enter access code"
-              autoComplete="off"
-              className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-foreground/60 font-mono tracking-wider"
-            />
+          <SectionTitle>Subscription</SectionTitle>
+          <div className="mt-3 space-y-2">
             <button
               type="button"
-              onClick={submitDevCode}
-              disabled={devSubmitting || !devCode.trim()}
-              className="px-3 py-2 rounded-md border border-border text-xs uppercase tracking-[0.18em] hover:border-foreground/60 disabled:opacity-40 transition-colors"
+              onClick={() => void restorePurchases()}
+              disabled={isRestoring}
+              className="w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors disabled:opacity-50"
             >
-              {devSubmitting ? "…" : "Unlock"}
+              <span className="flex items-center gap-2.5 text-sm">
+                <RotateCcw className="h-4 w-4" strokeWidth={1.5} />
+                {isRestoring ? "Restoring…" : "Restore purchases"}
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Käufe wiederherstellen
+              </span>
             </button>
+
+            {isPremium && activeSub && (
+              <>
+                {activeSub.cancel_at_period_end ? (
+                  <div className="rounded-md border border-border/60 bg-background/40 px-4 py-3 text-[12px] text-muted-foreground">
+                    Your subscription is set to cancel
+                    {activeSub.current_period_end
+                      ? ` on ${new Date(activeSub.current_period_end * 1000).toLocaleDateString()}`
+                      : " at the end of the paid period"}
+                    . You keep premium access until then.
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmCancelOpen(true)}
+                    disabled={isCancelling}
+                    className="w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-red-500/40 transition-colors disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-2.5 text-sm text-white/85">
+                      <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
+                      Cancel subscription
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      Abonnement kündigen
+                    </span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground/70">
-            Internal bypass for developers &amp; early collaborators.
-          </p>
         </section>
       )}
+
+      {confirmCancelOpen && (
+        <CancelConfirmModal
+          onKeep={() => setConfirmCancelOpen(false)}
+          onConfirm={handleConfirmCancel}
+          isBusy={isCancelling}
+        />
+      )}
+
 
 
 
@@ -525,4 +553,61 @@ function SettingsPanel() {
     </div>
   );
 }
+
+function CancelConfirmModal({
+  onKeep,
+  onConfirm,
+  isBusy,
+}: {
+  onKeep: () => void;
+  onConfirm: () => void;
+  isBusy: boolean;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0A0A0A] p-6 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 shrink-0 rounded-full bg-[#E2B05C]/10 border border-[#E2B05C]/40 flex items-center justify-center">
+            <AlertTriangle className="h-5 w-5 text-[#E2B05C]" strokeWidth={1.75} />
+          </div>
+          <div>
+            <h3 className="font-display text-xl tracking-tight text-white">
+              Are you sure you want to cancel?
+            </h3>
+            <p className="mt-2 text-[13px] text-white/65 leading-relaxed">
+              You will lose access to your <span className="text-white/90">5-Day Focus Analytics</span>,
+              <span className="text-white/90"> Custom Soundscapes</span>, and
+              <span className="text-white/90"> Lifetime Data Backup</span>. Your focus system
+              will be dismantled at the end of the current billing period.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onKeep}
+            disabled={isBusy}
+            className="w-full h-11 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
+          >
+            Keep my focus system
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isBusy}
+            className="w-full h-11 rounded-xl text-sm text-white/60 border border-white/10 hover:border-white/30 hover:text-white/85 transition-all disabled:opacity-60"
+          >
+            {isBusy ? "Cancelling…" : "Confirm cancellation"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 

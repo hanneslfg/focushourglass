@@ -99,16 +99,79 @@ export async function signInWithGoogle() {
   if (error) console.error("[supabase] signInWithGoogle failed:", error);
 }
 
+/**
+ * Wipes all app-managed state from the browser: localStorage keys owned by
+ * this app plus sessionStorage. Used on sign-out and on account-switch so
+ * no residual data from the previous user leaks into the next session.
+ */
+export function clearAllLocalAppState() {
+  if (typeof window === "undefined") return;
+  const prefixes = ["hourglass.", "hg.", "sb-", "supabase."];
+  try {
+    const ls = window.localStorage;
+    const kill: string[] = [];
+    for (let i = 0; i < ls.length; i++) {
+      const k = ls.key(i);
+      if (k && prefixes.some((p) => k.startsWith(p))) kill.push(k);
+    }
+    for (const k of kill) ls.removeItem(k);
+  } catch (e) {
+    console.warn("[supabase] clearAllLocalAppState localStorage failed:", e);
+  }
+  try {
+    window.sessionStorage.clear();
+  } catch (e) {
+    console.warn("[supabase] clearAllLocalAppState sessionStorage failed:", e);
+  }
+}
+
+const LAST_USER_KEY = "hourglass.last_auth_user.v1";
+
+/**
+ * On every auth state change: if the signed-in user differs from the last
+ * one we saw on this device, clear all app state and reload so nothing from
+ * the previous account bleeds into the new one.
+ */
+export function handleAccountSwitchIfNeeded(newUserId: string | null) {
+  if (typeof window === "undefined") return;
+  let prev: string | null = null;
+  try {
+    prev = safeStorage.getItem(LAST_USER_KEY);
+  } catch {
+    prev = null;
+  }
+  if (newUserId && prev && prev !== newUserId) {
+    console.log("[supabase] account switch detected — flushing local state");
+    clearAllLocalAppState();
+    try {
+      safeStorage.setItem(LAST_USER_KEY, newUserId);
+    } catch {
+      /* ignore */
+    }
+    window.location.replace("/");
+    return;
+  }
+  if (newUserId && prev !== newUserId) {
+    try {
+      safeStorage.setItem(LAST_USER_KEY, newUserId);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export async function signOut() {
   try {
     await supabase.auth.signOut();
   } catch (e) {
     console.warn("[supabase] signOut threw:", e);
   }
-  // Generate a fresh anon id so the next session isn't attributed to the
-  // previous user.
-  safeStorage.removeItem(USER_KEY);
-  getUserId();
+  clearAllLocalAppState();
+  if (typeof window !== "undefined") {
+    // Full reload tears down React Query, contexts, timer state and any
+    // in-memory caches so nothing from the previous account leaks through.
+    window.location.replace("/");
+  }
 }
 
 export interface RemoteSession {

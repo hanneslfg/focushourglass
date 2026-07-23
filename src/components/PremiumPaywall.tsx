@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ArrowRight, Check } from "lucide-react";
+import { X, ArrowRight, Check, RotateCcw } from "lucide-react";
 
 /**
  * Feature flag — keep FALSE in production until launch.
@@ -13,6 +13,8 @@ interface PremiumPaywallProps {
   onClose?: () => void;
   onUpgrade?: (plan: Plan) => void | Promise<void>;
   isLoading?: boolean;
+  onRestore?: () => void | Promise<void>;
+  isRestoring?: boolean;
 }
 
 type Step = 1 | 2 | 3;
@@ -22,6 +24,8 @@ export function PremiumPaywall({
   onClose,
   onUpgrade,
   isLoading = false,
+  onRestore,
+  isRestoring = false,
 }: PremiumPaywallProps) {
   const [step, setStep] = useState<Step>(1);
   const [plan, setPlan] = useState<Plan>("yearly");
@@ -64,6 +68,19 @@ export function PremiumPaywall({
         >
           <X className="h-4 w-4" strokeWidth={1.5} />
         </button>
+
+        {/* Restore purchases — small, top-right of body */}
+        {onRestore && (
+          <button
+            type="button"
+            onClick={() => void onRestore()}
+            disabled={isRestoring}
+            className="absolute top-4 right-20 z-10 inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white/85 disabled:opacity-40 transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" strokeWidth={1.75} />
+            {isRestoring ? "Restoring…" : "Restore purchases"}
+          </button>
+        )}
 
         {/* Progress dots */}
         <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5">
