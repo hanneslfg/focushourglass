@@ -14,7 +14,9 @@ import {
   Sparkles,
   Check,
   Lock,
-  KeyRound,
+  RotateCcw,
+  ShieldOff,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
