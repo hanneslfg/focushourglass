@@ -105,14 +105,16 @@ export function getRhythm(id: string): Rhythm | null {
 }
 
 export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
+  const { toast } = await import("sonner");
   console.log("[rhythms] saveCustomRhythm start", rhythm);
   const res = await upsertRhythmRemote(rhythm);
   console.log("[rhythms] upsertRhythmRemote result", res);
 
   let saved: Rhythm | null = res.ok && res.data ? res.data : null;
 
-  // Guest / not signed in → persist locally so the rhythm is not lost.
-  if (!saved && res.notAuthed) {
+  // Fallback: guest OR remote write failed — keep the rhythm locally so
+  // the user never silently loses their work.
+  if (!saved) {
     const id =
       rhythm.id && rhythm.id.length > 0
         ? rhythm.id
@@ -120,12 +122,12 @@ export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
           ? crypto.randomUUID()
           : `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     saved = { ...rhythm, id, builtin: false };
-    console.log("[rhythms] guest mode — saving rhythm to localStorage", saved);
-  }
-
-  if (!saved) {
-    console.error("[rhythms] saveCustomRhythm failed", res.error);
-    return null;
+    if (res.notAuthed) {
+      console.log("[rhythms] guest mode — saving rhythm to localStorage", saved);
+    } else {
+      console.error("[rhythms] remote save failed, keeping locally", res.error);
+      toast.error(`Couldn't sync rhythm to the cloud: ${res.error ?? "unknown error"}. Saved locally.`);
+    }
   }
 
   const s = read();
@@ -138,11 +140,13 @@ export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
 }
 
 export async function deleteCustomRhythm(id: string): Promise<boolean> {
+  const { toast } = await import("sonner");
   console.log("[rhythms] deleteCustomRhythm", id);
   const res = await deleteRhythmRemote(id);
   console.log("[rhythms] deleteRhythmRemote result", res);
   if (!res.ok && !res.notAuthed) {
     console.error("[rhythms] deleteCustomRhythm failed", res.error);
+    toast.error(`Couldn't delete rhythm: ${res.error ?? "unknown error"}`);
     return false;
   }
   const s = read();
