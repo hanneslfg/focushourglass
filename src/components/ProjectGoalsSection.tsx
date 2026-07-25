@@ -304,7 +304,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
       </div>
 
       {adding && (
-        <div className="mb-3 rounded-lg border border-border bg-card/60 p-4">
+        <div className="relative z-30 mb-3 rounded-lg border border-border bg-card/60 p-4 overflow-visible">
           <div className="flex items-center gap-3">
             <span
               className="h-2.5 w-2.5 rounded-full shrink-0"
@@ -559,34 +559,36 @@ function GoalRow({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`relative rounded-lg border bg-card/40 hover:bg-card/60 transition-all overflow-hidden ${
-        isDragging ? "opacity-40" : ""
-      } ${isDragOver ? "border-foreground/60 ring-1 ring-foreground/40" : "border-border"} ${
-        isPending || busy ? "opacity-70" : ""
-      }`}
+      className={`relative rounded-lg border bg-card/40 hover:bg-card/60 transition-all ${
+        editing ? "overflow-visible z-30" : "overflow-hidden"
+      } ${isDragging ? "opacity-40" : ""} ${
+        isDragOver ? "border-foreground/60 ring-1 ring-foreground/40" : "border-border"
+      } ${isPending || busy ? "opacity-70" : ""}`}
       style={{ borderLeft: `3px solid ${goal.color}` }}
     >
-      {/* Progress fill */}
-      {goal.targetMinutes > 0 && !isPending && (
-        <div
-          aria-hidden
-          className="absolute inset-y-0 left-0 pointer-events-none transition-all duration-500"
-          style={{ width: `${pct * 100}%`, background: goal.color, opacity: 0.12 }}
-        />
-      )}
-      {/* Grace period sweep */}
-      {isPending && (
-        <div
-          aria-hidden
-          className="absolute inset-y-0 left-0 pointer-events-none"
-          style={{
-            width: `${gracePct * 100}%`,
-            background: goal.color,
-            opacity: 0.28,
-            transition: "width 100ms linear",
-          }}
-        />
-      )}
+      {/* Progress + grace fills — wrapped so they clip cleanly even when the
+          row itself must expand (e.g. editing exposes the deadline popover). */}
+      <div className="absolute inset-0 overflow-hidden rounded-[inherit] pointer-events-none">
+        {goal.targetMinutes > 0 && !isPending && (
+          <div
+            aria-hidden
+            className="absolute inset-y-0 left-0 transition-all duration-500"
+            style={{ width: `${pct * 100}%`, background: goal.color, opacity: 0.12 }}
+          />
+        )}
+        {isPending && (
+          <div
+            aria-hidden
+            className="absolute inset-y-0 left-0"
+            style={{
+              width: `${gracePct * 100}%`,
+              background: goal.color,
+              opacity: 0.28,
+              transition: "width 100ms linear",
+            }}
+          />
+        )}
+      </div>
 
       <div className="relative flex items-center gap-3 px-4 py-3">
         {!editing && (
