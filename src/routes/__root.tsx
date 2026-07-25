@@ -17,6 +17,8 @@ import { useRealtimeSessions } from "@/lib/useRealtimeSessions";
 import { MilestoneOverlay } from "@/components/MilestoneOverlay";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { Day5RewardOverlay } from "@/components/Day5RewardOverlay";
+import { GoalCompletionOverlay } from "@/components/GoalCompletionOverlay";
+import { StreakMilestoneOverlay } from "@/components/StreakMilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
@@ -196,6 +198,8 @@ function RootComponent() {
           <MilestoneOverlay />
           <OnboardingOverlay />
           <Day5RewardOverlay />
+          <GoalCompletionOverlay />
+          <StreakMilestoneOverlay />
         </PremiumProvider>
       </TimerProvider>
     </QueryClientProvider>

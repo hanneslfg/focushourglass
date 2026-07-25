@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
+import { addProject } from "@/lib/projects";
 
 const STORAGE_KEY = "hourglass_onboarding_completed";
 const PROFILE_KEY = "hourglass_onboarding_profile";
@@ -26,6 +28,15 @@ function suggestBlocks(personas: Persona[]): number {
   if (personas.includes("knowledge")) return 3;
   if (personas.includes("university")) return 2;
   return 2;
+}
+
+/** Persona-driven starter project name. Endowed-progress boost on day one. */
+function starterProjectFor(personas: Persona[]): string {
+  if (personas.includes("university")) return "Klausurenphase Deep Work";
+  if (personas.includes("entrepreneur")) return "Core Product Building";
+  if (personas.includes("mastery")) return "Deep Mastery Practice";
+  if (personas.includes("knowledge")) return "Signal Work · Deep Focus";
+  return "My First Deep Work Project";
 }
 
 function playChime() {
@@ -102,6 +113,33 @@ export function OnboardingOverlay() {
       /* noop */
     }
     setOpen(false);
+
+    // Auto-create a persona-driven first project so the user experiences
+    // the Endowed Progress Effect immediately on landing in the dashboard.
+    const starter = starterProjectFor(personas);
+    try {
+      const created = await addProject(starter);
+      if (created) {
+        safeStorage.setItem("hourglass.activeProjectTag", created.name);
+        window.dispatchEvent(new Event("hourglass:projects"));
+        // Guided-tour hint: dispatched event + toast pointing to the new project.
+        window.dispatchEvent(
+          new CustomEvent("hourglass:showProjectTour", {
+            detail: { projectName: created.name },
+          }),
+        );
+        setTimeout(() => {
+          toast(`Your first project is ready: ${created.name}`, {
+            description:
+              "Set a target, add a goal, and start your first hourglass block.",
+            duration: 8000,
+          });
+        }, 400);
+      }
+    } catch (e) {
+      console.warn("[onboarding] starter project create failed:", e);
+    }
+
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -109,6 +147,8 @@ export function OnboardingOverlay() {
           data: {
             has_completed_onboarding: true,
             personas,
+            persona_primary: personas[0] ?? null,
+            starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
           },
