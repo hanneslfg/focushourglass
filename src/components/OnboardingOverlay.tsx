@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
+import { addProject } from "@/lib/projects";
 
 const STORAGE_KEY = "hourglass_onboarding_completed";
 const PROFILE_KEY = "hourglass_onboarding_profile";
@@ -26,6 +28,15 @@ function suggestBlocks(personas: Persona[]): number {
   if (personas.includes("knowledge")) return 3;
   if (personas.includes("university")) return 2;
   return 2;
+}
+
+/** Persona-driven starter project name. Endowed-progress boost on day one. */
+function starterProjectFor(personas: Persona[]): string {
+  if (personas.includes("university")) return "Klausurenphase Deep Work";
+  if (personas.includes("entrepreneur")) return "Core Product Building";
+  if (personas.includes("mastery")) return "Deep Mastery Practice";
+  if (personas.includes("knowledge")) return "Signal Work · Deep Focus";
+  return "My First Deep Work Project";
 }
 
 function playChime() {
