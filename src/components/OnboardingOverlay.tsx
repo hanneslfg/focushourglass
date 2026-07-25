@@ -113,6 +113,33 @@ export function OnboardingOverlay() {
       /* noop */
     }
     setOpen(false);
+
+    // Auto-create a persona-driven first project so the user experiences
+    // the Endowed Progress Effect immediately on landing in the dashboard.
+    const starter = starterProjectFor(personas);
+    try {
+      const created = await addProject(starter);
+      if (created) {
+        safeStorage.setItem("hourglass.activeProjectTag", created.name);
+        window.dispatchEvent(new Event("hourglass:projects"));
+        // Guided-tour hint: dispatched event + toast pointing to the new project.
+        window.dispatchEvent(
+          new CustomEvent("hourglass:showProjectTour", {
+            detail: { projectName: created.name },
+          }),
+        );
+        setTimeout(() => {
+          toast(`Your first project is ready: ${created.name}`, {
+            description:
+              "Set a target, add a goal, and start your first hourglass block.",
+            duration: 8000,
+          });
+        }, 400);
+      }
+    } catch (e) {
+      console.warn("[onboarding] starter project create failed:", e);
+    }
+
     try {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -120,6 +147,8 @@ export function OnboardingOverlay() {
           data: {
             has_completed_onboarding: true,
             personas,
+            persona_primary: personas[0] ?? null,
+            starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
           },
