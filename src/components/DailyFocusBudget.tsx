@@ -184,7 +184,10 @@ export function DailyFocusBudget() {
 
           {!isPremium && (
             <button
-              onClick={triggerPaywall}
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerPaywall();
+              }}
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg group"
             >
               <div className="flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur-md px-3 py-1.5 border border-white/10">
