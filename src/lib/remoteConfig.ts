@@ -379,17 +379,17 @@ function isMissingCyclesColumn(err: { message?: string; code?: string } | null |
 export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
   const uid = await authUid();
   if (!uid) return null;
-  let { data, error } = await supabase
+  let { data, error } = (await supabase
     .from("custom_rhythms")
     .select(RHYTHM_COLUMNS_FULL)
     .eq("user_id", uid)
-    .order("name", { ascending: true });
+    .order("name", { ascending: true })) as { data: RemoteRhythm[] | null; error: { message?: string; code?: string } | null };
   if (error && isMissingCyclesColumn(error)) {
-    ({ data, error } = await supabase
+    ({ data, error } = (await supabase
       .from("custom_rhythms")
       .select(RHYTHM_COLUMNS_LEGACY)
       .eq("user_id", uid)
-      .order("name", { ascending: true }));
+      .order("name", { ascending: true })) as { data: RemoteRhythm[] | null; error: { message?: string; code?: string } | null });
   }
   if (error) {
     reportError("fetchCustomRhythms", error);
