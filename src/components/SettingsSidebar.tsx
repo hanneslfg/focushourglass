@@ -157,6 +157,24 @@ function SettingsPanel() {
     "unsupported",
   );
   const [lang, setLangState] = useState<LanguageCode>("en");
+  const [weeklyReport, setWeeklyReport] = useState(false);
+
+  useEffect(() => {
+    setWeeklyReport(safeStorage.getItem(WEEKLY_REPORT_KEY) === "true");
+  }, []);
+
+  async function toggleWeeklyReport(next: boolean) {
+    setWeeklyReport(next);
+    safeStorage.setItem(WEEKLY_REPORT_KEY, next ? "true" : "false");
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await supabase.auth.updateUser({ data: { weekly_report_opt_in: next } });
+      }
+    } catch {
+      /* noop */
+    }
+  }
 
   useEffect(() => {
     setLangState(getLanguage());
