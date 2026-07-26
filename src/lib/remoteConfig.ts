@@ -106,9 +106,17 @@ function completedGoal(g: ProjectGoal): ProjectGoal {
 function rhythmFromDurations(r: RemoteRhythm): Rhythm {
   const focusMin = Math.max(0, Math.round(Number(r.focus_duration ?? 0)));
   const breakMin = Math.max(0, Math.round(Number(r.break_duration ?? 0)));
+  const cycles = Math.max(1, Math.round(Number(r.cycles ?? 1)) || 1);
   const blocks: RhythmBlock[] = [];
-  if (focusMin > 0) blocks.push({ id: `${r.id}-focus`, kind: "focus", minutes: focusMin });
-  if (breakMin > 0) blocks.push({ id: `${r.id}-break`, kind: "break", minutes: breakMin });
+  for (let i = 0; i < cycles; i++) {
+    if (focusMin > 0) blocks.push({ id: `${r.id}-f${i}`, kind: "focus", minutes: focusMin });
+    if (breakMin > 0) blocks.push({ id: `${r.id}-b${i}`, kind: "break", minutes: breakMin });
+  }
+  // Fallback: never return an empty block list, otherwise `getRhythm` treats
+  // the rhythm as unusable and the UI silently reverts to the default.
+  if (blocks.length === 0 && focusMin > 0) {
+    blocks.push({ id: `${r.id}-focus`, kind: "focus", minutes: focusMin });
+  }
   return { id: r.id, name: r.name, blocks, builtin: false };
 }
 
