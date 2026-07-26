@@ -130,10 +130,13 @@ export function DailyFocusBudget() {
 
   return (
     <div className="w-full max-w-md">
-      <div
-        className={`relative rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 md:px-5 md:py-4 transition-all ${
+      <button
+        type="button"
+        onClick={() => setShowScience(true)}
+        className={`w-full text-left relative rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 md:px-5 md:py-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] ${
           cleared ? "ring-1 ring-amber-300/40" : ""
         }`}
+        aria-label="Learn about the 4.5h daily focus limit"
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
