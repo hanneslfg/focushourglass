@@ -363,16 +363,34 @@ interface RemoteRhythm {
   name: string;
   focus_duration: number | null;
   break_duration: number | null;
+  cycles?: number | null;
+}
+
+const RHYTHM_COLUMNS_FULL = "id,user_id,name,focus_duration,break_duration,cycles";
+const RHYTHM_COLUMNS_LEGACY = "id,user_id,name,focus_duration,break_duration";
+
+/** True when a Postgres error reports the `cycles` column doesn't exist. */
+function isMissingCyclesColumn(err: { message?: string; code?: string } | null | undefined): boolean {
+  if (!err) return false;
+  const msg = (err.message ?? "").toLowerCase();
+  return msg.includes("cycles") && (msg.includes("column") || msg.includes("does not exist") || err.code === "42703" || err.code === "PGRST204");
 }
 
 export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
   const uid = await authUid();
   if (!uid) return null;
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("custom_rhythms")
-    .select("id,user_id,name,focus_duration,break_duration")
+    .select(RHYTHM_COLUMNS_FULL)
     .eq("user_id", uid)
     .order("name", { ascending: true });
+  if (error && isMissingCyclesColumn(error)) {
+    ({ data, error } = await supabase
+      .from("custom_rhythms")
+      .select(RHYTHM_COLUMNS_LEGACY)
+      .eq("user_id", uid)
+      .order("name", { ascending: true }));
+  }
   if (error) {
     reportError("fetchCustomRhythms", error);
     return null;
@@ -384,14 +402,28 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const payload = rhythmPayload(uid, r);
+  const stripCycles = (p: typeof payload) => {
+    const { cycles: _c, ...rest } = p;
+    return rest;
+  };
+
   if (isPersistedUuid(r.id)) {
-    const { data, error, status } = await supabase
+    let { data, error, status } = await supabase
       .from("custom_rhythms")
       .update(payload)
       .eq("id", r.id)
       .eq("user_id", uid)
-      .select("id,user_id,name,focus_duration,break_duration")
+      .select(RHYTHM_COLUMNS_FULL)
       .maybeSingle();
+    if (error && isMissingCyclesColumn(error)) {
+      ({ data, error, status } = await supabase
+        .from("custom_rhythms")
+        .update(stripCycles(payload))
+        .eq("id", r.id)
+        .eq("user_id", uid)
+        .select(RHYTHM_COLUMNS_LEGACY)
+        .maybeSingle());
+    }
     if (error) {
       reportError("updateRhythm", error);
       return { ok: false, error: error.message };
@@ -401,11 +433,18 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
     }
   }
 
-  const { data, error, status } = await supabase
+  let { data, error, status } = await supabase
     .from("custom_rhythms")
     .insert(payload)
-    .select("id,user_id,name,focus_duration,break_duration")
+    .select(RHYTHM_COLUMNS_FULL)
     .single();
+  if (error && isMissingCyclesColumn(error)) {
+    ({ data, error, status } = await supabase
+      .from("custom_rhythms")
+      .insert(stripCycles(payload))
+      .select(RHYTHM_COLUMNS_LEGACY)
+      .single());
+  }
   if (error) {
     reportError("insertRhythm", error);
     return { ok: false, error: error.message };
