@@ -162,11 +162,13 @@ function goalPayload(
 }
 
 function rhythmPayload(uid: string, r: Rhythm) {
+  const focusCount = r.blocks.filter((b) => b.kind === "focus").length;
   return {
     user_id: uid,
     name: r.name.trim().slice(0, 80) || "Untitled rhythm",
     focus_duration: firstPositiveBlock(r, "focus"),
     break_duration: firstPositiveBlock(r, "break"),
+    cycles: Math.max(1, focusCount || 1),
   };
 }
 
