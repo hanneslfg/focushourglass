@@ -240,6 +240,8 @@ export function DailyFocusBudget() {
             </button>
           </div>
         </div>
+      )}
+
       {showScience && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm px-4 animate-in fade-in"
