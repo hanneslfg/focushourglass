@@ -30,6 +30,10 @@ import {
 import { playClick } from "@/lib/click";
 import { LegalFooter } from "@/components/LegalFooter";
 import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from "@/lib/i18n";
+import { safeStorage } from "@/lib/safeStorage";
+import { supabase } from "@/lib/supabase";
+
+const WEEKLY_REPORT_KEY = "hourglass.weeklyReportOptIn";
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
