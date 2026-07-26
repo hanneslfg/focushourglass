@@ -240,6 +240,44 @@ export function DailyFocusBudget() {
             </button>
           </div>
         </div>
+      {showScience && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm px-4 animate-in fade-in"
+          onClick={() => setShowScience(false)}
+        >
+          <div
+            className="max-w-md w-full rounded-2xl border border-white/10 bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-2xl text-foreground mb-3 text-center">
+              The Science of Your 4.5h Daily Limit 🧠
+            </h3>
+            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                Your brain runs on <span className="text-foreground">ultradian rhythms</span> — natural
+                90-minute cycles of peak cognitive output followed by a required recovery dip.
+              </p>
+              <p>
+                Neuroscience research (Ericsson, Kleitman, Newport) shows elite performers rarely
+                sustain more than <span className="text-foreground">3 deep-work cycles</span> — about
+                <span className="text-foreground"> 4.5 hours</span> — of true focus per day.
+              </p>
+              <p>
+                Beyond that, prefrontal glucose depletes and adenosine builds up. More hours don't
+                mean more output — they mean shallower work and worse recovery.
+              </p>
+              <p className="text-foreground/90 pt-1">
+                Protect the 4.5h. Then stop. That's Feierabend.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowScience(false)}
+              className="mt-5 w-full px-5 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
