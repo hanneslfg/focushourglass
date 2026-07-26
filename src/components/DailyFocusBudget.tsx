@@ -85,6 +85,7 @@ export function DailyFocusBudget() {
   const [mounted, setMounted] = useState(false);
   const [celebrated, setCelebrated] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showScience, setShowScience] = useState(false);
 
   useEffect(() => {
     setMounted(true);
