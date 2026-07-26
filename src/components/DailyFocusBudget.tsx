@@ -130,10 +130,17 @@ export function DailyFocusBudget() {
 
   return (
     <div className="w-full max-w-md">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setShowScience(true)}
-        className={`w-full text-left relative rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 md:px-5 md:py-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] ${
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setShowScience(true);
+          }
+        }}
+        className={`cursor-pointer relative rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 md:px-5 md:py-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] ${
           cleared ? "ring-1 ring-amber-300/40" : ""
         }`}
         aria-label="Learn about the 4.5h daily focus limit"
@@ -142,8 +149,9 @@ export function DailyFocusBudget() {
           <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Daily Focus Budget
           </span>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 inline-flex items-center gap-1">
             Ultradian · 3 × 90m
+            <span className="ml-1 text-muted-foreground/60">ⓘ</span>
           </span>
         </div>
 
