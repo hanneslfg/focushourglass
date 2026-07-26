@@ -73,6 +73,8 @@ export function OnboardingOverlay() {
   const [pain, setPain] = useState<Pain | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [blocks, setBlocks] = useState(2);
+  const [email, setEmail] = useState("");
+  const [wantsBlueprint, setWantsBlueprint] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
