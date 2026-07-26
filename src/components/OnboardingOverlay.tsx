@@ -389,6 +389,32 @@ export function OnboardingOverlay() {
                     of passive procrastination and fake-work every single week.
                   </p>
                 </div>
+
+                <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5">
+                  <label htmlFor="onb-email" className="text-[10px] uppercase tracking-[0.28em] text-white/50">
+                    Your Email (Optional)
+                  </label>
+                  <input
+                    id="onb-email"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@focus.com"
+                    className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/30"
+                  />
+                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-white/70 leading-snug">
+                    <input
+                      type="checkbox"
+                      checked={wantsBlueprint}
+                      onChange={(e) => setWantsBlueprint(e.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5 accent-amber-300"
+                    />
+                    <span>
+                      Send me the free <span className="text-white">4.5h Deep Work Blueprint</span> PDF.
+                    </span>
+                  </label>
+                </div>
               </div>
             )}
           </div>
