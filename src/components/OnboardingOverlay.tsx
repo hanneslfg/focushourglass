@@ -154,6 +154,8 @@ export function OnboardingOverlay() {
             starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
+            marketing_email: cleanEmail || null,
+            blueprint_consent: !!cleanEmail && wantsBlueprint,
           },
         });
       }
