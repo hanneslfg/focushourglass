@@ -101,7 +101,8 @@ export function OnboardingOverlay() {
   }, [personas]);
 
   async function finish() {
-    const profile = { personas, pain, dailyBlocks: blocks };
+    const cleanEmail = email.trim().toLowerCase();
+    const profile = { personas, pain, dailyBlocks: blocks, email: cleanEmail || null, wantsBlueprint: !!cleanEmail && wantsBlueprint };
     safeStorage.setItem(STORAGE_KEY, "true");
     safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     // Save target minutes to settings (blocks × 90min)
