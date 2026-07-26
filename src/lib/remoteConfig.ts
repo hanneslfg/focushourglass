@@ -245,7 +245,7 @@ export async function insertGoalRemote(
     .single();
   if (error) {
     reportError("insertGoal", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!successStatus(status) || !data) {
     const msg = `Unexpected insertGoal status ${status}`;
@@ -276,7 +276,7 @@ export async function updateGoalProjectTagRemote(
     .maybeSingle();
   if (error) {
     reportError("updateGoalProjectTag", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No goal row was backfilled; check user_id/RLS for public.goals";
@@ -319,7 +319,7 @@ export async function updateGoalRemote(
     .maybeSingle();
   if (error) {
     reportError("updateGoal", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No goal row was updated; check user_id/RLS for public.goals";
@@ -344,7 +344,7 @@ export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
     .maybeSingle();
   if (error) {
     reportError("deleteGoal", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No goal row was updated; check user_id/RLS for public.goals";
@@ -427,7 +427,7 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
     }
     if (error) {
       reportError("updateRhythm", error);
-      return { ok: false, error: error.message };
+      return { ok: false, error: error.message ?? "unknown" };
     }
     if (data) {
       return { ok: true, error: null, status, data: rhythmFromDurations(data as RemoteRhythm) };
@@ -448,7 +448,7 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
   }
   if (error) {
     reportError("insertRhythm", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!successStatus(status) || !data) {
     const msg = `Unexpected insertRhythm status ${status}`;
@@ -470,7 +470,7 @@ export async function deleteRhythmRemote(id: string): Promise<RemoteResult> {
     .maybeSingle();
   if (error) {
     reportError("deleteRhythm", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No rhythm row was deleted; check user_id/RLS for public.custom_rhythms";
@@ -526,7 +526,7 @@ export async function upsertProjectSettingRemote(
     .single();
   if (error) {
     reportError("upsertProjectSetting", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!successStatus(status) || !data) {
     const msg = `Unexpected upsertProjectSetting status ${status}`;
