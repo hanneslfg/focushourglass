@@ -106,9 +106,17 @@ function completedGoal(g: ProjectGoal): ProjectGoal {
 function rhythmFromDurations(r: RemoteRhythm): Rhythm {
   const focusMin = Math.max(0, Math.round(Number(r.focus_duration ?? 0)));
   const breakMin = Math.max(0, Math.round(Number(r.break_duration ?? 0)));
+  const cycles = Math.max(1, Math.round(Number(r.cycles ?? 1)) || 1);
   const blocks: RhythmBlock[] = [];
-  if (focusMin > 0) blocks.push({ id: `${r.id}-focus`, kind: "focus", minutes: focusMin });
-  if (breakMin > 0) blocks.push({ id: `${r.id}-break`, kind: "break", minutes: breakMin });
+  for (let i = 0; i < cycles; i++) {
+    if (focusMin > 0) blocks.push({ id: `${r.id}-f${i}`, kind: "focus", minutes: focusMin });
+    if (breakMin > 0) blocks.push({ id: `${r.id}-b${i}`, kind: "break", minutes: breakMin });
+  }
+  // Fallback: never return an empty block list, otherwise `getRhythm` treats
+  // the rhythm as unusable and the UI silently reverts to the default.
+  if (blocks.length === 0 && focusMin > 0) {
+    blocks.push({ id: `${r.id}-focus`, kind: "focus", minutes: focusMin });
+  }
   return { id: r.id, name: r.name, blocks, builtin: false };
 }
 
@@ -154,11 +162,13 @@ function goalPayload(
 }
 
 function rhythmPayload(uid: string, r: Rhythm) {
+  const focusCount = r.blocks.filter((b) => b.kind === "focus").length;
   return {
     user_id: uid,
     name: r.name.trim().slice(0, 80) || "Untitled rhythm",
     focus_duration: firstPositiveBlock(r, "focus"),
     break_duration: firstPositiveBlock(r, "break"),
+    cycles: Math.max(1, focusCount || 1),
   };
 }
 
@@ -235,7 +245,7 @@ export async function insertGoalRemote(
     .single();
   if (error) {
     reportError("insertGoal", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!successStatus(status) || !data) {
     const msg = `Unexpected insertGoal status ${status}`;
@@ -266,7 +276,7 @@ export async function updateGoalProjectTagRemote(
     .maybeSingle();
   if (error) {
     reportError("updateGoalProjectTag", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No goal row was backfilled; check user_id/RLS for public.goals";
@@ -309,7 +319,7 @@ export async function updateGoalRemote(
     .maybeSingle();
   if (error) {
     reportError("updateGoal", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No goal row was updated; check user_id/RLS for public.goals";
@@ -334,7 +344,7 @@ export async function deleteGoalRemote(id: string): Promise<RemoteResult> {
     .maybeSingle();
   if (error) {
     reportError("deleteGoal", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No goal row was updated; check user_id/RLS for public.goals";
@@ -353,16 +363,34 @@ interface RemoteRhythm {
   name: string;
   focus_duration: number | null;
   break_duration: number | null;
+  cycles?: number | null;
+}
+
+const RHYTHM_COLUMNS_FULL = "id,user_id,name,focus_duration,break_duration,cycles";
+const RHYTHM_COLUMNS_LEGACY = "id,user_id,name,focus_duration,break_duration";
+
+/** True when a Postgres error reports the `cycles` column doesn't exist. */
+function isMissingCyclesColumn(err: { message?: string; code?: string } | null | undefined): boolean {
+  if (!err) return false;
+  const msg = (err.message ?? "").toLowerCase();
+  return msg.includes("cycles") && (msg.includes("column") || msg.includes("does not exist") || err.code === "42703" || err.code === "PGRST204");
 }
 
 export async function fetchCustomRhythmsRemote(): Promise<Rhythm[] | null> {
   const uid = await authUid();
   if (!uid) return null;
-  const { data, error } = await supabase
+  let { data, error } = (await supabase
     .from("custom_rhythms")
-    .select("id,user_id,name,focus_duration,break_duration")
+    .select(RHYTHM_COLUMNS_FULL)
     .eq("user_id", uid)
-    .order("name", { ascending: true });
+    .order("name", { ascending: true })) as { data: RemoteRhythm[] | null; error: { message?: string; code?: string } | null };
+  if (error && isMissingCyclesColumn(error)) {
+    ({ data, error } = (await supabase
+      .from("custom_rhythms")
+      .select(RHYTHM_COLUMNS_LEGACY)
+      .eq("user_id", uid)
+      .order("name", { ascending: true })) as { data: RemoteRhythm[] | null; error: { message?: string; code?: string } | null });
+  }
   if (error) {
     reportError("fetchCustomRhythms", error);
     return null;
@@ -374,31 +402,53 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
   const payload = rhythmPayload(uid, r);
+  const stripCycles = (p: typeof payload) => {
+    const { cycles: _c, ...rest } = p;
+    return rest;
+  };
+
+  type MaybeRhythmResult = { data: RemoteRhythm | null; error: { message?: string; code?: string } | null; status: number };
   if (isPersistedUuid(r.id)) {
-    const { data, error, status } = await supabase
+    let { data, error, status } = (await supabase
       .from("custom_rhythms")
       .update(payload)
       .eq("id", r.id)
       .eq("user_id", uid)
-      .select("id,user_id,name,focus_duration,break_duration")
-      .maybeSingle();
+      .select(RHYTHM_COLUMNS_FULL)
+      .maybeSingle()) as MaybeRhythmResult;
+    if (error && isMissingCyclesColumn(error)) {
+      ({ data, error, status } = (await supabase
+        .from("custom_rhythms")
+        .update(stripCycles(payload))
+        .eq("id", r.id)
+        .eq("user_id", uid)
+        .select(RHYTHM_COLUMNS_LEGACY)
+        .maybeSingle()) as MaybeRhythmResult);
+    }
     if (error) {
       reportError("updateRhythm", error);
-      return { ok: false, error: error.message };
+      return { ok: false, error: error.message ?? "unknown" };
     }
     if (data) {
       return { ok: true, error: null, status, data: rhythmFromDurations(data as RemoteRhythm) };
     }
   }
 
-  const { data, error, status } = await supabase
+  let { data, error, status } = (await supabase
     .from("custom_rhythms")
     .insert(payload)
-    .select("id,user_id,name,focus_duration,break_duration")
-    .single();
+    .select(RHYTHM_COLUMNS_FULL)
+    .single()) as MaybeRhythmResult;
+  if (error && isMissingCyclesColumn(error)) {
+    ({ data, error, status } = (await supabase
+      .from("custom_rhythms")
+      .insert(stripCycles(payload))
+      .select(RHYTHM_COLUMNS_LEGACY)
+      .single()) as MaybeRhythmResult);
+  }
   if (error) {
     reportError("insertRhythm", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!successStatus(status) || !data) {
     const msg = `Unexpected insertRhythm status ${status}`;
@@ -420,7 +470,7 @@ export async function deleteRhythmRemote(id: string): Promise<RemoteResult> {
     .maybeSingle();
   if (error) {
     reportError("deleteRhythm", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!data) {
     const msg = "No rhythm row was deleted; check user_id/RLS for public.custom_rhythms";
@@ -476,7 +526,7 @@ export async function upsertProjectSettingRemote(
     .single();
   if (error) {
     reportError("upsertProjectSetting", error);
-    return { ok: false, error: error.message };
+    return { ok: false, error: error.message ?? "unknown" };
   }
   if (!successStatus(status) || !data) {
     const msg = `Unexpected upsertProjectSetting status ${status}`;

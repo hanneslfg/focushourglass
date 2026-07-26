@@ -85,6 +85,7 @@ export function DailyFocusBudget() {
   const [mounted, setMounted] = useState(false);
   const [celebrated, setCelebrated] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showScience, setShowScience] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -130,16 +131,27 @@ export function DailyFocusBudget() {
   return (
     <div className="w-full max-w-md">
       <div
-        className={`relative rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 md:px-5 md:py-4 transition-all ${
+        role="button"
+        tabIndex={0}
+        onClick={() => setShowScience(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setShowScience(true);
+          }
+        }}
+        className={`cursor-pointer relative rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 md:px-5 md:py-4 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] ${
           cleared ? "ring-1 ring-amber-300/40" : ""
         }`}
+        aria-label="Learn about the 4.5h daily focus limit"
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Daily Focus Budget
           </span>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 inline-flex items-center gap-1">
             Ultradian · 3 × 90m
+            <span className="ml-1 text-muted-foreground/60">ⓘ</span>
           </span>
         </div>
 
@@ -172,7 +184,10 @@ export function DailyFocusBudget() {
 
           {!isPremium && (
             <button
-              onClick={triggerPaywall}
+              onClick={(e) => {
+                e.stopPropagation();
+                triggerPaywall();
+              }}
               className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg group"
             >
               <div className="flex items-center gap-1.5 rounded-full bg-background/70 backdrop-blur-md px-3 py-1.5 border border-white/10">
@@ -222,6 +237,46 @@ export function DailyFocusBudget() {
               className="mt-5 px-5 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Feierabend
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showScience && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm px-4 animate-in fade-in"
+          onClick={() => setShowScience(false)}
+        >
+          <div
+            className="max-w-md w-full rounded-2xl border border-white/10 bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-2xl text-foreground mb-3 text-center">
+              The Science of Your 4.5h Daily Limit 🧠
+            </h3>
+            <div className="space-y-3 text-sm text-muted-foreground leading-relaxed">
+              <p>
+                Your brain runs on <span className="text-foreground">ultradian rhythms</span> — natural
+                90-minute cycles of peak cognitive output followed by a required recovery dip.
+              </p>
+              <p>
+                Neuroscience research (Ericsson, Kleitman, Newport) shows elite performers rarely
+                sustain more than <span className="text-foreground">3 deep-work cycles</span> — about
+                <span className="text-foreground"> 4.5 hours</span> — of true focus per day.
+              </p>
+              <p>
+                Beyond that, prefrontal glucose depletes and adenosine builds up. More hours don't
+                mean more output — they mean shallower work and worse recovery.
+              </p>
+              <p className="text-foreground/90 pt-1">
+                Protect the 4.5h. Then stop. That's Feierabend.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowScience(false)}
+              className="mt-5 w-full px-5 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Got it
             </button>
           </div>
         </div>

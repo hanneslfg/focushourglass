@@ -30,6 +30,10 @@ import {
 import { playClick } from "@/lib/click";
 import { LegalFooter } from "@/components/LegalFooter";
 import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from "@/lib/i18n";
+import { safeStorage } from "@/lib/safeStorage";
+import { supabase } from "@/lib/supabase";
+
+const WEEKLY_REPORT_KEY = "hourglass.weeklyReportOptIn";
 
 export function SettingsSidebar() {
   const [open, setOpen] = useState(false);
@@ -153,6 +157,24 @@ function SettingsPanel() {
     "unsupported",
   );
   const [lang, setLangState] = useState<LanguageCode>("en");
+  const [weeklyReport, setWeeklyReport] = useState(false);
+
+  useEffect(() => {
+    setWeeklyReport(safeStorage.getItem(WEEKLY_REPORT_KEY) === "true");
+  }, []);
+
+  async function toggleWeeklyReport(next: boolean) {
+    setWeeklyReport(next);
+    safeStorage.setItem(WEEKLY_REPORT_KEY, next ? "true" : "false");
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await supabase.auth.updateUser({ data: { weekly_report_opt_in: next } });
+      }
+    } catch {
+      /* noop */
+    }
+  }
 
   useEffect(() => {
     setLangState(getLanguage());
@@ -548,6 +570,41 @@ function SettingsPanel() {
               {t("settings.enableNotifications")}
             </button>
           )}
+        </div>
+
+        <div className="mt-3 rounded-md border border-border bg-background/40 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm">
+                <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                Weekly Sunday Progress Report
+                {!isPremium && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300">
+                    <Lock className="h-2.5 w-2.5" strokeWidth={2.25} /> Pro
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                Get your focus report every Sunday at 18:00 — hours, streaks, top projects.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={weeklyReport && isPremium}
+              disabled={!isPremium}
+              onClick={() => isPremium && toggleWeeklyReport(!weeklyReport)}
+              className={`relative shrink-0 h-6 w-11 rounded-full transition-colors ${
+                weeklyReport && isPremium ? "bg-primary" : "bg-border"
+              } disabled:opacity-40`}
+            >
+              <span
+                className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+                  weeklyReport && isPremium ? "translate-x-[22px]" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </section>
     </div>
