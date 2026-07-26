@@ -407,22 +407,23 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
     return rest;
   };
 
+  type MaybeRhythmResult = { data: RemoteRhythm | null; error: { message?: string; code?: string } | null; status: number };
   if (isPersistedUuid(r.id)) {
-    let { data, error, status } = await supabase
+    let { data, error, status } = (await supabase
       .from("custom_rhythms")
       .update(payload)
       .eq("id", r.id)
       .eq("user_id", uid)
       .select(RHYTHM_COLUMNS_FULL)
-      .maybeSingle();
+      .maybeSingle()) as MaybeRhythmResult;
     if (error && isMissingCyclesColumn(error)) {
-      ({ data, error, status } = await supabase
+      ({ data, error, status } = (await supabase
         .from("custom_rhythms")
         .update(stripCycles(payload))
         .eq("id", r.id)
         .eq("user_id", uid)
         .select(RHYTHM_COLUMNS_LEGACY)
-        .maybeSingle());
+        .maybeSingle()) as MaybeRhythmResult);
     }
     if (error) {
       reportError("updateRhythm", error);
@@ -433,17 +434,17 @@ export async function upsertRhythmRemote(r: Rhythm): Promise<RemoteResult<Rhythm
     }
   }
 
-  let { data, error, status } = await supabase
+  let { data, error, status } = (await supabase
     .from("custom_rhythms")
     .insert(payload)
     .select(RHYTHM_COLUMNS_FULL)
-    .single();
+    .single()) as MaybeRhythmResult;
   if (error && isMissingCyclesColumn(error)) {
-    ({ data, error, status } = await supabase
+    ({ data, error, status } = (await supabase
       .from("custom_rhythms")
       .insert(stripCycles(payload))
       .select(RHYTHM_COLUMNS_LEGACY)
-      .single());
+      .single()) as MaybeRhythmResult);
   }
   if (error) {
     reportError("insertRhythm", error);
