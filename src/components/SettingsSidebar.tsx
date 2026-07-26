@@ -571,6 +571,41 @@ function SettingsPanel() {
             </button>
           )}
         </div>
+
+        <div className="mt-3 rounded-md border border-border bg-background/40 px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm">
+                <Sparkles className="h-4 w-4" strokeWidth={1.5} />
+                Weekly Sunday Progress Report
+                {!isPremium && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-amber-300">
+                    <Lock className="h-2.5 w-2.5" strokeWidth={2.25} /> Pro
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 text-[11px] text-muted-foreground/70">
+                Get your focus report every Sunday at 18:00 — hours, streaks, top projects.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={weeklyReport && isPremium}
+              disabled={!isPremium}
+              onClick={() => isPremium && toggleWeeklyReport(!weeklyReport)}
+              className={`relative shrink-0 h-6 w-11 rounded-full transition-colors ${
+                weeklyReport && isPremium ? "bg-primary" : "bg-border"
+              } disabled:opacity-40`}
+            >
+              <span
+                className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+                  weeklyReport && isPremium ? "translate-x-[22px]" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
       </section>
     </div>
   );
