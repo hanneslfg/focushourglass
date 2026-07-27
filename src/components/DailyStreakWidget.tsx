@@ -19,7 +19,7 @@ const CHALLENGE_DAYS = 5;
  * Click opens the "Never Miss Twice" explanation modal.
  */
 export function DailyStreakWidget() {
-export function DailyStreakWidget() {
+
   const { isPremium } = usePremium();
   const [streak, setStreak] = useState(0);
   const [freezes, setFreezes] = useState(0);
