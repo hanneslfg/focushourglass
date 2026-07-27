@@ -30,14 +30,12 @@ function suggestBlocks(personas: Persona[]): number {
   return 2;
 }
 
-/** Persona-driven starter project name. Endowed-progress boost on day one. */
-function starterProjectFor(personas: Persona[]): string {
-  if (personas.includes("university")) return "Klausurenphase Deep Work";
-  if (personas.includes("entrepreneur")) return "Core Product Building";
-  if (personas.includes("mastery")) return "Deep Mastery Practice";
-  if (personas.includes("knowledge")) return "Signal Work · Deep Focus";
-  return "My First Deep Work Project";
+/** Endowed-progress starter project. Every new user lands with 1/5 slots
+ * already filled so they never face a blank dashboard. */
+function starterProjectFor(_personas: Persona[]): string {
+  return "My First Deep Work";
 }
+
 
 function playChime() {
   try {

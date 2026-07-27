@@ -7,7 +7,9 @@ import {
   getPreviousMilestone,
   MAX_FREEZES,
 } from "@/lib/streakFreezes";
+import { usePremium } from "@/lib/premium";
 import { NeverMissTwiceModal } from "./NeverMissTwiceModal";
+
 
 const CHALLENGE_DAYS = 5;
 
@@ -17,10 +19,13 @@ const CHALLENGE_DAYS = 5;
  * Click opens the "Never Miss Twice" explanation modal.
  */
 export function DailyStreakWidget() {
+
+  const { isPremium } = usePremium();
   const [streak, setStreak] = useState(0);
   const [freezes, setFreezes] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
+
 
   useEffect(() => {
     setMounted(true);
@@ -138,42 +143,46 @@ export function DailyStreakWidget() {
             </div>
           </div>
 
-          {/* Challenge status */}
-          <div className="mt-4 w-full text-center">
-            {completed ? (
-              <div className="text-[11px] text-amber-300">
-                🎉 Challenge Cleared · 14-Day Premium Unlocked
-              </div>
-            ) : streak === 0 ? (
-              <div className="text-[11px] text-muted-foreground">
-                Start today · Day 1 of 5
-              </div>
-            ) : (
-              <div className="text-[11px] text-foreground/75">
-                Day <span className="text-amber-300 font-medium">{challengeDay}</span> of {CHALLENGE_DAYS}
-                <span className="text-muted-foreground">
-                  {" · "}
-                  {remaining} day{remaining === 1 ? "" : "s"} until 14-Day Premium Reward
-                </span>
-              </div>
-            )}
+          {/* Challenge status — hidden for Premium subscribers (they already
+              have the reward the challenge unlocks). */}
+          {!isPremium && (
+            <div className="mt-4 w-full text-center">
+              {completed ? (
+                <div className="text-[11px] text-amber-300">
+                  🎉 Challenge Cleared · 14-Day Premium Unlocked
+                </div>
+              ) : streak === 0 ? (
+                <div className="text-[11px] text-muted-foreground">
+                  Start today · Day 1 of 5
+                </div>
+              ) : (
+                <div className="text-[11px] text-foreground/75">
+                  Day <span className="text-amber-300 font-medium">{challengeDay}</span> of {CHALLENGE_DAYS}
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {remaining} day{remaining === 1 ? "" : "s"} until 14-Day Premium Reward
+                  </span>
+                </div>
+              )}
 
-            <div className="mt-3 flex items-center justify-center gap-1.5">
-              {Array.from({ length: CHALLENGE_DAYS }).map((_, i) => {
-                const filled = i < challengeDay;
-                return (
-                  <span
-                    key={i}
-                    className={`h-1.5 flex-1 max-w-[36px] rounded-full transition-all duration-500 ${
-                      filled
-                        ? "bg-amber-300 shadow-[0_0_8px_rgba(226,176,92,0.55)]"
-                        : "bg-white/[0.08]"
-                    }`}
-                  />
-                );
-              })}
+              <div className="mt-3 flex items-center justify-center gap-1.5">
+                {Array.from({ length: CHALLENGE_DAYS }).map((_, i) => {
+                  const filled = i < challengeDay;
+                  return (
+                    <span
+                      key={i}
+                      className={`h-1.5 flex-1 max-w-[36px] rounded-full transition-all duration-500 ${
+                        filled
+                          ? "bg-amber-300 shadow-[0_0_8px_rgba(226,176,92,0.55)]"
+                          : "bg-white/[0.08]"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
 
           {/* Milestone progression + freezes */}
           <div className="mt-5 w-full">

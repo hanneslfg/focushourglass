@@ -25,11 +25,17 @@ export interface ActiveSubscription {
   current_period_end: number | null;
 }
 
+interface TriggerPaywallOptions {
+  /** Post-5-day-challenge conversion: skip intro pages and land on the
+   * 14-day trial screen. */
+  postChallenge?: boolean;
+}
+
 interface PremiumContextValue {
   isPremium: boolean;
   isPaywallEnabled: boolean;
   isPaywallOpen: boolean;
-  triggerPaywall: () => void;
+  triggerPaywall: (opts?: TriggerPaywallOptions) => void;
   closePaywall: () => void;
   startCheckout: (plan: Plan) => Promise<void>;
   isCheckoutLoading: boolean;
@@ -44,15 +50,18 @@ interface PremiumContextValue {
 
 const PremiumContext = createContext<PremiumContextValue | null>(null);
 
-let externalTrigger: (() => void) | null = null;
-export function triggerPaywall() {
-  externalTrigger?.();
+let externalTrigger: ((opts?: TriggerPaywallOptions) => void) | null = null;
+export function triggerPaywall(opts?: TriggerPaywallOptions) {
+  externalTrigger?.(opts);
 }
+
 
 export function PremiumProvider({ children }: { children: ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isPaywallOpen, setOpen] = useState(false);
+  const [postChallenge, setPostChallenge] = useState(false);
   const [isCheckoutLoading, setCheckoutLoading] = useState(false);
+
 
   // Load `profiles.is_premium` for the current user and keep it in sync
   // with auth state changes.
@@ -114,13 +123,18 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
   const setPremiumLocal = useCallback((v: boolean) => setIsPremium(v), []);
 
-  const triggerPaywall = useCallback(() => {
+  const triggerPaywall = useCallback((opts?: TriggerPaywallOptions) => {
     if (!ENABLE_PAYWALL) return;
     if (isPremium) return;
+    setPostChallenge(!!opts?.postChallenge);
     setOpen(true);
   }, [isPremium]);
 
-  const closePaywall = useCallback(() => setOpen(false), []);
+  const closePaywall = useCallback(() => {
+    setOpen(false);
+    setPostChallenge(false);
+  }, []);
+
 
   const startCheckout = useCallback(async (plan: Plan) => {
     setCheckoutLoading(true);
@@ -262,7 +276,9 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         isLoading={isCheckoutLoading}
         onRestore={restorePurchases}
         isRestoring={isRestoring}
+        postChallenge={postChallenge}
       />
+
     </PremiumContext.Provider>
   );
 }
