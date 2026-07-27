@@ -7,7 +7,9 @@ import {
   getPreviousMilestone,
   MAX_FREEZES,
 } from "@/lib/streakFreezes";
+import { usePremium } from "@/lib/premium";
 import { NeverMissTwiceModal } from "./NeverMissTwiceModal";
+
 
 const CHALLENGE_DAYS = 5;
 
