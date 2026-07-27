@@ -123,13 +123,18 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
   const setPremiumLocal = useCallback((v: boolean) => setIsPremium(v), []);
 
-  const triggerPaywall = useCallback(() => {
+  const triggerPaywall = useCallback((opts?: TriggerPaywallOptions) => {
     if (!ENABLE_PAYWALL) return;
     if (isPremium) return;
+    setPostChallenge(!!opts?.postChallenge);
     setOpen(true);
   }, [isPremium]);
 
-  const closePaywall = useCallback(() => setOpen(false), []);
+  const closePaywall = useCallback(() => {
+    setOpen(false);
+    setPostChallenge(false);
+  }, []);
+
 
   const startCheckout = useCallback(async (plan: Plan) => {
     setCheckoutLoading(true);
