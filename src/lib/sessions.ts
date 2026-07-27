@@ -208,11 +208,13 @@ export async function hydrateFromRemote(): Promise<boolean> {
   }
 
   const rows = (data ?? []) as RemoteRow[];
-  // Only count completed sessions (skip aborted) for the local cache the UI reads.
+  // Keep completed rows AND any aborted rows that still captured real focus
+  // time — auto-saved / auto-completed sessions must not vanish from history.
   const merged = rows
-    .filter((r) => !r.was_aborted)
+    .filter((r) => !r.was_aborted || (r.actual_duration ?? 0) > 0)
     .map(remoteRowToSession);
   write(merged);
+
   return true;
 }
 
