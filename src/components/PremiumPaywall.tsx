@@ -15,6 +15,12 @@ interface PremiumPaywallProps {
   isLoading?: boolean;
   onRestore?: () => void | Promise<void>;
   isRestoring?: boolean;
+  /**
+   * Post-challenge conversion mode: user has just cleared the 5-day
+   * challenge. Skip the intro pages and land them directly on the plan
+   * picker with a highlighted 14-day free trial.
+   */
+  postChallenge?: boolean;
 }
 
 type Step = 1 | 2 | 3;
@@ -26,6 +32,7 @@ export function PremiumPaywall({
   isLoading = false,
   onRestore,
   isRestoring = false,
+  postChallenge = false,
 }: PremiumPaywallProps) {
   const [step, setStep] = useState<Step>(1);
   const [plan, setPlan] = useState<Plan>("yearly");
@@ -35,10 +42,11 @@ export function PremiumPaywall({
   // Reset when reopened
   useEffect(() => {
     if (open) {
-      setStep(1);
+      setStep(postChallenge ? 3 : 1);
       setExitSheet(false);
+      setExitOffered(postChallenge); // skip exit-intent when already at trial screen
     }
-  }, [open]);
+  }, [open, postChallenge]);
 
   if (!ENABLE_PAYWALL || !open) return null;
 
@@ -50,6 +58,7 @@ export function PremiumPaywall({
     }
     onClose?.();
   }
+
 
   return (
     <div
@@ -102,8 +111,10 @@ export function PremiumPaywall({
             setPlan={setPlan}
             onStart={() => onUpgrade?.(plan)}
             isLoading={isLoading}
+            postChallenge={postChallenge}
           />
         )}
+
 
         {/* Exit-intent sheet */}
         {exitSheet && (
