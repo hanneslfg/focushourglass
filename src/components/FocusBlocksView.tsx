@@ -160,7 +160,7 @@ export function FocusBlocksView() {
               {atLimit && (
                 <button
                   type="button"
-                  onClick={triggerPaywall}
+                  onClick={() => triggerPaywall()}
                   className="mb-3 w-full flex items-center gap-2.5 rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/[0.06] px-3 py-2.5 text-left hover:bg-[#E2B05C]/[0.12] transition-colors"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-[#E2B05C] shrink-0" strokeWidth={1.75} />

@@ -260,7 +260,7 @@ function SettingsPanel() {
           ) : (
             <button
               type="button"
-              onClick={triggerPaywall}
+              onClick={() => triggerPaywall()}
               className="mt-3 w-full text-left rounded-xl p-[1px] bg-gradient-to-b from-[#E2B05C]/70 via-[#E2B05C]/25 to-[#E2B05C]/50 shadow-[0_10px_30px_-15px_rgba(226,176,92,0.55)] transition-all hover:from-[#F0C97A]/80 hover:to-[#C8933F]/70 active:scale-[0.99] touch-manipulation"
             >
               <div className="rounded-[11px] bg-[#0F0F0F] px-4 py-3.5 flex items-center gap-3">
