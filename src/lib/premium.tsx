@@ -59,7 +59,9 @@ export function triggerPaywall(opts?: TriggerPaywallOptions) {
 export function PremiumProvider({ children }: { children: ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
   const [isPaywallOpen, setOpen] = useState(false);
+  const [postChallenge, setPostChallenge] = useState(false);
   const [isCheckoutLoading, setCheckoutLoading] = useState(false);
+
 
   // Load `profiles.is_premium` for the current user and keep it in sync
   // with auth state changes.
