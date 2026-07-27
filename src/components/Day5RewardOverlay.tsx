@@ -40,9 +40,11 @@ export function Day5RewardOverlay() {
   function claim() {
     safeStorage.setItem(SEEN_KEY, "true");
     setOpen(false);
-    // Small delay so celebratory modal exit doesn't clash with paywall enter.
-    setTimeout(() => triggerPaywall(), 220);
+    // Route directly into the 14-day trial screen — bypass generic paywall
+    // intro since the user has already been "sold" by clearing the challenge.
+    setTimeout(() => triggerPaywall({ postChallenge: true }), 220);
   }
+
 
   function dismiss() {
     safeStorage.setItem(SEEN_KEY, "true");
