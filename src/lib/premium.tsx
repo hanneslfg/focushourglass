@@ -276,7 +276,9 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         isLoading={isCheckoutLoading}
         onRestore={restorePurchases}
         isRestoring={isRestoring}
+        postChallenge={postChallenge}
       />
+
     </PremiumContext.Provider>
   );
 }
