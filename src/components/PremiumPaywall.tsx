@@ -375,25 +375,39 @@ function Page3({
   setPlan,
   onStart,
   isLoading,
+  postChallenge = false,
 }: {
   plan: Plan;
   setPlan: (p: Plan) => void;
   onStart: () => void;
   isLoading: boolean;
+  postChallenge?: boolean;
 }) {
+  const trialDays = postChallenge ? 14 : 7;
   const ctaLabel =
-    plan === "lifetime" ? "Get Lifetime Access" : "Start 7-Day Free Trial";
+    plan === "lifetime"
+      ? "Get Lifetime Access"
+      : `Start ${trialDays}-Day Free Trial`;
 
   return (
     <div className="px-6 sm:px-10 pt-16 pb-8">
       <div className="text-center max-w-xl mx-auto">
-        <h2 className="font-display text-3xl sm:text-4xl tracking-tight text-white">
-          Choose your focus plan.
+        {postChallenge && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#E2B05C]/40 bg-[#E2B05C]/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-[#E2B05C]">
+            🎉 Challenge Reward · 14-Day Trial Unlocked
+          </div>
+        )}
+        <h2 className="mt-3 font-display text-3xl sm:text-4xl tracking-tight text-white">
+          {postChallenge ? "You earned this. Claim your 14 days." : "Choose your focus plan."}
         </h2>
         <p className="mt-2 text-sm text-white/55">
-          Risk-free 7-day trial on subscriptions. Lifetime is a one-time purchase.
+          {postChallenge
+            ? "Full Premium access for 14 days. No commitment. Cancel anytime."
+            : "Risk-free 7-day trial on subscriptions. Lifetime is a one-time purchase."}
         </p>
       </div>
+
+
 
       {/* Plan cards */}
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
