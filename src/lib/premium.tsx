@@ -25,11 +25,17 @@ export interface ActiveSubscription {
   current_period_end: number | null;
 }
 
+interface TriggerPaywallOptions {
+  /** Post-5-day-challenge conversion: skip intro pages and land on the
+   * 14-day trial screen. */
+  postChallenge?: boolean;
+}
+
 interface PremiumContextValue {
   isPremium: boolean;
   isPaywallEnabled: boolean;
   isPaywallOpen: boolean;
-  triggerPaywall: () => void;
+  triggerPaywall: (opts?: TriggerPaywallOptions) => void;
   closePaywall: () => void;
   startCheckout: (plan: Plan) => Promise<void>;
   isCheckoutLoading: boolean;
@@ -44,10 +50,11 @@ interface PremiumContextValue {
 
 const PremiumContext = createContext<PremiumContextValue | null>(null);
 
-let externalTrigger: (() => void) | null = null;
-export function triggerPaywall() {
-  externalTrigger?.();
+let externalTrigger: ((opts?: TriggerPaywallOptions) => void) | null = null;
+export function triggerPaywall(opts?: TriggerPaywallOptions) {
+  externalTrigger?.(opts);
 }
+
 
 export function PremiumProvider({ children }: { children: ReactNode }) {
   const [isPremium, setIsPremium] = useState(false);
