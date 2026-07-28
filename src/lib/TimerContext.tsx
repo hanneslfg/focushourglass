@@ -461,9 +461,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     savedRef.current = true;
     const wasBreak = currentKindRef.current === "break";
     const startedAt = startedAtRef.current ?? new Date().toISOString();
-    const completedAt = new Date().toISOString();
     const plannedMinutes = Math.round(total / 60);
     const focusedMinutes = Math.max(1, Math.round(focusedRef.current / 60));
+    // Anchor completedAt to (startedAt + focusedMinutes) so an auto-saved
+    // session from a previous day stays on that day — never jumps to "now".
+    const startedMs = new Date(startedAt).getTime();
+    const completedAt = Number.isFinite(startedMs)
+      ? new Date(startedMs + focusedMinutes * 60_000).toISOString()
+      : new Date().toISOString();
+
     const pauseCount = pauseCountRef.current;
     const totalPauseSeconds = pauseSecondsRef.current;
     // Successful completion = user pressed Complete (phase !== "asking"),
@@ -605,9 +611,16 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         );
       }
       const startedAt = startedAtRef.current;
-      const completedAt = new Date().toISOString();
       const plannedMinutes = Math.round(total / 60);
       const focusedMinutes = Math.max(0, Math.round(focusedRef.current / 60));
+      // Anchor completedAt to (startedAt + focused seconds) so overdue
+      // aborts (e.g. paused-timeout watchdog firing next morning) stay on
+      // the day the work actually happened.
+      const startedMs = new Date(startedAt).getTime();
+      const completedAt = Number.isFinite(startedMs)
+        ? new Date(startedMs + Math.max(60_000, focusedMinutes * 60_000)).toISOString()
+        : new Date().toISOString();
+
       const pauseCount = pauseCountRef.current;
       const totalPauseSeconds = pauseSecondsRef.current;
       const focusScore = calculateFocusScore(
