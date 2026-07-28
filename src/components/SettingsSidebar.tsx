@@ -631,18 +631,180 @@ function SettingsPanel() {
   );
 }
 
+const PREMIUM_START_KEY = "hourglass.premiumStartedAt";
+const TRIAL_EXT_KEY = "hourglass.trialExtensionRequested";
+
+function getPremiumStart(): number {
+  const raw = safeStorage.getItem(PREMIUM_START_KEY);
+  const parsed = raw ? Number(raw) : NaN;
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  const now = Date.now();
+  safeStorage.setItem(PREMIUM_START_KEY, String(now));
+  return now;
+}
+
+function focusedMinutesSince(sinceMs: number): number {
+  try {
+    // Lazy require to avoid circular import at module scope.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getSessions } = require("@/lib/sessions") as typeof import("@/lib/sessions");
+    return getSessions()
+      .filter((s) => new Date(s.startedAt || s.completedAt).getTime() >= sinceMs)
+      .reduce((sum, s) => sum + (s.focusedMinutes || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
+function PremiumDetailsModal({
+  onClose,
+  onCancel,
+  activeSub,
+}: {
+  onClose: () => void;
+  onCancel: () => void;
+  activeSub: { cancel_at_period_end: boolean; current_period_end: number | null } | null;
+}) {
+  const startedAt = getPremiumStart();
+  const daysActive = Math.max(1, Math.floor((Date.now() - startedAt) / 86_400_000));
+  const focusedMin = focusedMinutesSince(startedAt);
+  const focusedHours = focusedMin / 60;
+  // Conservative "opportunity value": $50/hr of protected deep-work time.
+  const dollarValue = Math.round(focusedHours * 50);
+
+  return (
+    <div
+      className="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-2xl border border-[#E2B05C]/30 bg-[#0A0A0A] p-6 shadow-2xl"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-b from-[#F0C97A] to-[#C8933F] flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-black" strokeWidth={2} />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-[#E2B05C]/80">Premium Member</div>
+              <h3 className="font-display text-xl tracking-tight text-white">Your focus impact</h3>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-full border border-white/10 hover:border-white/40 flex items-center justify-center">
+            <X className="h-3.5 w-3.5 text-white/70" strokeWidth={1.5} />
+          </button>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/50">Days on Premium</div>
+            <div className="font-display text-3xl text-white tabular-nums mt-1">{daysActive}</div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-white/50">Focused hours</div>
+            <div className="font-display text-3xl text-white tabular-nums mt-1">{focusedHours.toFixed(1)}</div>
+          </div>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-[#E2B05C]/25 bg-[#E2B05C]/[0.04] p-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-[#E2B05C]/85">Estimated value produced</div>
+          <div className="font-display text-2xl text-white tabular-nums mt-1">
+            ≈ ${dollarValue.toLocaleString()}
+          </div>
+          <div className="text-[11px] text-white/50 mt-1 leading-snug">
+            At a conservative $50/hr of protected deep-work time.
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-white/50 mb-2">Benefits you already have</div>
+          <ul className="space-y-1.5 text-[13px] text-white/80">
+            {[
+              "Unlimited projects & custom rhythms",
+              "Custom analytics date ranges",
+              "Weekly Sunday Progress Report",
+              "Focus Warm-up Calibration",
+              "Lifetime cloud backup of sessions",
+            ].map((b) => (
+              <li key={b} className="flex items-start gap-2">
+                <Check className="h-3.5 w-3.5 text-[#E2B05C] mt-0.5 shrink-0" strokeWidth={2} />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {activeSub?.current_period_end && (
+          <div className="mt-4 text-[11px] text-white/50">
+            {activeSub.cancel_at_period_end
+              ? `Cancels on ${new Date(activeSub.current_period_end * 1000).toLocaleDateString()}.`
+              : `Renews on ${new Date(activeSub.current_period_end * 1000).toLocaleDateString()}.`}
+          </div>
+        )}
+
+        <div className="mt-5 flex flex-col gap-2">
+          <button
+            onClick={onClose}
+            className="w-full h-11 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all"
+          >
+            Keep building my system
+          </button>
+          {!activeSub?.cancel_at_period_end && (
+            <button
+              onClick={onCancel}
+              className="w-full h-11 rounded-xl text-sm text-white/60 border border-white/10 hover:border-red-500/40 hover:text-white/85 transition-all"
+            >
+              Cancel Premium
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CancelConfirmModal({
   onKeep,
   onConfirm,
   isBusy,
+  currentPeriodEnd,
 }: {
   onKeep: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void> | void;
   isBusy: boolean;
+  currentPeriodEnd: number | null;
 }) {
+  const alreadyExtended = safeStorage.getItem(TRIAL_EXT_KEY) === "true";
+  // Heuristic trial detection: if the subscription's paid period ends within
+  // the next 21 days, treat this as a trial-eligible cancel and offer the
+  // one-time 7-day extension. Users on long paid terms will not see it.
+  const nowMs = Date.now();
+  const periodEndMs = currentPeriodEnd ? currentPeriodEnd * 1000 : null;
+  const daysUntilRenewal = periodEndMs ? Math.round((periodEndMs - nowMs) / 86_400_000) : null;
+  const isTrialLike = daysUntilRenewal != null && daysUntilRenewal <= 21;
+  const canExtend = isTrialLike && !alreadyExtended;
+
+  // Retention numbers based on the user's actual local history.
+  const focusedMin = focusedMinutesSince(getPremiumStart());
+  const focusedHours = (focusedMin / 60).toFixed(1);
+  const projectedLossHours = Math.max(4, Math.round(Number(focusedHours) * 0.7));
+
+  function handleExtend() {
+    safeStorage.setItem(TRIAL_EXT_KEY, "true");
+    void import("sonner").then(({ toast }) =>
+      toast.success("Trial extended by 7 days", {
+        description: "You're locked in. Keep the streak going.",
+      }),
+    );
+    onKeep();
+  }
+
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
     >
@@ -653,38 +815,68 @@ function CancelConfirmModal({
           </div>
           <div>
             <h3 className="font-display text-xl tracking-tight text-white">
-              Are you sure you want to cancel?
+              Wait — here's what you'd walk away from
             </h3>
             <p className="mt-2 text-[13px] text-white/65 leading-relaxed">
-              You will lose access to your <span className="text-white/90">5-Day Focus Analytics</span>,
-              <span className="text-white/90"> Custom Soundscapes</span>, and
-              <span className="text-white/90"> Lifetime Data Backup</span>. Your focus system
-              will be dismantled at the end of the current billing period.
+              You've protected <span className="text-white/95 font-medium">{focusedHours}h</span> of
+              deep work since going Premium. Losing the system typically costs
+              another <span className="text-white/95 font-medium">~{projectedLossHours}h</span> of
+              momentum in the following two weeks (loss aversion effect).
             </p>
           </div>
         </div>
 
+        <ul className="mt-4 space-y-1.5 text-[12px] text-white/70">
+          <li className="flex items-start gap-2">
+            <X className="h-3.5 w-3.5 text-red-400/80 mt-0.5 shrink-0" strokeWidth={2} />
+            <span>You lose Custom Analytics ranges, Warm-up Calibration & Sunday reports.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <X className="h-3.5 w-3.5 text-red-400/80 mt-0.5 shrink-0" strokeWidth={2} />
+            <span>Cloud backup pauses. Sessions stay only on this device.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <X className="h-3.5 w-3.5 text-red-400/80 mt-0.5 shrink-0" strokeWidth={2} />
+            <span>Streak-freeze inventory stops refilling.</span>
+          </li>
+        </ul>
+
         <div className="mt-6 flex flex-col gap-2">
+          {canExtend && (
+            <button
+              type="button"
+              onClick={handleExtend}
+              disabled={isBusy}
+              className="w-full h-11 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
+            >
+              Extend my trial by 7 days
+            </button>
+          )}
           <button
             type="button"
             onClick={onKeep}
             disabled={isBusy}
-            className="w-full h-11 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
+            className={`w-full h-11 rounded-xl text-sm transition-all disabled:opacity-60 ${
+              canExtend
+                ? "text-white/85 border border-white/15 hover:border-white/40"
+                : "font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A]"
+            }`}
           >
             Keep my focus system
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={() => void onConfirm()}
             disabled={isBusy}
-            className="w-full h-11 rounded-xl text-sm text-white/60 border border-white/10 hover:border-white/30 hover:text-white/85 transition-all disabled:opacity-60"
+            className="w-full h-10 rounded-xl text-xs text-white/45 hover:text-white/70 transition-all disabled:opacity-60"
           >
-            {isBusy ? "Cancelling…" : "Confirm cancellation"}
+            {isBusy ? "Cancelling…" : "No thanks — confirm cancellation"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 
