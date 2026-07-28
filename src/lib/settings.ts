@@ -139,9 +139,10 @@ export function getTodayGoal(): number {
 export function getTodayFocusedMinutes(): number {
   const tk = todayKey();
   return getSessions()
-    .filter((s) => effectiveDayKey(s.completedAt) === tk)
+    .filter((s) => effectiveDayKey(s.startedAt || s.completedAt) === tk)
     .reduce((sum, s) => sum + s.focusedMinutes, 0);
 }
+
 
 /**
  * Kept for backwards compatibility. Milestone celebrations are now fully

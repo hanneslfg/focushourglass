@@ -110,11 +110,14 @@ export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
   const res = await upsertRhythmRemote(rhythm);
   console.log("[rhythms] upsertRhythmRemote result", res);
 
-  let saved: Rhythm | null = res.ok && res.data ? res.data : null;
-
-  // Fallback: guest OR remote write failed — keep the rhythm locally so
-  // the user never silently loses their work.
-  if (!saved) {
+  // Preserve the exact user-authored blocks locally. The remote schema only
+  // stores focus_duration + break_duration + cycles, so its round-tripped
+  // representation loses per-block detail (this is what caused break times
+  // to "reset"). Only borrow the persisted id from the remote row.
+  let saved: Rhythm;
+  if (res.ok && res.data) {
+    saved = { ...rhythm, id: res.data.id, builtin: false };
+  } else {
     const id =
       rhythm.id && rhythm.id.length > 0
         ? rhythm.id
@@ -131,13 +134,14 @@ export async function saveCustomRhythm(rhythm: Rhythm): Promise<Rhythm | null> {
   }
 
   const s = read();
-  const idx = s.custom.findIndex((r) => r.id === rhythm.id || r.id === saved!.id);
+  const idx = s.custom.findIndex((r) => r.id === rhythm.id || r.id === saved.id);
   if (idx >= 0) s.custom[idx] = saved;
   else s.custom.push(saved);
   write(s);
   console.log("[rhythms] saveCustomRhythm complete", saved);
   return saved;
 }
+
 
 export async function deleteCustomRhythm(id: string): Promise<boolean> {
   const { toast } = await import("sonner");
@@ -218,12 +222,25 @@ export async function hydrateRhythmsFromRemote(): Promise<void> {
   const remote = await fetchCustomRhythmsRemote();
   if (!remote) return;
   const s = read();
-  s.custom = remote;
+  // Merge: prefer local block detail when the ids match (remote representation
+  // is lossy). Add any rhythms only present remotely.
+  const byId = new Map<string, Rhythm>();
+  for (const r of remote) byId.set(r.id, r);
+  const merged: Rhythm[] = [];
+  for (const local of s.custom) {
+    if (byId.has(local.id)) {
+      merged.push(local);
+      byId.delete(local.id);
+    }
+  }
+  for (const r of byId.values()) merged.push(r);
+  s.custom = merged;
   if (s.activeId && !BUILTIN_RHYTHMS.some((r) => r.id === s.activeId) &&
-      !remote.some((r) => r.id === s.activeId)) {
+      !merged.some((r) => r.id === s.activeId)) {
     s.activeId = null;
     s.activeIndex = 0;
   }
   write(s);
 }
+
 

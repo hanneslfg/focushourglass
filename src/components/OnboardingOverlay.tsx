@@ -71,8 +71,8 @@ export function OnboardingOverlay() {
   const [pain, setPain] = useState<Pain | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [blocks, setBlocks] = useState(2);
-  const [email, setEmail] = useState("");
-  const [wantsBlueprint, setWantsBlueprint] = useState(true);
+  const [isAuthed, setIsAuthed] = useState(false);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -98,9 +98,23 @@ export function OnboardingOverlay() {
     setBlocks(suggestBlocks(personas));
   }, [personas]);
 
+  // Track auth state so step 5 can gate the CTA behind Google sign-in.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) setIsAuthed(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setIsAuthed(!!session);
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   async function finish() {
-    const cleanEmail = email.trim().toLowerCase();
-    const profile = { personas, pain, dailyBlocks: blocks, email: cleanEmail || null, wantsBlueprint: !!cleanEmail && wantsBlueprint };
+    const profile = { personas, pain, dailyBlocks: blocks };
     safeStorage.setItem(STORAGE_KEY, "true");
     safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     // Save target minutes to settings (blocks × 90min)
@@ -113,6 +127,7 @@ export function OnboardingOverlay() {
     } catch {
       /* noop */
     }
+
     setOpen(false);
 
     // Auto-create a persona-driven first project so the user experiences
@@ -152,8 +167,9 @@ export function OnboardingOverlay() {
             starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
-            marketing_email: cleanEmail || null,
-            blueprint_consent: !!cleanEmail && wantsBlueprint,
+            marketing_email: null,
+            blueprint_consent: false,
+
           },
         });
       }
@@ -366,14 +382,24 @@ export function OnboardingOverlay() {
                       {blocks * 90} min · {(blocks * 90 / 60).toFixed(1)} hrs
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setBlocks((n) => Math.min(3, n + 1))}
-                    className="h-10 w-10 rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white transition"
-                  >
-                    +
-                  </button>
+                  {blocks < 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => setBlocks((n) => Math.min(3, n + 1))}
+                      className="h-10 w-10 rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white transition"
+                    >
+                      +
+                    </button>
+                  ) : (
+                    <span className="h-10 w-10" aria-hidden />
+                  )}
                 </div>
+                {blocks >= 3 && (
+                  <p className="mt-2 text-center text-[10px] uppercase tracking-[0.28em] text-amber-300/70">
+                    Neuroscience cap · 3 hourglasses / day
+                  </p>
+                )}
+
 
                 <div className="mt-6 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-4 py-3.5">
                   <p className="text-[10px] uppercase tracking-[0.28em] text-amber-300/80">
@@ -388,52 +414,41 @@ export function OnboardingOverlay() {
                   </p>
                 </div>
 
-                <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5">
-                  <label htmlFor="onb-email" className="text-[10px] uppercase tracking-[0.28em] text-white/50">
-                    Your Email (Optional)
-                  </label>
-                  <input
-                    id="onb-email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@focus.com"
-                    className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/30"
-                  />
-                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-white/70 leading-snug">
-                    <input
-                      type="checkbox"
-                      checked={wantsBlueprint}
-                      onChange={(e) => setWantsBlueprint(e.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 accent-amber-300"
-                    />
-                    <span>
-                      Send me the free <span className="text-white">4.5h Deep Work Blueprint</span> PDF.
-                    </span>
-                  </label>
+                {/* Google sign-in as prominent CTA on the final slide. */}
+                <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-white/50">
+                    Secure Your Progress
+                  </p>
+                  {isAuthed ? (
+                    <div className="mt-3 flex items-center gap-2.5 rounded-md border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-2.5">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-400/20">
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-emerald-300" fill="none" stroke="currentColor" strokeWidth={3}><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </span>
+                      <div className="text-[12px] text-white/85">
+                        Signed in. Your streak will sync across all devices.
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void signInWithGoogle()}
+                      className="mt-3 w-full inline-flex items-center justify-center gap-3 rounded-md border border-white/15 bg-white px-4 py-3 text-sm font-medium text-black hover:bg-white/90 transition-all shadow-[0_10px_30px_-15px_rgba(255,255,255,0.4)]"
+                    >
+                      <GoogleIcon />
+                      Sign in with Google
+                    </button>
+                  )}
+                  <p className="mt-2.5 text-[11px] text-white/45 leading-snug">
+                    Required to save your 5-day challenge progress. No spam, ever.
+                  </p>
                 </div>
+
               </div>
             )}
           </div>
         </div>
 
-        <div className="relative flex items-end justify-between gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
-          <button
-            onClick={() => {
-              void signInWithGoogle();
-            }}
-            className="group flex max-w-[55%] items-start gap-3 text-left"
-          >
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] transition-colors group-hover:border-white/25 group-hover:bg-white/[0.06]">
-              <GoogleIcon />
-            </span>
-            <span className="text-[11px] leading-snug text-white/45 transition-colors group-hover:text-white/70">
-              <span className="text-white/75">Secure your progress.</span>{" "}
-              Sign in with Google to sync your sessions.
-            </span>
-          </button>
-
+        <div className="relative flex items-end justify-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
           <div className="flex items-center gap-2">
             {step > 1 && step < 5 && (
               <button
@@ -444,11 +459,12 @@ export function OnboardingOverlay() {
               </button>
             )}
             <button
-              disabled={!canAdvance}
+              disabled={!canAdvance || (step === 5 && !isAuthed)}
               onClick={() => {
                 if (step === 5) void finish();
                 else setStep((n) => n + 1);
               }}
+              title={step === 5 && !isAuthed ? "Sign in with Google above to continue" : undefined}
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(226,176,92,0.25)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {step === 1 && "Build My Focus Environment"}
@@ -460,6 +476,7 @@ export function OnboardingOverlay() {
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
