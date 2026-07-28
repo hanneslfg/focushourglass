@@ -448,22 +448,7 @@ export function OnboardingOverlay() {
           </div>
         </div>
 
-        <div className="relative flex items-end justify-between gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
-          <button
-            onClick={() => {
-              void signInWithGoogle();
-            }}
-            className="group flex max-w-[55%] items-start gap-3 text-left"
-          >
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] transition-colors group-hover:border-white/25 group-hover:bg-white/[0.06]">
-              <GoogleIcon />
-            </span>
-            <span className="text-[11px] leading-snug text-white/45 transition-colors group-hover:text-white/70">
-              <span className="text-white/75">Secure your progress.</span>{" "}
-              Sign in with Google to sync your sessions.
-            </span>
-          </button>
-
+        <div className="relative flex items-end justify-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
           <div className="flex items-center gap-2">
             {step > 1 && step < 5 && (
               <button
@@ -474,11 +459,12 @@ export function OnboardingOverlay() {
               </button>
             )}
             <button
-              disabled={!canAdvance}
+              disabled={!canAdvance || (step === 5 && !isAuthed)}
               onClick={() => {
                 if (step === 5) void finish();
                 else setStep((n) => n + 1);
               }}
+              title={step === 5 && !isAuthed ? "Sign in with Google above to continue" : undefined}
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(226,176,92,0.25)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {step === 1 && "Build My Focus Environment"}
@@ -490,6 +476,7 @@ export function OnboardingOverlay() {
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
