@@ -121,9 +121,11 @@ function SettingsPanel() {
     fetchActiveSubscription,
   } = usePremium();
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [premiumDetailsOpen, setPremiumDetailsOpen] = useState(false);
   const [activeSub, setActiveSub] = useState<
     { cancel_at_period_end: boolean; current_period_end: number | null } | null
   >(null);
+
 
   useEffect(() => {
     if (!isPremium) {
@@ -249,14 +251,19 @@ function SettingsPanel() {
         <section>
           <SectionTitle>Premium</SectionTitle>
           {isPremium ? (
-            <div className="mt-3 flex items-center gap-2.5 rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/[0.06] px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setPremiumDetailsOpen(true)}
+              className="mt-3 w-full text-left flex items-center gap-2.5 rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/[0.06] px-4 py-3 hover:border-[#E2B05C]/70 hover:bg-[#E2B05C]/[0.10] transition-colors"
+            >
               <Sparkles className="h-4 w-4 text-[#E2B05C]" strokeWidth={1.75} />
               <div className="flex-1">
-                <div className="text-sm text-white/90 font-medium">Hourglass Premium active</div>
-                <div className="text-[11px] text-white/50 mt-0.5">Thank you for supporting the project.</div>
+                <div className="text-sm text-white/90 font-medium">Thank you for supporting Premium</div>
+                <div className="text-[11px] text-white/50 mt-0.5">Tap to see your impact & manage plan.</div>
               </div>
-              <Check className="h-4 w-4 text-[#E2B05C]" strokeWidth={2} />
-            </div>
+              <span className="text-[10px] uppercase tracking-[0.22em] text-[#E2B05C]/80 shrink-0">Open</span>
+            </button>
+
           ) : (
             <button
               type="button"
