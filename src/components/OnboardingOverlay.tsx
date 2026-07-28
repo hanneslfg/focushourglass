@@ -71,8 +71,8 @@ export function OnboardingOverlay() {
   const [pain, setPain] = useState<Pain | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [blocks, setBlocks] = useState(2);
-  const [email, setEmail] = useState("");
-  const [wantsBlueprint, setWantsBlueprint] = useState(true);
+  const [isAuthed, setIsAuthed] = useState(false);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -98,9 +98,23 @@ export function OnboardingOverlay() {
     setBlocks(suggestBlocks(personas));
   }, [personas]);
 
+  // Track auth state so step 5 can gate the CTA behind Google sign-in.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) setIsAuthed(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setIsAuthed(!!session);
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   async function finish() {
-    const cleanEmail = email.trim().toLowerCase();
-    const profile = { personas, pain, dailyBlocks: blocks, email: cleanEmail || null, wantsBlueprint: !!cleanEmail && wantsBlueprint };
+    const profile = { personas, pain, dailyBlocks: blocks };
     safeStorage.setItem(STORAGE_KEY, "true");
     safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     // Save target minutes to settings (blocks × 90min)
@@ -113,6 +127,7 @@ export function OnboardingOverlay() {
     } catch {
       /* noop */
     }
+
     setOpen(false);
 
     // Auto-create a persona-driven first project so the user experiences
