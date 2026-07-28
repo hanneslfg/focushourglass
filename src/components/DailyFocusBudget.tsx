@@ -72,8 +72,12 @@ function todaysFocusedMinutes(sessions: Session[]): number {
   const today = dayKey(new Date());
   let total = 0;
   for (const s of sessions) {
-    if (!s.completedAt) continue;
-    if (s.completedAt.slice(0, 10) !== today) continue;
+    // Attribute a session to the day it was *worked*, not the day the
+    // auto-save fired.
+    const anchor = s.startedAt || s.completedAt;
+    if (!anchor) continue;
+    if (anchor.slice(0, 10) !== today) continue;
+
     total += Math.max(0, s.focusedMinutes || 0);
   }
   return total;
