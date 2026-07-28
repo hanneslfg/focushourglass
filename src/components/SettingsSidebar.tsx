@@ -341,8 +341,21 @@ function SettingsPanel() {
           onKeep={() => setConfirmCancelOpen(false)}
           onConfirm={handleConfirmCancel}
           isBusy={isCancelling}
+          currentPeriodEnd={activeSub?.current_period_end ?? null}
         />
       )}
+
+      {premiumDetailsOpen && (
+        <PremiumDetailsModal
+          onClose={() => setPremiumDetailsOpen(false)}
+          onCancel={() => {
+            setPremiumDetailsOpen(false);
+            setConfirmCancelOpen(true);
+          }}
+          activeSub={activeSub}
+        />
+      )}
+
 
 
 
