@@ -167,8 +167,9 @@ export function OnboardingOverlay() {
             starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
-            marketing_email: cleanEmail || null,
-            blueprint_consent: !!cleanEmail && wantsBlueprint,
+            marketing_email: null,
+            blueprint_consent: false,
+
           },
         });
       }
@@ -381,14 +382,24 @@ export function OnboardingOverlay() {
                       {blocks * 90} min · {(blocks * 90 / 60).toFixed(1)} hrs
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setBlocks((n) => Math.min(3, n + 1))}
-                    className="h-10 w-10 rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white transition"
-                  >
-                    +
-                  </button>
+                  {blocks < 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => setBlocks((n) => Math.min(3, n + 1))}
+                      className="h-10 w-10 rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white transition"
+                    >
+                      +
+                    </button>
+                  ) : (
+                    <span className="h-10 w-10" aria-hidden />
+                  )}
                 </div>
+                {blocks >= 3 && (
+                  <p className="mt-2 text-center text-[10px] uppercase tracking-[0.28em] text-amber-300/70">
+                    Neuroscience cap · 3 hourglasses / day
+                  </p>
+                )}
+
 
                 <div className="mt-6 rounded-xl border border-amber-300/25 bg-amber-300/[0.04] px-4 py-3.5">
                   <p className="text-[10px] uppercase tracking-[0.28em] text-amber-300/80">
@@ -403,31 +414,35 @@ export function OnboardingOverlay() {
                   </p>
                 </div>
 
-                <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5">
-                  <label htmlFor="onb-email" className="text-[10px] uppercase tracking-[0.28em] text-white/50">
-                    Your Email (Optional)
-                  </label>
-                  <input
-                    id="onb-email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@focus.com"
-                    className="mt-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/25 outline-none focus:border-white/30"
-                  />
-                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-xs text-white/70 leading-snug">
-                    <input
-                      type="checkbox"
-                      checked={wantsBlueprint}
-                      onChange={(e) => setWantsBlueprint(e.target.checked)}
-                      className="mt-0.5 h-3.5 w-3.5 accent-amber-300"
-                    />
-                    <span>
-                      Send me the free <span className="text-white">4.5h Deep Work Blueprint</span> PDF.
-                    </span>
-                  </label>
+                {/* Google sign-in as prominent CTA on the final slide. */}
+                <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-white/50">
+                    Secure Your Progress
+                  </p>
+                  {isAuthed ? (
+                    <div className="mt-3 flex items-center gap-2.5 rounded-md border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-2.5">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-400/20">
+                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-emerald-300" fill="none" stroke="currentColor" strokeWidth={3}><path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </span>
+                      <div className="text-[12px] text-white/85">
+                        Signed in. Your streak will sync across all devices.
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void signInWithGoogle()}
+                      className="mt-3 w-full inline-flex items-center justify-center gap-3 rounded-md border border-white/15 bg-white px-4 py-3 text-sm font-medium text-black hover:bg-white/90 transition-all shadow-[0_10px_30px_-15px_rgba(255,255,255,0.4)]"
+                    >
+                      <GoogleIcon />
+                      Sign in with Google
+                    </button>
+                  )}
+                  <p className="mt-2.5 text-[11px] text-white/45 leading-snug">
+                    Required to save your 5-day challenge progress. No spam, ever.
+                  </p>
                 </div>
+
               </div>
             )}
           </div>
