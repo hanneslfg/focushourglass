@@ -667,10 +667,10 @@ function PremiumDetailsModal({
 }) {
   const startedAt = getPremiumStart();
   const daysActive = Math.max(1, Math.floor((Date.now() - startedAt) / 86_400_000));
-  const focusedMin = focusedMinutesSince(startedAt);
-  const focusedHours = focusedMin / 60;
-  // Conservative "opportunity value": $50/hr of protected deep-work time.
-  const dollarValue = Math.round(focusedHours * 50);
+  // "Focused Hours" mirrors the All-Time analytics tab: total focused minutes
+  // across the user's entire session history (not just since Premium).
+  const focusedMinAllTime = focusedMinutesSince(0);
+  const focusedHours = focusedMinAllTime / 60;
 
   return (
     <div
