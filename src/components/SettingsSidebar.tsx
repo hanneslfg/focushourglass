@@ -149,12 +149,12 @@ function SettingsPanel() {
 
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
-    defaultDailyGoal: 180,
+    defaultDailyGoal: 270,
     dayStartHour: 0,
     weekStartsOn: 1,
     warmupEnabled: false,
   });
-  const [goalInput, setGoalInput] = useState("180");
+  const [goalInput, setGoalInput] = useState("270");
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
     "unsupported",
   );
