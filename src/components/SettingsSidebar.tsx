@@ -226,7 +226,7 @@ function SettingsPanel() {
   }
 
   function commitGoal() {
-    const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
+    const n = Math.max(15, Math.min(1440, Number(goalInput) || 270));
     setSettings({ defaultDailyGoal: n });
     setGoalInput(String(n));
   }
