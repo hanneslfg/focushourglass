@@ -188,19 +188,23 @@ export function OnboardingOverlay() {
   const canAdvance = useMemo(() => {
     if (step === 2) return personas.length > 0;
     if (step === 3) return pain !== null;
-    if (step === 4) return flipped;
+    if (step === 4) return flipped && flipUnlocked;
     return true;
-  }, [step, personas, pain, flipped]);
+  }, [step, personas, pain, flipped, flipUnlocked]);
 
   function handleTapHourglass() {
     if (flipped) return;
     setFlipped(true);
+    setFlipUnlocked(false);
     try {
       navigator.vibrate?.([30, 40, 60]);
     } catch {
       /* noop */
     }
     playChime();
+    // Force the user to sit with the sand-flow animation for 3s before
+    // "Continue" becomes tappable — so the mechanic actually lands.
+    window.setTimeout(() => setFlipUnlocked(true), 3000);
   }
 
   if (!open) return null;
