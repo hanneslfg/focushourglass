@@ -149,12 +149,12 @@ function SettingsPanel() {
 
   const [settings, setLocal] = useState<Settings>({
     soundsEnabled: true,
-    defaultDailyGoal: 180,
+    defaultDailyGoal: 270,
     dayStartHour: 0,
     weekStartsOn: 1,
     warmupEnabled: false,
   });
-  const [goalInput, setGoalInput] = useState("180");
+  const [goalInput, setGoalInput] = useState("270");
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
     "unsupported",
   );
@@ -196,7 +196,7 @@ function SettingsPanel() {
     return () => window.removeEventListener("hourglass:settings", sync);
   }, []);
 
-  const [todayGoal, setTodayGoal] = useState(180);
+  const [todayGoal, setTodayGoal] = useState(270);
   const [todayDone, setTodayDone] = useState(0);
 
   useEffect(() => {
@@ -226,7 +226,7 @@ function SettingsPanel() {
   }
 
   function commitGoal() {
-    const n = Math.max(15, Math.min(1440, Number(goalInput) || 180));
+    const n = Math.max(15, Math.min(1440, Number(goalInput) || 270));
     setSettings({ defaultDailyGoal: n });
     setGoalInput(String(n));
   }
@@ -667,10 +667,10 @@ function PremiumDetailsModal({
 }) {
   const startedAt = getPremiumStart();
   const daysActive = Math.max(1, Math.floor((Date.now() - startedAt) / 86_400_000));
-  const focusedMin = focusedMinutesSince(startedAt);
-  const focusedHours = focusedMin / 60;
-  // Conservative "opportunity value": $50/hr of protected deep-work time.
-  const dollarValue = Math.round(focusedHours * 50);
+  // "Focused Hours" mirrors the All-Time analytics tab: total focused minutes
+  // across the user's entire session history (not just since Premium).
+  const focusedMinAllTime = focusedMinutesSince(0);
+  const focusedHours = focusedMinAllTime / 60;
 
   return (
     <div
@@ -706,16 +706,9 @@ function PremiumDetailsModal({
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
             <div className="text-[10px] uppercase tracking-[0.22em] text-white/50">Focused hours</div>
             <div className="font-display text-3xl text-white tabular-nums mt-1">{focusedHours.toFixed(1)}</div>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-xl border border-[#E2B05C]/25 bg-[#E2B05C]/[0.04] p-3">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-[#E2B05C]/85">Estimated value produced</div>
-          <div className="font-display text-2xl text-white tabular-nums mt-1">
-            ≈ ${dollarValue.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-white/50 mt-1 leading-snug">
-            At a conservative $50/hr of protected deep-work time.
+            <div className="text-[10px] text-white/45 mt-1 leading-snug">
+              (since using Focus Hourglass)
+            </div>
           </div>
         </div>
 

@@ -14,10 +14,18 @@
  * Persistence: chosen sound + volume + mute state in localStorage.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Volume2, VolumeX, Music2, ChevronDown } from "lucide-react";
+import { Volume2, VolumeX, Music2, ChevronDown, Lock } from "lucide-react";
 import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 import { playClick } from "@/lib/click";
+import { usePremium } from "@/lib/premium";
+
+/** Free tier: only the "Space Travel" ambient track. Everything else is Premium. */
+function isFreeSound(s: { name: string; title: string } | null | undefined): boolean {
+  if (!s) return true;
+  const hay = `${s.name} ${s.title}`.toLowerCase();
+  return hay.includes("space travel");
+}
 
 const BUCKET = "focus-sounds";
 const LS_SOUND = "hourglass.ambient.sound.v1";
@@ -42,6 +50,7 @@ export function AmbientSound({ running }: { running: boolean }) {
   const [volume, setVolume] = useState<number>(0.5);
   const [muted, setMuted] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+  const { isPremium, triggerPaywall } = usePremium();
 
   // Hydrate client-only prefs after mount to avoid SSR mismatch.
   useEffect(() => {
@@ -109,6 +118,13 @@ export function AmbientSound({ running }: { running: boolean }) {
     [sounds, selected],
   );
 
+  // Non-premium users can only keep "Space Travel" selected. If a premium
+  // sound was previously chosen (or they downgrade), silently reset it.
+  useEffect(() => {
+    if (!mounted || isPremium) return;
+    if (current && !isFreeSound(current)) setSelected(null);
+  }, [mounted, isPremium, current]);
+
   // Persist prefs (skip until mounted so we don't overwrite stored values)
   useEffect(() => {
     if (!mounted) return;
@@ -131,7 +147,7 @@ export function AmbientSound({ running }: { running: boolean }) {
   useEffect(() => { volumeRef.current = volume; }, [volume]);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
 
-  const CROSSFADE_SECS = 5;
+  const CROSSFADE_SECS = 3;
 
   function ensureAudioContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
@@ -508,24 +524,39 @@ export function AmbientSound({ running }: { running: boolean }) {
               None
             </button>
             {hasSounds ? (
-              sounds.map((s) => (
-                <button
-                  key={s.name}
-                  type="button"
-                  onClick={() => {
-                    playClick();
-                    setSelected(s.name);
-                    setOpen(false);
-                  }}
-                  className={`w-full text-left px-2 py-1.5 rounded text-[12px] transition-colors truncate ${
-                    selected === s.name
-                      ? "text-amber-200/90 bg-amber-500/5"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                  }`}
-                >
-                  {s.title}
-                </button>
-              ))
+              sounds.map((s) => {
+                const free = isFreeSound(s);
+                const locked = !free && !isPremium;
+                return (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => {
+                      playClick();
+                      if (locked) {
+                        setOpen(false);
+                        triggerPaywall();
+                        return;
+                      }
+                      setSelected(s.name);
+                      setOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-[12px] transition-colors truncate ${
+                      selected === s.name
+                        ? "text-amber-200/90 bg-amber-500/5"
+                        : locked
+                          ? "text-muted-foreground/60 hover:text-foreground/80 hover:bg-white/5"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
+                    aria-label={locked ? `${s.title} — Premium` : s.title}
+                  >
+                    <span className="flex-1 truncate text-left">{s.title}</span>
+                    {locked && (
+                      <Lock className="h-3 w-3 text-amber-300/70 shrink-0" strokeWidth={1.75} />
+                    )}
+                  </button>
+                );
+              })
             ) : (
               <div className="px-2 py-2 text-[11px] leading-relaxed text-muted-foreground/70">
                 No sounds yet. Upload audio files to the{" "}

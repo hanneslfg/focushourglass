@@ -70,6 +70,7 @@ export function OnboardingOverlay() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [pain, setPain] = useState<Pain | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [flipUnlocked, setFlipUnlocked] = useState(false);
   const [blocks, setBlocks] = useState(2);
   const [isAuthed, setIsAuthed] = useState(false);
 
@@ -187,19 +188,23 @@ export function OnboardingOverlay() {
   const canAdvance = useMemo(() => {
     if (step === 2) return personas.length > 0;
     if (step === 3) return pain !== null;
-    if (step === 4) return flipped;
+    if (step === 4) return flipped && flipUnlocked;
     return true;
-  }, [step, personas, pain, flipped]);
+  }, [step, personas, pain, flipped, flipUnlocked]);
 
   function handleTapHourglass() {
     if (flipped) return;
     setFlipped(true);
+    setFlipUnlocked(false);
     try {
       navigator.vibrate?.([30, 40, 60]);
     } catch {
       /* noop */
     }
     playChime();
+    // Force the user to sit with the sand-flow animation for 3s before
+    // "Continue" becomes tappable — so the mechanic actually lands.
+    window.setTimeout(() => setFlipUnlocked(true), 3000);
   }
 
   if (!open) return null;
@@ -291,7 +296,7 @@ export function OnboardingOverlay() {
                   className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
                   style={{ fontFamily: '"Cormorant Garamond", serif' }}
                 >
-                  How many hours do you lose daily to "Library Illusion" or passive scrolling?
+                  How many Hours per day do you lose to procrastination or unfocused work?
                 </h2>
                 <div className="mt-6 space-y-2">
                   {PAIN_OPTIONS.map((o) => {
@@ -345,7 +350,9 @@ export function OnboardingOverlay() {
                   }`}
                 >
                   {flipped
-                    ? "Aha! That's what true neural focus feels like."
+                    ? flipUnlocked
+                      ? "Aha! That's what true neural focus feels like."
+                      : "Watch the sand fall. Feel the block begin…"
                     : "Tap the hourglass above to feel the shift."}
                 </p>
               </div>
@@ -448,7 +455,7 @@ export function OnboardingOverlay() {
           </div>
         </div>
 
-        <div className="relative flex items-end justify-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
+        <div className={`relative flex items-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6 ${step === 1 ? "justify-center" : "justify-end"}`}>
           <div className="flex items-center gap-2">
             {step > 1 && step < 5 && (
               <button

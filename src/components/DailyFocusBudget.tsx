@@ -210,7 +210,7 @@ export function DailyFocusBudget() {
 
         {isPremium && cleared && (
           <div className="mt-2 text-center text-[11px] text-amber-300/90 tracking-wide">
-            Biological Peak Reached · Feierabend
+            Biological Peak Reached · Daily Focus Complete
           </div>
         )}
       </div>
@@ -240,7 +240,7 @@ export function DailyFocusBudget() {
               onClick={() => setShowModal(false)}
               className="mt-5 px-5 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              Feierabend
+              All Done For Today
             </button>
           </div>
         </div>
@@ -273,7 +273,7 @@ export function DailyFocusBudget() {
                 mean more output — they mean shallower work and worse recovery.
               </p>
               <p className="text-foreground/90 pt-1">
-                Protect the 4.5h. Then stop. That's Feierabend.
+                Protect the 4.5h. Then stop. Day complete.
               </p>
             </div>
             <button
