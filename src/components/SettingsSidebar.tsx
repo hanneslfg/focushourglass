@@ -706,16 +706,9 @@ function PremiumDetailsModal({
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3">
             <div className="text-[10px] uppercase tracking-[0.22em] text-white/50">Focused hours</div>
             <div className="font-display text-3xl text-white tabular-nums mt-1">{focusedHours.toFixed(1)}</div>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-xl border border-[#E2B05C]/25 bg-[#E2B05C]/[0.04] p-3">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-[#E2B05C]/85">Estimated value produced</div>
-          <div className="font-display text-2xl text-white tabular-nums mt-1">
-            ≈ ${dollarValue.toLocaleString()}
-          </div>
-          <div className="text-[11px] text-white/50 mt-1 leading-snug">
-            At a conservative $50/hr of protected deep-work time.
+            <div className="text-[10px] text-white/45 mt-1 leading-snug">
+              (since using Focus Hourglass)
+            </div>
           </div>
         </div>
 
