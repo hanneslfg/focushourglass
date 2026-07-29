@@ -291,7 +291,7 @@ export function OnboardingOverlay() {
                   className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
                   style={{ fontFamily: '"Cormorant Garamond", serif' }}
                 >
-                  How many hours do you lose daily to "Library Illusion" or passive scrolling?
+                  How many Hours per day do you lose to procrastination or unfocused work?
                 </h2>
                 <div className="mt-6 space-y-2">
                   {PAIN_OPTIONS.map((o) => {
