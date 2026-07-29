@@ -196,7 +196,7 @@ function SettingsPanel() {
     return () => window.removeEventListener("hourglass:settings", sync);
   }, []);
 
-  const [todayGoal, setTodayGoal] = useState(180);
+  const [todayGoal, setTodayGoal] = useState(270);
   const [todayDone, setTodayDone] = useState(0);
 
   useEffect(() => {
