@@ -70,6 +70,7 @@ export function OnboardingOverlay() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [pain, setPain] = useState<Pain | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [flipUnlocked, setFlipUnlocked] = useState(false);
   const [blocks, setBlocks] = useState(2);
   const [isAuthed, setIsAuthed] = useState(false);
 
