@@ -350,7 +350,9 @@ export function OnboardingOverlay() {
                   }`}
                 >
                   {flipped
-                    ? "Aha! That's what true neural focus feels like."
+                    ? flipUnlocked
+                      ? "Aha! That's what true neural focus feels like."
+                      : "Watch the sand fall. Feel the block begin…"
                     : "Tap the hourglass above to feel the shift."}
                 </p>
               </div>
