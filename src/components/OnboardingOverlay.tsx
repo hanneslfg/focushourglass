@@ -455,7 +455,7 @@ export function OnboardingOverlay() {
           </div>
         </div>
 
-        <div className="relative flex items-end justify-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6">
+        <div className={`relative flex items-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6 ${step === 1 ? "justify-center" : "justify-end"}`}>
           <div className="flex items-center gap-2">
             {step > 1 && step < 5 && (
               <button
