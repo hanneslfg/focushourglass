@@ -210,7 +210,7 @@ export function DailyFocusBudget() {
 
         {isPremium && cleared && (
           <div className="mt-2 text-center text-[11px] text-amber-300/90 tracking-wide">
-            Biological Peak Reached · Feierabend
+            Biological Peak Reached · Daily Focus Complete
           </div>
         )}
       </div>
