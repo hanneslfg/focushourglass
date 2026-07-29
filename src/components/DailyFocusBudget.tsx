@@ -240,7 +240,7 @@ export function DailyFocusBudget() {
               onClick={() => setShowModal(false)}
               className="mt-5 px-5 py-2 rounded-md bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              Feierabend
+              All Done For Today
             </button>
           </div>
         </div>
