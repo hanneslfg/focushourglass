@@ -131,7 +131,7 @@ export function AmbientSound({ running }: { running: boolean }) {
   useEffect(() => { volumeRef.current = volume; }, [volume]);
   useEffect(() => { mutedRef.current = muted; }, [muted]);
 
-  const CROSSFADE_SECS = 5;
+  const CROSSFADE_SECS = 3;
 
   function ensureAudioContext(): AudioContext | null {
     if (typeof window === "undefined") return null;
