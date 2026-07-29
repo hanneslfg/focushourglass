@@ -273,7 +273,7 @@ export function DailyFocusBudget() {
                 mean more output — they mean shallower work and worse recovery.
               </p>
               <p className="text-foreground/90 pt-1">
-                Protect the 4.5h. Then stop. That's Feierabend.
+                Protect the 4.5h. Then stop. Day complete.
               </p>
             </div>
             <button
