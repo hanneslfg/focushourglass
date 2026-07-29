@@ -50,6 +50,7 @@ export function AmbientSound({ running }: { running: boolean }) {
   const [volume, setVolume] = useState<number>(0.5);
   const [muted, setMuted] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+  const { isPremium, triggerPaywall } = usePremium();
 
   // Hydrate client-only prefs after mount to avoid SSR mismatch.
   useEffect(() => {
