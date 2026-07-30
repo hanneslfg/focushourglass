@@ -19,13 +19,8 @@ import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 import { playClick } from "@/lib/click";
 import { usePremium } from "@/lib/premium";
+import { FREE_SOUND_KEY, getUnlockedFreeSound, isSoundFree } from "@/lib/freeSound";
 
-/** Free tier: only the "Space Travel" ambient track. Everything else is Premium. */
-function isFreeSound(s: { name: string; title: string } | null | undefined): boolean {
-  if (!s) return true;
-  const hay = `${s.name} ${s.title}`.toLowerCase();
-  return hay.includes("space travel");
-}
 
 const BUCKET = "focus-sounds";
 const LS_SOUND = "hourglass.ambient.sound.v1";
