@@ -45,7 +45,24 @@ export function AmbientSound({ running }: { running: boolean }) {
   const [volume, setVolume] = useState<number>(0.5);
   const [muted, setMuted] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+  const [freeSoundId, setFreeSoundId] = useState<string | null>(null);
   const { isPremium, triggerPaywall } = usePremium();
+
+  // The single track the user unlocked for free during onboarding.
+  useEffect(() => {
+    setFreeSoundId(getUnlockedFreeSound());
+    const onChange = () => setFreeSoundId(getUnlockedFreeSound());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === FREE_SOUND_KEY) onChange();
+    };
+    window.addEventListener("hourglass:freeSound", onChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("hourglass:freeSound", onChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
 
   // Hydrate client-only prefs after mount to avoid SSR mismatch.
   useEffect(() => {
