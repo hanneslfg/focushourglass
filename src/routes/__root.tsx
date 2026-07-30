@@ -25,6 +25,7 @@ import { PremiumProvider } from "@/lib/premium";
 import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
 import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
+import { getUnlockedFreeSound, setUnlockedFreeSound } from "@/lib/freeSound";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
 import "@/lib/i18n";
 
@@ -170,6 +171,16 @@ function RootComponent() {
       void hydrateGoalsFromRemote().then(() => backfillUntaggedGoals("Uni"));
       void hydrateRhythmsFromRemote();
       void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
+      // Restore the user's free ambient-sound unlock from cloud metadata
+      // (local caches are wiped on sign-out / account switch).
+      void supabase.auth.getUser().then(({ data }) => {
+        const meta = data.user?.user_metadata as
+          | { unlocked_free_sound_id?: string | null }
+          | undefined;
+        if (meta?.unlocked_free_sound_id && !getUnlockedFreeSound()) {
+          setUnlockedFreeSound(meta.unlocked_free_sound_id);
+        }
+      });
     };
     void supabase.auth.getSession().then(({ data }) => {
       hydrateFor(data.session?.user?.id ?? null);

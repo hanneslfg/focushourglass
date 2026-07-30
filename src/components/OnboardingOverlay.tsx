@@ -3,6 +3,11 @@ import { toast } from "sonner";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 import { addProject } from "@/lib/projects";
+import {
+  listFocusSounds,
+  setUnlockedFreeSound,
+  type FocusSound,
+} from "@/lib/freeSound";
 
 const STORAGE_KEY = "hourglass_onboarding_completed";
 const PROFILE_KEY = "hourglass_onboarding_profile";
@@ -73,6 +78,21 @@ export function OnboardingOverlay() {
   const [flipUnlocked, setFlipUnlocked] = useState(false);
   const [blocks, setBlocks] = useState(2);
   const [isAuthed, setIsAuthed] = useState(false);
+  const [soundOptions, setSoundOptions] = useState<FocusSound[]>([]);
+  const [freeSound, setFreeSound] = useState<string | null>(null);
+
+  // Load the ambient library so the user can claim one track for free.
+  useEffect(() => {
+    let cancelled = false;
+    void listFocusSounds().then((list) => {
+      if (cancelled) return;
+      setSoundOptions(list);
+      setFreeSound((cur) => cur ?? list[0]?.name ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -115,7 +135,8 @@ export function OnboardingOverlay() {
   }, []);
 
   async function finish() {
-    const profile = { personas, pain, dailyBlocks: blocks };
+    const profile = { personas, pain, dailyBlocks: blocks, freeSound };
+    if (freeSound) setUnlockedFreeSound(freeSound);
     safeStorage.setItem(STORAGE_KEY, "true");
     safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     // Save target minutes to settings (blocks × 90min)
@@ -168,6 +189,7 @@ export function OnboardingOverlay() {
             starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
+            unlocked_free_sound_id: freeSound,
             marketing_email: null,
             blueprint_consent: false,
 
@@ -189,8 +211,9 @@ export function OnboardingOverlay() {
     if (step === 2) return personas.length > 0;
     if (step === 3) return pain !== null;
     if (step === 4) return flipped && flipUnlocked;
+    if (step === 5) return !!freeSound;
     return true;
-  }, [step, personas, pain, flipped, flipUnlocked]);
+  }, [step, personas, pain, flipped, flipUnlocked, freeSound]);
 
   function handleTapHourglass() {
     if (flipped) return;
@@ -202,14 +225,14 @@ export function OnboardingOverlay() {
       /* noop */
     }
     playChime();
-    // Force the user to sit with the sand-flow animation for 3s before
+    // Force the user to sit with the sand-flow animation for 5s before
     // "Continue" becomes tappable — so the mechanic actually lands.
-    window.setTimeout(() => setFlipUnlocked(true), 3000);
+    window.setTimeout(() => setFlipUnlocked(true), 5000);
   }
 
   if (!open) return null;
 
-  const totalSteps = 5;
+  const totalSteps = 6;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-500">
@@ -235,7 +258,7 @@ export function OnboardingOverlay() {
 
           <div key={step} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             {step === 1 && (
-              <div className="text-center">
+              <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
                 <AnimatedHourglass />
                 <p className="mt-6 text-[10px] uppercase tracking-[0.35em] text-white/40">
                   Focus Hourglass
@@ -296,7 +319,7 @@ export function OnboardingOverlay() {
                   className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
                   style={{ fontFamily: '"Cormorant Garamond", serif' }}
                 >
-                  How many Hours per day do you lose to procrastination or unfocused work?
+                  How many hours per day do you lose to procrastination or unfocused work?
                 </h2>
                 <div className="mt-6 space-y-2">
                   {PAIN_OPTIONS.map((o) => {
@@ -359,6 +382,51 @@ export function OnboardingOverlay() {
             )}
 
             {step === 5 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Sound Environment
+                </p>
+                <h2
+                  className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  Choose your free focus sound.
+                </h2>
+                <p className="mt-2 text-sm text-white/55 leading-relaxed">
+                  Pick one track to unlock forever. The rest of the library stays
+                  reserved for Premium.
+                </p>
+                <div className="mt-5 max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {soundOptions.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5 text-sm text-white/50">
+                      Loading sounds…
+                    </div>
+                  ) : (
+                    soundOptions.map((s) => {
+                      const active = freeSound === s.name;
+                      return (
+                        <button
+                          key={s.name}
+                          type="button"
+                          onClick={() => setFreeSound(s.name)}
+                          className={`w-full rounded-xl border px-4 py-3.5 text-left text-sm transition-all ${
+                            active
+                              ? "border-amber-300/60 bg-amber-300/[0.06] text-white"
+                              : "border-white/10 bg-white/[0.02] text-white/75 hover:border-white/25"
+                          }`}
+                        >
+                          {s.title}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+
+
+            {step === 6 && (
               <div>
                 <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
                   Your Daily Target
@@ -457,7 +525,7 @@ export function OnboardingOverlay() {
 
         <div className={`relative flex items-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6 ${step === 1 ? "justify-center" : "justify-end"}`}>
           <div className="flex items-center gap-2">
-            {step > 1 && step < 5 && (
+            {step > 1 && step < 6 && (
               <button
                 onClick={() => setStep((n) => n - 1)}
                 className="px-3 py-2 text-xs text-white/40 hover:text-white/70 transition-colors"
@@ -466,19 +534,20 @@ export function OnboardingOverlay() {
               </button>
             )}
             <button
-              disabled={!canAdvance || (step === 5 && !isAuthed)}
+              disabled={!canAdvance || (step === 6 && !isAuthed)}
               onClick={() => {
-                if (step === 5) void finish();
+                if (step === 6) void finish();
                 else setStep((n) => n + 1);
               }}
-              title={step === 5 && !isAuthed ? "Sign in with Google above to continue" : undefined}
+              title={step === 6 && !isAuthed ? "Sign in with Google above to continue" : undefined}
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(226,176,92,0.25)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {step === 1 && "Build My Focus Environment"}
               {step === 2 && "Continue"}
               {step === 3 && "Continue"}
               {step === 4 && "Continue"}
-              {step === 5 && "Start My 5-Day Focus Challenge"}
+              {step === 5 && "Continue"}
+              {step === 6 && "Start My 5-Day Focus Challenge"}
               <span aria-hidden>→</span>
             </button>
           </div>

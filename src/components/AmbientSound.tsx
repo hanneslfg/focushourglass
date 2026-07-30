@@ -19,13 +19,8 @@ import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 import { playClick } from "@/lib/click";
 import { usePremium } from "@/lib/premium";
+import { FREE_SOUND_KEY, getUnlockedFreeSound, isSoundFree } from "@/lib/freeSound";
 
-/** Free tier: only the "Space Travel" ambient track. Everything else is Premium. */
-function isFreeSound(s: { name: string; title: string } | null | undefined): boolean {
-  if (!s) return true;
-  const hay = `${s.name} ${s.title}`.toLowerCase();
-  return hay.includes("space travel");
-}
 
 const BUCKET = "focus-sounds";
 const LS_SOUND = "hourglass.ambient.sound.v1";
@@ -50,7 +45,24 @@ export function AmbientSound({ running }: { running: boolean }) {
   const [volume, setVolume] = useState<number>(0.5);
   const [muted, setMuted] = useState<boolean>(false);
   const [open, setOpen] = useState(false);
+  const [freeSoundId, setFreeSoundId] = useState<string | null>(null);
   const { isPremium, triggerPaywall } = usePremium();
+
+  // The single track the user unlocked for free during onboarding.
+  useEffect(() => {
+    setFreeSoundId(getUnlockedFreeSound());
+    const onChange = () => setFreeSoundId(getUnlockedFreeSound());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === FREE_SOUND_KEY) onChange();
+    };
+    window.addEventListener("hourglass:freeSound", onChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("hourglass:freeSound", onChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
 
   // Hydrate client-only prefs after mount to avoid SSR mismatch.
   useEffect(() => {
@@ -118,12 +130,13 @@ export function AmbientSound({ running }: { running: boolean }) {
     [sounds, selected],
   );
 
-  // Non-premium users can only keep "Space Travel" selected. If a premium
-  // sound was previously chosen (or they downgrade), silently reset it.
+  // Non-premium users can only keep their unlocked free sound selected. If a
+  // premium sound was previously chosen (or they downgrade), silently reset it.
   useEffect(() => {
     if (!mounted || isPremium) return;
-    if (current && !isFreeSound(current)) setSelected(null);
-  }, [mounted, isPremium, current]);
+    if (current && !isSoundFree(current, freeSoundId)) setSelected(null);
+  }, [mounted, isPremium, current, freeSoundId]);
+
 
   // Persist prefs (skip until mounted so we don't overwrite stored values)
   useEffect(() => {
@@ -525,7 +538,7 @@ export function AmbientSound({ running }: { running: boolean }) {
             </button>
             {hasSounds ? (
               sounds.map((s) => {
-                const free = isFreeSound(s);
+                const free = isSoundFree(s, freeSoundId);
                 const locked = !free && !isPremium;
                 return (
                   <button

@@ -104,9 +104,14 @@ export async function signInWithGoogle() {
  * this app plus sessionStorage. Used on sign-out and on account-switch so
  * no residual data from the previous user leaks into the next session.
  */
-export function clearAllLocalAppState() {
+export function clearAllLocalAppState(opts?: { keepAuth?: boolean }) {
   if (typeof window === "undefined") return;
-  const prefixes = ["hourglass.", "hg.", "sb-", "supabase."];
+  // On account switch we must KEEP the freshly-issued Supabase auth token,
+  // otherwise the reload lands signed-out and the new user's cloud data can
+  // never be re-fetched (looks like "all my data is gone" after re-login).
+  const prefixes = opts?.keepAuth
+    ? ["hourglass.", "hg."]
+    : ["hourglass.", "hg.", "sb-", "supabase."];
   try {
     const ls = window.localStorage;
     const kill: string[] = [];
@@ -142,7 +147,7 @@ export function handleAccountSwitchIfNeeded(newUserId: string | null) {
   }
   if (newUserId && prev && prev !== newUserId) {
     console.log("[supabase] account switch detected — flushing local state");
-    clearAllLocalAppState();
+    clearAllLocalAppState({ keepAuth: true });
     try {
       safeStorage.setItem(LAST_USER_KEY, newUserId);
     } catch {
