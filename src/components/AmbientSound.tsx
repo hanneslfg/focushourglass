@@ -538,7 +538,7 @@ export function AmbientSound({ running }: { running: boolean }) {
             </button>
             {hasSounds ? (
               sounds.map((s) => {
-                const free = isFreeSound(s);
+                const free = isSoundFree(s, freeSoundId);
                 const locked = !free && !isPremium;
                 return (
                   <button
