@@ -358,6 +358,51 @@ export function OnboardingOverlay() {
               </div>
             )}
 
+            {step === 5 && (
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
+                  Sound Environment
+                </p>
+                <h2
+                  className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
+                  style={{ fontFamily: '"Cormorant Garamond", serif' }}
+                >
+                  Choose your free focus sound.
+                </h2>
+                <p className="mt-2 text-sm text-white/55 leading-relaxed">
+                  Pick one track to unlock forever. The rest of the library stays
+                  reserved for Premium.
+                </p>
+                <div className="mt-5 max-h-[240px] space-y-2 overflow-y-auto pr-1">
+                  {soundOptions.length === 0 ? (
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3.5 text-sm text-white/50">
+                      Loading sounds…
+                    </div>
+                  ) : (
+                    soundOptions.map((s) => {
+                      const active = freeSound === s.name;
+                      return (
+                        <button
+                          key={s.name}
+                          type="button"
+                          onClick={() => setFreeSound(s.name)}
+                          className={`w-full rounded-xl border px-4 py-3.5 text-left text-sm transition-all ${
+                            active
+                              ? "border-amber-300/60 bg-amber-300/[0.06] text-white"
+                              : "border-white/10 bg-white/[0.02] text-white/75 hover:border-white/25"
+                          }`}
+                        >
+                          {s.title}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+
+
             {step === 6 && (
               <div>
                 <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
