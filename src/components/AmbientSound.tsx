@@ -113,12 +113,13 @@ export function AmbientSound({ running }: { running: boolean }) {
     [sounds, selected],
   );
 
-  // Non-premium users can only keep "Space Travel" selected. If a premium
-  // sound was previously chosen (or they downgrade), silently reset it.
+  // Non-premium users can only keep their unlocked free sound selected. If a
+  // premium sound was previously chosen (or they downgrade), silently reset it.
   useEffect(() => {
     if (!mounted || isPremium) return;
-    if (current && !isFreeSound(current)) setSelected(null);
-  }, [mounted, isPremium, current]);
+    if (current && !isSoundFree(current, freeSoundId)) setSelected(null);
+  }, [mounted, isPremium, current, freeSoundId]);
+
 
   // Persist prefs (skip until mounted so we don't overwrite stored values)
   useEffect(() => {
