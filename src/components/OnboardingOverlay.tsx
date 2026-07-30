@@ -202,14 +202,14 @@ export function OnboardingOverlay() {
       /* noop */
     }
     playChime();
-    // Force the user to sit with the sand-flow animation for 3s before
+    // Force the user to sit with the sand-flow animation for 5s before
     // "Continue" becomes tappable — so the mechanic actually lands.
-    window.setTimeout(() => setFlipUnlocked(true), 3000);
+    window.setTimeout(() => setFlipUnlocked(true), 5000);
   }
 
   if (!open) return null;
 
-  const totalSteps = 5;
+  const totalSteps = 6;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-500">
@@ -296,7 +296,7 @@ export function OnboardingOverlay() {
                   className="mt-3 text-2xl md:text-3xl font-light tracking-tight text-white"
                   style={{ fontFamily: '"Cormorant Garamond", serif' }}
                 >
-                  How many Hours per day do you lose to procrastination or unfocused work?
+                  How many hours per day do you lose to procrastination or unfocused work?
                 </h2>
                 <div className="mt-6 space-y-2">
                   {PAIN_OPTIONS.map((o) => {
@@ -358,7 +358,7 @@ export function OnboardingOverlay() {
               </div>
             )}
 
-            {step === 5 && (
+            {step === 6 && (
               <div>
                 <p className="text-[10px] uppercase tracking-[0.35em] text-white/40">
                   Your Daily Target
@@ -457,7 +457,7 @@ export function OnboardingOverlay() {
 
         <div className={`relative flex items-end gap-6 border-t border-white/5 bg-black/40 px-8 py-5 md:px-10 md:py-6 ${step === 1 ? "justify-center" : "justify-end"}`}>
           <div className="flex items-center gap-2">
-            {step > 1 && step < 5 && (
+            {step > 1 && step < 6 && (
               <button
                 onClick={() => setStep((n) => n - 1)}
                 className="px-3 py-2 text-xs text-white/40 hover:text-white/70 transition-colors"
@@ -466,19 +466,20 @@ export function OnboardingOverlay() {
               </button>
             )}
             <button
-              disabled={!canAdvance || (step === 5 && !isAuthed)}
+              disabled={!canAdvance || (step === 6 && !isAuthed)}
               onClick={() => {
-                if (step === 5) void finish();
+                if (step === 6) void finish();
                 else setStep((n) => n + 1);
               }}
-              title={step === 5 && !isAuthed ? "Sign in with Google above to continue" : undefined}
+              title={step === 6 && !isAuthed ? "Sign in with Google above to continue" : undefined}
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(226,176,92,0.25)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {step === 1 && "Build My Focus Environment"}
               {step === 2 && "Continue"}
               {step === 3 && "Continue"}
               {step === 4 && "Continue"}
-              {step === 5 && "Start My 5-Day Focus Challenge"}
+              {step === 5 && "Continue"}
+              {step === 6 && "Start My 5-Day Focus Challenge"}
               <span aria-hidden>→</span>
             </button>
           </div>
