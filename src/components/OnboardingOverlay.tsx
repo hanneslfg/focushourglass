@@ -3,6 +3,11 @@ import { toast } from "sonner";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
 import { addProject } from "@/lib/projects";
+import {
+  listFocusSounds,
+  setUnlockedFreeSound,
+  type FocusSound,
+} from "@/lib/freeSound";
 
 const STORAGE_KEY = "hourglass_onboarding_completed";
 const PROFILE_KEY = "hourglass_onboarding_profile";
@@ -73,6 +78,21 @@ export function OnboardingOverlay() {
   const [flipUnlocked, setFlipUnlocked] = useState(false);
   const [blocks, setBlocks] = useState(2);
   const [isAuthed, setIsAuthed] = useState(false);
+  const [soundOptions, setSoundOptions] = useState<FocusSound[]>([]);
+  const [freeSound, setFreeSound] = useState<string | null>(null);
+
+  // Load the ambient library so the user can claim one track for free.
+  useEffect(() => {
+    let cancelled = false;
+    void listFocusSounds().then((list) => {
+      if (cancelled) return;
+      setSoundOptions(list);
+      setFreeSound((cur) => cur ?? list[0]?.name ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -115,7 +135,8 @@ export function OnboardingOverlay() {
   }, []);
 
   async function finish() {
-    const profile = { personas, pain, dailyBlocks: blocks };
+    const profile = { personas, pain, dailyBlocks: blocks, freeSound };
+    if (freeSound) setUnlockedFreeSound(freeSound);
     safeStorage.setItem(STORAGE_KEY, "true");
     safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     // Save target minutes to settings (blocks × 90min)
@@ -168,6 +189,7 @@ export function OnboardingOverlay() {
             starter_project: starter,
             daily_pain_hours: pain,
             daily_focus_blocks: blocks,
+            unlocked_free_sound_id: freeSound,
             marketing_email: null,
             blueprint_consent: false,
 
@@ -189,8 +211,9 @@ export function OnboardingOverlay() {
     if (step === 2) return personas.length > 0;
     if (step === 3) return pain !== null;
     if (step === 4) return flipped && flipUnlocked;
+    if (step === 5) return !!freeSound;
     return true;
-  }, [step, personas, pain, flipped, flipUnlocked]);
+  }, [step, personas, pain, flipped, flipUnlocked, freeSound]);
 
   function handleTapHourglass() {
     if (flipped) return;
@@ -235,7 +258,7 @@ export function OnboardingOverlay() {
 
           <div key={step} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             {step === 1 && (
-              <div className="text-center">
+              <div className="flex min-h-[420px] flex-col items-center justify-center text-center">
                 <AnimatedHourglass />
                 <p className="mt-6 text-[10px] uppercase tracking-[0.35em] text-white/40">
                   Focus Hourglass
