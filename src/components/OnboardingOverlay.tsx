@@ -80,6 +80,50 @@ export function OnboardingOverlay() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [soundOptions, setSoundOptions] = useState<FocusSound[]>([]);
   const [freeSound, setFreeSound] = useState<string | null>(null);
+  const [sandProgress, setSandProgress] = useState(0);
+  const sandRafRef = useRef<number | null>(null);
+  const previewRef = useRef<HTMLAudioElement | null>(null);
+
+  /** Hard-stop any running sound preview (only one may ever play). */
+  function stopPreview() {
+    const el = previewRef.current;
+    if (el) {
+      try {
+        el.pause();
+      } catch {
+        /* noop */
+      }
+      el.src = "";
+      previewRef.current = null;
+    }
+  }
+
+  function playPreview(url: string) {
+    stopPreview();
+    try {
+      const el = new Audio(url);
+      el.loop = true;
+      el.volume = 0.5;
+      previewRef.current = el;
+      void el.play().catch(() => {
+        /* autoplay blocked */
+      });
+    } catch {
+      /* noop */
+    }
+  }
+
+  // Stop preview when leaving the sound step, and on unmount.
+  useEffect(() => {
+    if (step !== 5) stopPreview();
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      stopPreview();
+      if (sandRafRef.current) cancelAnimationFrame(sandRafRef.current);
+    };
+  }, []);
 
   // Load the ambient library so the user can claim one track for free.
   useEffect(() => {
