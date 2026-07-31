@@ -389,8 +389,10 @@ export function AmbientSound({ running }: { running: boolean }) {
           if (bufferUrlRef.current !== url) return;
           bufferRef.current = buf;
           if (running && !usingWebAudioRef.current) {
+            // Hand off to Web Audio: kill the HTMLAudio pair instantly so the
+            // two paths can never sound at the same time.
+            stopHtmlAudio(false);
             startWebAudioSource(mutedRef.current ? 0 : volumeRef.current);
-            stopHtmlAudio(true);
           }
         } catch {
           /* decode failed — HTMLAudio crossfade keeps working */
