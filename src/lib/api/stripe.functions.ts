@@ -137,7 +137,14 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
       `metadata['user_id']:'${user.id}' AND status:'active'`,
     );
     const res = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
-      data?: Array<{ id: string; status: string; cancel_at_period_end?: boolean; current_period_end?: number }>;
+      data?: Array<{
+        id: string;
+        status: string;
+        cancel_at_period_end?: boolean;
+        current_period_end?: number;
+        created?: number;
+        start_date?: number;
+      }>;
     };
     const sub = res.data?.[0];
     if (!sub) return { subscription: null as null };
@@ -147,6 +154,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
         status: sub.status,
         cancel_at_period_end: Boolean(sub.cancel_at_period_end),
         current_period_end: sub.current_period_end ?? null,
+        created: sub.created ?? sub.start_date ?? null,
       },
     };
   });
