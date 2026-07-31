@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
@@ -219,15 +219,29 @@ export function OnboardingOverlay() {
     if (flipped) return;
     setFlipped(true);
     setFlipUnlocked(false);
+    setSandProgress(0);
     try {
       navigator.vibrate?.([30, 40, 60]);
     } catch {
       /* noop */
     }
     playChime();
-    // Force the user to sit with the sand-flow animation for 5s before
-    // "Continue" becomes tappable — so the mechanic actually lands.
-    window.setTimeout(() => setFlipUnlocked(true), 5000);
+    // Real 5-second sand-fall: animate the fill level frame by frame and keep
+    // "Continue" locked until the top chamber has fully drained.
+    const DURATION = 5000;
+    const start = performance.now();
+    if (sandRafRef.current) cancelAnimationFrame(sandRafRef.current);
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / DURATION);
+      setSandProgress(t);
+      if (t < 1) {
+        sandRafRef.current = requestAnimationFrame(tick);
+      } else {
+        sandRafRef.current = null;
+        setFlipUnlocked(true);
+      }
+    };
+    sandRafRef.current = requestAnimationFrame(tick);
   }
 
   if (!open) return null;
