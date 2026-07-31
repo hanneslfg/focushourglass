@@ -32,6 +32,7 @@ import { LegalFooter } from "@/components/LegalFooter";
 import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from "@/lib/i18n";
 import { safeStorage } from "@/lib/safeStorage";
 import { supabase } from "@/lib/supabase";
+import { PREMIUM_BENEFITS } from "@/components/PremiumPaywall";
 
 const WEEKLY_REPORT_KEY = "hourglass.weeklyReportOptIn";
 
@@ -754,13 +755,7 @@ function PremiumDetailsModal({
         <div className="mt-4">
           <div className="text-[10px] uppercase tracking-[0.22em] text-white/50 mb-2">Benefits you already have</div>
           <ul className="space-y-1.5 text-[13px] text-white/80">
-            {[
-              "Unlimited projects & custom rhythms",
-              "Custom analytics date ranges",
-              "Weekly Sunday Progress Report",
-              "Focus Warm-up Calibration",
-              "Lifetime cloud backup of sessions",
-            ].map((b) => (
+            {PREMIUM_BENEFITS.map((b) => (
               <li key={b} className="flex items-start gap-2">
                 <Check className="h-3.5 w-3.5 text-[#E2B05C] mt-0.5 shrink-0" strokeWidth={2} />
                 <span>{b}</span>
