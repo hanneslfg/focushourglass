@@ -313,14 +313,36 @@ export function AmbientSound({ running }: { running: boolean }) {
     }, 30);
   }
 
+  /**
+   * Absolute stop: kills the Web Audio source AND both HTMLAudio instances
+   * instantly. Guarantees zero audible output — used on pause and whenever
+   * the selected track changes, so only ONE track can ever be active.
+   */
+  function stopAllAudio() {
+    stopWebAudioSource();
+    const g = gainRef.current;
+    const ctx = audioCtxRef.current;
+    if (g && ctx) {
+      try {
+        g.gain.cancelScheduledValues(ctx.currentTime);
+        g.gain.setValueAtTime(0, ctx.currentTime);
+      } catch {
+        /* ignore */
+      }
+    }
+    stopHtmlAudio(false);
+  }
+
   // Ensure both <audio> instances exist and mirror the current selection.
   // Also decode into an AudioBuffer for the preferred Web Audio path.
   useEffect(() => {
+    // Any selection change hard-stops whatever is currently sounding before
+    // the new track is prepared — never two tracks at once.
+    stopAllAudio();
+
     if (!current) {
-      stopHtmlAudio(false);
       if (audioARef.current) audioARef.current.src = "";
       if (audioBRef.current) audioBRef.current.src = "";
-      stopWebAudioSource();
       bufferRef.current = null;
       bufferUrlRef.current = null;
       return;
