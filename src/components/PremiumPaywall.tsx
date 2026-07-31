@@ -348,6 +348,14 @@ const COMPARISON: Array<{ feature: string; free: string; premium: string }> = [
   { feature: "Exclusive VIP bonus", free: "no", premium: "4.5h Deep Focus Blueprint" },
 ];
 
+/**
+ * Canonical premium benefit list, derived from the paywall comparison table so
+ * every surface (paywall + "Premium Member" modal) always shows identical copy.
+ */
+export const PREMIUM_BENEFITS: string[] = COMPARISON.filter(
+  (r) => r.feature !== "Pricing" && r.premium !== "no" && r.premium !== r.free,
+).map((r) => (r.premium === "yes" ? r.feature : `${r.feature} — ${r.premium}`));
+
 function Cell({ value, premium = false }: { value: string; premium?: boolean }) {
   if (value === "yes") {
     return (
