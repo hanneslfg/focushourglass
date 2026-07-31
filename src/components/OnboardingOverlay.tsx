@@ -625,15 +625,24 @@ export function OnboardingOverlay() {
 }
 
 function AnimatedHourglass({
+  progress,
+  falling = false,
   filling = false,
   size = 96,
 }: {
+  /** 0 = top chamber full, 1 = fully drained into the bottom chamber. */
+  progress?: number;
+  falling?: boolean;
   filling?: boolean;
   size?: number;
 }) {
-  const p = filling ? 0.72 : 0.15;
-  const topFillY = 8 + (34 - 8) * p;
-  const bottomFillY = 62 - (62 - 40) * p;
+  const p = Math.max(0, Math.min(1, progress ?? (filling ? 0.9 : 0.05)));
+  // Top chamber drains as p rises; bottom chamber fills up.
+  const topFillY = 8 + (36 - 8) * p;
+  const bottomFillY = 64 - (64 - 40) * p;
+  const moundRx = 2 + 12 * p;
+  const moundRy = 0.8 + 3 * p;
+  const grains = [0, 0.18, 0.36, 0.54, 0.72, 0.9];
   return (
     <svg
       viewBox="0 0 48 72"
@@ -655,19 +664,46 @@ function AnimatedHourglass({
       </defs>
       <line x1="6" y1="6" x2="42" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
       <line x1="6" y1="66" x2="42" y2="66" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+
+      {/* Top chamber sand (drains) */}
       <g clipPath="url(#oh-top)">
-        <rect x="0" y={topFillY} width="48" height="40" fill="url(#oh-sand)">
-          <animate attributeName="y" values={`${topFillY};${topFillY + 0.6};${topFillY}`} dur="3s" repeatCount="indefinite" />
-        </rect>
+        <rect x="0" y={topFillY} width="48" height="40" fill="url(#oh-sand)" />
       </g>
+
+      {/* Bottom chamber sand (fills + growing mound) */}
       <g clipPath="url(#oh-bot)">
-        <rect x="0" y={bottomFillY} width="48" height="40" fill="url(#oh-sand)">
-          <animate attributeName="y" values={`${bottomFillY};${bottomFillY - 0.6};${bottomFillY}`} dur="3s" repeatCount="indefinite" />
-        </rect>
+        <rect x="0" y={bottomFillY} width="48" height="40" fill="url(#oh-sand)" />
+        <ellipse cx="24" cy={bottomFillY + 0.5} rx={moundRx} ry={moundRy} fill="url(#oh-sand)" />
+        {/* Individual grains actually falling through the neck */}
+        {falling &&
+          grains.map((delay, i) => (
+            <circle key={i} cx={24 + (i % 2 === 0 ? -0.5 : 0.5)} r="0.6" cy="38" fill="url(#oh-sand)">
+              <animate
+                attributeName="cy"
+                from="38"
+                to={bottomFillY}
+                dur="0.65s"
+                begin={`-${delay}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0;1;1;0.2"
+                dur="0.65s"
+                begin={`-${delay}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          ))}
       </g>
-      <line x1="24" y1="36" x2="24" y2="40" stroke="url(#oh-sand)" strokeWidth="0.8" opacity="0.9">
-        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" />
-      </line>
+
+      {/* Continuous sand stream through the neck */}
+      {falling && (
+        <line x1="24" y1="36" x2="24" y2="39" stroke="url(#oh-sand)" strokeWidth="0.9" opacity="0.9">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="0.5s" repeatCount="indefinite" />
+        </line>
+      )}
+
       <polygon
         points="8,8 40,8 26,36 26,38 40,64 8,64 22,38 22,36"
         fill="none"
