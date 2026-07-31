@@ -663,13 +663,52 @@ function PremiumDetailsModal({
 }: {
   onClose: () => void;
   onCancel: () => void;
-  activeSub: { cancel_at_period_end: boolean; current_period_end: number | null } | null;
+  activeSub: {
+    cancel_at_period_end: boolean;
+    current_period_end: number | null;
+    created?: number | null;
+  } | null;
 }) {
-  const startedAt = getPremiumStart();
-  const daysActive = Math.max(1, Math.floor((Date.now() - startedAt) / 86_400_000));
+  // Days on Premium: prefer the real Stripe subscription start, fall back to
+  // the account creation date, and only then to the local marker.
+  const [accountCreatedAt, setAccountCreatedAt] = useState<number | null>(null);
+  const [remoteLifetimeMinutes, setRemoteLifetimeMinutes] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!cancelled && user?.created_at) {
+        setAccountCreatedAt(new Date(user.created_at).getTime());
+      }
+      if (!user) return;
+      // Lifetime focused hours straight from the full session history.
+      const { data: rows, error } = await supabase
+        .from("sessions")
+        .select("actual_duration")
+        .eq("user_id", user.id);
+      if (cancelled || error || !rows) return;
+      setRemoteLifetimeMinutes(
+        rows.reduce((sum, r) => sum + (Number(r.actual_duration) || 0), 0),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const startedAt =
+    (activeSub?.created ? activeSub.created * 1000 : null) ??
+    accountCreatedAt ??
+    getPremiumStart();
+  const daysActive = Math.max(
+    1,
+    Math.floor((Date.now() - startedAt) / 86_400_000) + 1,
+  );
   // "Focused Hours" mirrors the All-Time analytics tab: total focused minutes
-  // across the user's entire session history (not just since Premium).
-  const focusedMinAllTime = focusedMinutesSince(0);
+  // across the user's entire session history (cloud when available).
+  const focusedMinAllTime = remoteLifetimeMinutes ?? focusedMinutesSince(0);
   const focusedHours = focusedMinAllTime / 60;
 
   return (
