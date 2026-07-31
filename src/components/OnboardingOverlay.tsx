@@ -418,8 +418,8 @@ export function OnboardingOverlay() {
                     type="button"
                     onClick={handleTapHourglass}
                     aria-label="Flip the hourglass"
-                    className={`group relative transition-transform duration-700 ${
-                      flipped ? "rotate-180" : "hover:scale-105"
+                    className={`group relative ${
+                      flipped ? "animate-hg-flip" : "transition-transform duration-700 hover:scale-105"
                     }`}
                     style={{ transformOrigin: "center" }}
                   >
