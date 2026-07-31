@@ -418,14 +418,20 @@ export function AmbientSound({ running }: { running: boolean }) {
     }
   }, [volume, muted]);
 
-  // Play / pause driven by timer phase.
+  // Play / pause driven by timer phase. Deliberately NOT dependent on
+  // volume/mute — those are applied by the effect above, so changing them can
+  // never restart a source (which used to stack overlapping tracks).
   useEffect(() => {
-    if (!current) return;
-    const target = muted ? 0 : volume;
+    if (!current) {
+      stopAllAudio();
+      return;
+    }
+    const target = mutedRef.current ? 0 : volumeRef.current;
 
     if (running) {
+      // Always clear any existing playback first: exactly one active track.
+      stopAllAudio();
       if (bufferRef.current && ensureAudioContext()) {
-        stopHtmlAudio(false);
         startWebAudioSource(target);
       } else {
         // Start the HTMLAudio crossfade pair on slot A.
@@ -443,24 +449,13 @@ export function AmbientSound({ running }: { running: boolean }) {
         startCrossfadeLoop();
       }
     } else {
-      if (usingWebAudioRef.current && audioCtxRef.current && gainRef.current) {
-        const ctx = audioCtxRef.current;
-        const g = gainRef.current;
-        const t = ctx.currentTime;
-        g.gain.cancelScheduledValues(t);
-        g.gain.setValueAtTime(g.gain.value, t);
-        g.gain.linearRampToValueAtTime(0, t + 0.3);
-        const src = sourceRef.current;
-        window.setTimeout(() => {
-          if (sourceRef.current === src) stopWebAudioSource();
-        }, 350);
-      }
-      stopHtmlAudio(true);
+      // Absolute pause rule: everything stops immediately, no lingering fades.
+      stopAllAudio();
     }
     return () => {
       stopCrossfadeLoop();
     };
-  }, [running, current, volume, muted]);
+  }, [running, current]);
 
 
   // Cleanup on unmount
