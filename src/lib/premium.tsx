@@ -23,6 +23,8 @@ export interface ActiveSubscription {
   status: string;
   cancel_at_period_end: boolean;
   current_period_end: number | null;
+  /** Unix seconds when the subscription started (Stripe `created`). */
+  created?: number | null;
 }
 
 interface TriggerPaywallOptions {

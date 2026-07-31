@@ -32,6 +32,7 @@ import { LegalFooter } from "@/components/LegalFooter";
 import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from "@/lib/i18n";
 import { safeStorage } from "@/lib/safeStorage";
 import { supabase } from "@/lib/supabase";
+import { PREMIUM_BENEFITS } from "@/components/PremiumPaywall";
 
 const WEEKLY_REPORT_KEY = "hourglass.weeklyReportOptIn";
 
@@ -663,13 +664,52 @@ function PremiumDetailsModal({
 }: {
   onClose: () => void;
   onCancel: () => void;
-  activeSub: { cancel_at_period_end: boolean; current_period_end: number | null } | null;
+  activeSub: {
+    cancel_at_period_end: boolean;
+    current_period_end: number | null;
+    created?: number | null;
+  } | null;
 }) {
-  const startedAt = getPremiumStart();
-  const daysActive = Math.max(1, Math.floor((Date.now() - startedAt) / 86_400_000));
+  // Days on Premium: prefer the real Stripe subscription start, fall back to
+  // the account creation date, and only then to the local marker.
+  const [accountCreatedAt, setAccountCreatedAt] = useState<number | null>(null);
+  const [remoteLifetimeMinutes, setRemoteLifetimeMinutes] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const user = data.user;
+      if (!cancelled && user?.created_at) {
+        setAccountCreatedAt(new Date(user.created_at).getTime());
+      }
+      if (!user) return;
+      // Lifetime focused hours straight from the full session history.
+      const { data: rows, error } = await supabase
+        .from("sessions")
+        .select("actual_duration")
+        .eq("user_id", user.id);
+      if (cancelled || error || !rows) return;
+      setRemoteLifetimeMinutes(
+        rows.reduce((sum, r) => sum + (Number(r.actual_duration) || 0), 0),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const startedAt =
+    (activeSub?.created ? activeSub.created * 1000 : null) ??
+    accountCreatedAt ??
+    getPremiumStart();
+  const daysActive = Math.max(
+    1,
+    Math.floor((Date.now() - startedAt) / 86_400_000) + 1,
+  );
   // "Focused Hours" mirrors the All-Time analytics tab: total focused minutes
-  // across the user's entire session history (not just since Premium).
-  const focusedMinAllTime = focusedMinutesSince(0);
+  // across the user's entire session history (cloud when available).
+  const focusedMinAllTime = remoteLifetimeMinutes ?? focusedMinutesSince(0);
   const focusedHours = focusedMinAllTime / 60;
 
   return (
@@ -715,13 +755,7 @@ function PremiumDetailsModal({
         <div className="mt-4">
           <div className="text-[10px] uppercase tracking-[0.22em] text-white/50 mb-2">Benefits you already have</div>
           <ul className="space-y-1.5 text-[13px] text-white/80">
-            {[
-              "Unlimited projects & custom rhythms",
-              "Custom analytics date ranges",
-              "Weekly Sunday Progress Report",
-              "Focus Warm-up Calibration",
-              "Lifetime cloud backup of sessions",
-            ].map((b) => (
+            {PREMIUM_BENEFITS.map((b) => (
               <li key={b} className="flex items-start gap-2">
                 <Check className="h-3.5 w-3.5 text-[#E2B05C] mt-0.5 shrink-0" strokeWidth={2} />
                 <span>{b}</span>

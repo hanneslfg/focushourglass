@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase, signInWithGoogle } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
@@ -80,6 +80,50 @@ export function OnboardingOverlay() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [soundOptions, setSoundOptions] = useState<FocusSound[]>([]);
   const [freeSound, setFreeSound] = useState<string | null>(null);
+  const [sandProgress, setSandProgress] = useState(0);
+  const sandRafRef = useRef<number | null>(null);
+  const previewRef = useRef<HTMLAudioElement | null>(null);
+
+  /** Hard-stop any running sound preview (only one may ever play). */
+  function stopPreview() {
+    const el = previewRef.current;
+    if (el) {
+      try {
+        el.pause();
+      } catch {
+        /* noop */
+      }
+      el.src = "";
+      previewRef.current = null;
+    }
+  }
+
+  function playPreview(url: string) {
+    stopPreview();
+    try {
+      const el = new Audio(url);
+      el.loop = true;
+      el.volume = 0.5;
+      previewRef.current = el;
+      void el.play().catch(() => {
+        /* autoplay blocked */
+      });
+    } catch {
+      /* noop */
+    }
+  }
+
+  // Stop preview when leaving the sound step, and on unmount.
+  useEffect(() => {
+    if (step !== 5) stopPreview();
+  }, [step]);
+
+  useEffect(() => {
+    return () => {
+      stopPreview();
+      if (sandRafRef.current) cancelAnimationFrame(sandRafRef.current);
+    };
+  }, []);
 
   // Load the ambient library so the user can claim one track for free.
   useEffect(() => {
@@ -150,6 +194,7 @@ export function OnboardingOverlay() {
       /* noop */
     }
 
+    stopPreview();
     setOpen(false);
 
     // Auto-create a persona-driven first project so the user experiences
@@ -219,15 +264,29 @@ export function OnboardingOverlay() {
     if (flipped) return;
     setFlipped(true);
     setFlipUnlocked(false);
+    setSandProgress(0);
     try {
       navigator.vibrate?.([30, 40, 60]);
     } catch {
       /* noop */
     }
     playChime();
-    // Force the user to sit with the sand-flow animation for 5s before
-    // "Continue" becomes tappable — so the mechanic actually lands.
-    window.setTimeout(() => setFlipUnlocked(true), 5000);
+    // Real 5-second sand-fall: animate the fill level frame by frame and keep
+    // "Continue" locked until the top chamber has fully drained.
+    const DURATION = 5000;
+    const start = performance.now();
+    if (sandRafRef.current) cancelAnimationFrame(sandRafRef.current);
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / DURATION);
+      setSandProgress(t);
+      if (t < 1) {
+        sandRafRef.current = requestAnimationFrame(tick);
+      } else {
+        sandRafRef.current = null;
+        setFlipUnlocked(true);
+      }
+    };
+    sandRafRef.current = requestAnimationFrame(tick);
   }
 
   if (!open) return null;
@@ -359,12 +418,16 @@ export function OnboardingOverlay() {
                     type="button"
                     onClick={handleTapHourglass}
                     aria-label="Flip the hourglass"
-                    className={`group relative transition-transform duration-700 ${
-                      flipped ? "rotate-180" : "hover:scale-105"
+                    className={`group relative ${
+                      flipped ? "animate-hg-flip" : "transition-transform duration-700 hover:scale-105"
                     }`}
                     style={{ transformOrigin: "center" }}
                   >
-                    <AnimatedHourglass filling={flipped} size={140} />
+                    <AnimatedHourglass
+                      progress={flipped ? sandProgress : 0}
+                      falling={flipped && sandProgress < 1}
+                      size={140}
+                    />
                   </button>
                 </div>
                 <p
@@ -408,7 +471,10 @@ export function OnboardingOverlay() {
                         <button
                           key={s.name}
                           type="button"
-                          onClick={() => setFreeSound(s.name)}
+                          onClick={() => {
+                            setFreeSound(s.name);
+                            playPreview(s.url);
+                          }}
                           className={`w-full rounded-xl border px-4 py-3.5 text-left text-sm transition-all ${
                             active
                               ? "border-amber-300/60 bg-amber-300/[0.06] text-white"
@@ -559,15 +625,24 @@ export function OnboardingOverlay() {
 }
 
 function AnimatedHourglass({
+  progress,
+  falling = false,
   filling = false,
   size = 96,
 }: {
+  /** 0 = top chamber full, 1 = fully drained into the bottom chamber. */
+  progress?: number;
+  falling?: boolean;
   filling?: boolean;
   size?: number;
 }) {
-  const p = filling ? 0.72 : 0.15;
-  const topFillY = 8 + (34 - 8) * p;
-  const bottomFillY = 62 - (62 - 40) * p;
+  const p = Math.max(0, Math.min(1, progress ?? (filling ? 0.9 : 0.05)));
+  // Top chamber drains as p rises; bottom chamber fills up.
+  const topFillY = 8 + (36 - 8) * p;
+  const bottomFillY = 64 - (64 - 40) * p;
+  const moundRx = 2 + 12 * p;
+  const moundRy = 0.8 + 3 * p;
+  const grains = [0, 0.18, 0.36, 0.54, 0.72, 0.9];
   return (
     <svg
       viewBox="0 0 48 72"
@@ -589,19 +664,46 @@ function AnimatedHourglass({
       </defs>
       <line x1="6" y1="6" x2="42" y2="6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
       <line x1="6" y1="66" x2="42" y2="66" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+
+      {/* Top chamber sand (drains) */}
       <g clipPath="url(#oh-top)">
-        <rect x="0" y={topFillY} width="48" height="40" fill="url(#oh-sand)">
-          <animate attributeName="y" values={`${topFillY};${topFillY + 0.6};${topFillY}`} dur="3s" repeatCount="indefinite" />
-        </rect>
+        <rect x="0" y={topFillY} width="48" height="40" fill="url(#oh-sand)" />
       </g>
+
+      {/* Bottom chamber sand (fills + growing mound) */}
       <g clipPath="url(#oh-bot)">
-        <rect x="0" y={bottomFillY} width="48" height="40" fill="url(#oh-sand)">
-          <animate attributeName="y" values={`${bottomFillY};${bottomFillY - 0.6};${bottomFillY}`} dur="3s" repeatCount="indefinite" />
-        </rect>
+        <rect x="0" y={bottomFillY} width="48" height="40" fill="url(#oh-sand)" />
+        <ellipse cx="24" cy={bottomFillY + 0.5} rx={moundRx} ry={moundRy} fill="url(#oh-sand)" />
+        {/* Individual grains actually falling through the neck */}
+        {falling &&
+          grains.map((delay, i) => (
+            <circle key={i} cx={24 + (i % 2 === 0 ? -0.5 : 0.5)} r="0.6" cy="38" fill="url(#oh-sand)">
+              <animate
+                attributeName="cy"
+                from="38"
+                to={bottomFillY}
+                dur="0.65s"
+                begin={`-${delay}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0;1;1;0.2"
+                dur="0.65s"
+                begin={`-${delay}s`}
+                repeatCount="indefinite"
+              />
+            </circle>
+          ))}
       </g>
-      <line x1="24" y1="36" x2="24" y2="40" stroke="url(#oh-sand)" strokeWidth="0.8" opacity="0.9">
-        <animate attributeName="opacity" values="0.3;1;0.3" dur="1.4s" repeatCount="indefinite" />
-      </line>
+
+      {/* Continuous sand stream through the neck */}
+      {falling && (
+        <line x1="24" y1="36" x2="24" y2="39" stroke="url(#oh-sand)" strokeWidth="0.9" opacity="0.9">
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="0.5s" repeatCount="indefinite" />
+        </line>
+      )}
+
       <polygon
         points="8,8 40,8 26,36 26,38 40,64 8,64 22,38 22,36"
         fill="none"
