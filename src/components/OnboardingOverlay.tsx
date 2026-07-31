@@ -194,6 +194,7 @@ export function OnboardingOverlay() {
       /* noop */
     }
 
+    stopPreview();
     setOpen(false);
 
     // Auto-create a persona-driven first project so the user experiences
@@ -422,7 +423,11 @@ export function OnboardingOverlay() {
                     }`}
                     style={{ transformOrigin: "center" }}
                   >
-                    <AnimatedHourglass filling={flipped} size={140} />
+                    <AnimatedHourglass
+                      progress={flipped ? sandProgress : 0}
+                      falling={flipped && sandProgress < 1}
+                      size={140}
+                    />pl
                   </button>
                 </div>
                 <p
@@ -466,7 +471,10 @@ export function OnboardingOverlay() {
                         <button
                           key={s.name}
                           type="button"
-                          onClick={() => setFreeSound(s.name)}
+                          onClick={() => {
+                            setFreeSound(s.name);
+                            playPreview(s.url);
+                          }}
                           className={`w-full rounded-xl border px-4 py-3.5 text-left text-sm transition-all ${
                             active
                               ? "border-amber-300/60 bg-amber-300/[0.06] text-white"
