@@ -427,7 +427,7 @@ export function OnboardingOverlay() {
                       progress={flipped ? sandProgress : 0}
                       falling={flipped && sandProgress < 1}
                       size={140}
-                    />pl
+                    />
                   </button>
                 </div>
                 <p
