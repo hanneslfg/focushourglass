@@ -335,6 +335,12 @@ const COMPARISON: Array<{ feature: string; free: string; premium: string }> = [
     premium: "Prime your neural circuits before every block",
   },
   {
+    feature: "Memento Mori Timer (Unpausable Life Countdown)",
+    free: "no",
+    premium: "Live countdown of your remaining time",
+  },
+
+  {
     feature: "Analytics & historical data",
     free: "Week / Month",
     premium: "Lifetime + custom timeframes",
