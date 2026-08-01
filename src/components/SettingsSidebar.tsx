@@ -154,6 +154,9 @@ function SettingsPanel() {
     dayStartHour: 0,
     weekStartsOn: 1,
     warmupEnabled: false,
+    mementoMoriEnabled: false,
+    mementoBirthYear: null,
+    mementoGender: null,
   });
   const [goalInput, setGoalInput] = useState("270");
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
