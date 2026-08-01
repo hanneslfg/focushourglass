@@ -161,7 +161,7 @@ function remoteRowToSession(r: RemoteRow): Session {
     plannedMinutes: r.planned_duration,
     focusedMinutes: r.actual_duration,
     startedAt: r.started_at,
-    completedAt: r.completed_at,
+    completedAt: r.completed_at ?? r.started_at,
     projectId,
     projectName: name,
     projectColor,
@@ -197,22 +197,30 @@ export async function hydrateFromRemote(): Promise<boolean> {
     return false;
   }
 
+  // Fetch ALL sessions for the active user — no extra filters.
   const { data, error } = await supabase
     .from("sessions")
     .select("*")
-    .eq("user_id", authUid)
-    .order("completed_at", { ascending: false });
+    .eq("user_id", authUid);
   if (error) {
+    // Never clear history because a fetch failed.
     console.error("[sessions] hydrateFromRemote failed:", error.message);
     return false;
   }
 
+  console.log("Fetched Sessions from DB:", data);
+
   const rows = (data ?? []) as RemoteRow[];
-  // Keep completed rows AND any aborted rows that still captured real focus
-  // time — auto-saved / auto-completed sessions must not vanish from history.
-  const merged = rows
-    .filter((r) => !r.was_aborted || (r.actual_duration ?? 0) > 0)
-    .map(remoteRowToSession);
+  const merged = rows.map(remoteRowToSession);
+
+  if (merged.length === 0) {
+    // Guard: don't wipe a non-empty local cache with an empty remote result.
+    if (read().length > 0) {
+      console.warn("[sessions] remote returned 0 rows — keeping local cache");
+      return false;
+    }
+  }
+
   write(merged);
 
   return true;

@@ -121,7 +121,6 @@ export function useRealtimeSessions() {
           },
           (payload: { new: RemoteRow }) => {
             try {
-              if (payload.new.was_aborted) return;
               upsertRemoteSession(toLocal(payload.new));
             } catch (e) {
               console.error("[realtime] INSERT merge failed:", e);
