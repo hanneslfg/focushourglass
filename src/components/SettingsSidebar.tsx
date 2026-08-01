@@ -34,6 +34,11 @@ import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from
 import { safeStorage } from "@/lib/safeStorage";
 import { supabase } from "@/lib/supabase";
 import { PREMIUM_BENEFITS } from "@/components/PremiumPaywall";
+import {
+  MementoWarningModal,
+  MementoSetupModal,
+  MementoMoriView,
+} from "@/components/MementoMori";
 
 const WEEKLY_REPORT_KEY = "hourglass.weeklyReportOptIn";
 
