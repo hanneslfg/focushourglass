@@ -161,7 +161,7 @@ function remoteRowToSession(r: RemoteRow): Session {
     plannedMinutes: r.planned_duration,
     focusedMinutes: r.actual_duration,
     startedAt: r.started_at,
-    completedAt: r.completed_at,
+    completedAt: r.completed_at ?? r.started_at,
     projectId,
     projectName: name,
     projectColor,
