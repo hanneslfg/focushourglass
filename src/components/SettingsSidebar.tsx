@@ -16,6 +16,7 @@ import {
   Lock,
   RotateCcw,
   ShieldOff,
+  Skull,
   AlertTriangle,
 } from "lucide-react";
 import { usePremium } from "@/lib/premium";
