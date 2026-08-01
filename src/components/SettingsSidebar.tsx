@@ -128,6 +128,9 @@ function SettingsPanel() {
     fetchActiveSubscription,
   } = usePremium();
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [mementoWarning, setMementoWarning] = useState(false);
+  const [mementoSetup, setMementoSetup] = useState(false);
+  const [mementoView, setMementoView] = useState(false);
   const [premiumDetailsOpen, setPremiumDetailsOpen] = useState(false);
   const [activeSub, setActiveSub] = useState<
     { cancel_at_period_end: boolean; current_period_end: number | null } | null
