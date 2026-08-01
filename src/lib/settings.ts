@@ -16,7 +16,22 @@ export interface Settings {
   weekStartsOn: WeekStart;
   /** Overt-attention warm-up before every session (60s stare-at-center). Default false. */
   warmupEnabled: boolean;
+  /** Premium "Memento Mori" unpausable life countdown. Default false. */
+  mementoMoriEnabled: boolean;
+  /** Birth year used for the life-expectancy estimate. */
+  mementoBirthYear: number | null;
+  /** Gender used for the life-expectancy estimate. */
+  mementoGender: MementoGender | null;
 }
+
+export type MementoGender = "female" | "male" | "other";
+
+/** Baseline life-expectancy averages (years). */
+export const LIFE_EXPECTANCY: Record<MementoGender, number> = {
+  female: 81,
+  male: 76,
+  other: 78,
+};
 
 const DEFAULTS: Settings = {
   soundsEnabled: true,
@@ -24,6 +39,9 @@ const DEFAULTS: Settings = {
   dayStartHour: 0,
   weekStartsOn: 1,
   warmupEnabled: false,
+  mementoMoriEnabled: false,
+  mementoBirthYear: null,
+  mementoGender: null,
 };
 
 export function getSettings(): Settings {

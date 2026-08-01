@@ -16,6 +16,7 @@ import {
   Lock,
   RotateCcw,
   ShieldOff,
+  Skull,
   AlertTriangle,
 } from "lucide-react";
 import { usePremium } from "@/lib/premium";
@@ -33,6 +34,11 @@ import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from
 import { safeStorage } from "@/lib/safeStorage";
 import { supabase } from "@/lib/supabase";
 import { PREMIUM_BENEFITS } from "@/components/PremiumPaywall";
+import {
+  MementoWarningModal,
+  MementoSetupModal,
+  MementoMoriView,
+} from "@/components/MementoMori";
 
 const WEEKLY_REPORT_KEY = "hourglass.weeklyReportOptIn";
 
@@ -122,6 +128,9 @@ function SettingsPanel() {
     fetchActiveSubscription,
   } = usePremium();
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [mementoWarning, setMementoWarning] = useState(false);
+  const [mementoSetup, setMementoSetup] = useState(false);
+  const [mementoView, setMementoView] = useState(false);
   const [premiumDetailsOpen, setPremiumDetailsOpen] = useState(false);
   const [activeSub, setActiveSub] = useState<
     { cancel_at_period_end: boolean; current_period_end: number | null } | null
@@ -154,6 +163,9 @@ function SettingsPanel() {
     dayStartHour: 0,
     weekStartsOn: 1,
     warmupEnabled: false,
+    mementoMoriEnabled: false,
+    mementoBirthYear: null,
+    mementoGender: null,
   });
   const [goalInput, setGoalInput] = useState("270");
   const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">(
@@ -454,6 +466,89 @@ function SettingsPanel() {
           A pre-session breathing & focus calibration ritual to prime your attention before the timer starts. {t("settings.warmupHint")}
         </p>
       </section>
+
+      <section>
+        <SectionTitle>Memento Mori Mode</SectionTitle>
+        <button
+          onClick={() => {
+            if (settings.mementoMoriEnabled) {
+              setSettings({ mementoMoriEnabled: false });
+              return;
+            }
+            if (!isPremium) {
+              triggerPaywall();
+              return;
+            }
+            setMementoWarning(true);
+          }}
+          className="mt-3 w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-foreground/50 transition-colors touch-manipulation"
+        >
+          <span className="flex items-center gap-2.5 text-sm">
+            <Skull className="h-4 w-4" strokeWidth={1.5} />
+            Memento Mori Mode
+            {!isPremium && (
+              <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.2em] text-[#E2B05C]/90 border border-[#E2B05C]/40 rounded-full px-1.5 py-0.5 ml-1">
+                <Lock className="h-2.5 w-2.5" strokeWidth={2.25} /> Premium
+              </span>
+            )}
+          </span>
+          <span
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              settings.mementoMoriEnabled && isPremium ? "bg-primary" : "bg-border"
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-background transition-transform ${
+                settings.mementoMoriEnabled && isPremium ? "translate-x-[18px]" : "translate-x-1"
+              }`}
+            />
+          </span>
+        </button>
+        {settings.mementoMoriEnabled && isPremium && (
+          <button
+            onClick={() => {
+              if (!settings.mementoBirthYear || !settings.mementoGender) {
+                setMementoSetup(true);
+                return;
+              }
+              setMementoView(true);
+            }}
+            className="mt-2 w-full rounded-md border border-[#E2B05C]/40 px-4 py-2.5 text-sm text-[#E2B05C] hover:bg-[#E2B05C]/10 transition-colors"
+          >
+            Open life countdown
+          </button>
+        )}
+        <p className="mt-2 text-[11px] text-muted-foreground/70">
+          An unpausable countdown of your estimated remaining lifetime. Emotionally intense by design.
+        </p>
+      </section>
+
+      {mementoWarning && (
+        <MementoWarningModal
+          onCancel={() => setMementoWarning(false)}
+          onConfirm={() => {
+            setMementoWarning(false);
+            const s = getSettings();
+            if (!s.mementoBirthYear || !s.mementoGender) {
+              setMementoSetup(true);
+            } else {
+              setSettings({ mementoMoriEnabled: true });
+            }
+          }}
+        />
+      )}
+      {mementoSetup && (
+        <MementoSetupModal
+          onCancel={() => setMementoSetup(false)}
+          onSaved={() => {
+            setMementoSetup(false);
+            setMementoView(true);
+          }}
+        />
+      )}
+      {mementoView && <MementoMoriView onClose={() => setMementoView(false)} />}
+
+
 
 
       <section>
