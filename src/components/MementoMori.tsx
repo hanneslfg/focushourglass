@@ -5,8 +5,10 @@ import {
   LIFE_EXPECTANCY,
   getSettings,
   setSettings,
+  persistMementoToCloud,
   type MementoGender,
 } from "@/lib/settings";
+
 import { Hourglass } from "@/components/Hourglass";
 
 const MEMENTO_TEXT =
