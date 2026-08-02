@@ -36,6 +36,18 @@ function totalMinutes(blocks: RhythmBlock[]) {
   return blocks.reduce((sum, b) => sum + b.minutes, 0);
 }
 
+/** Aggregated work vs. break minutes across every block in a rhythm. */
+function splitTotals(blocks: RhythmBlock[]) {
+  return blocks.reduce(
+    (acc, b) => {
+      if (b.kind === "focus") acc.work += b.minutes;
+      else acc.brk += b.minutes;
+      return acc;
+    },
+    { work: 0, brk: 0 },
+  );
+}
+
 function fmtHM(mins: number) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -249,6 +261,7 @@ function RhythmCard({
   const { t } = useTranslation();
   const total = totalMinutes(rhythm.blocks);
   const focusCount = rhythm.blocks.filter((b) => b.kind === "focus").length;
+  const totals = splitTotals(rhythm.blocks);
   return (
     <div
       className={`rounded-lg border bg-card/40 p-5 transition-colors ${
@@ -286,6 +299,16 @@ function RhythmCard({
           })}
         </span>
         <span className="tabular-nums">{fmtHM(total)}</span>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between rounded-md border border-border/60 bg-background/30 px-3 py-2 text-[11px] tabular-nums">
+        <span className="text-muted-foreground">
+          Total Work: <span className="text-foreground">{fmtHM(totals.work)}</span>
+        </span>
+        <span className="text-muted-foreground/40">|</span>
+        <span className="text-muted-foreground">
+          Total Break: <span className="text-foreground">{fmtHM(totals.brk)}</span>
+        </span>
       </div>
 
       <div className="mt-4 flex items-center gap-2">
@@ -523,6 +546,18 @@ function RhythmEditor({
           </button>
           <span className="ml-auto text-[10px] uppercase tracking-[0.2em] text-muted-foreground tabular-nums">
             {t("focusBlocks.total", { time: fmtHM(totalMinutes(blocks)) })}
+          </span>
+        </div>
+
+        <div className="mb-6 flex items-center justify-between rounded-md border border-border/60 bg-background/30 px-3 py-2.5 text-xs tabular-nums">
+          <span className="text-muted-foreground">
+            Total Work:{" "}
+            <span className="text-foreground">{fmtHM(splitTotals(blocks).work)}</span>
+          </span>
+          <span className="text-muted-foreground/40">|</span>
+          <span className="text-muted-foreground">
+            Total Break:{" "}
+            <span className="text-foreground">{fmtHM(splitTotals(blocks).brk)}</span>
           </span>
         </div>
 
