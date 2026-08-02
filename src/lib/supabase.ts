@@ -99,6 +99,33 @@ export async function signInWithGoogle() {
   if (error) console.error("[supabase] signInWithGoogle failed:", error);
 }
 
+/** Email + password sign-in. Returns an error message or null on success. */
+export async function signInWithEmail(
+  email: string,
+  password: string,
+): Promise<string | null> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  return error ? error.message : null;
+}
+
+/**
+ * Email + password sign-up. When email confirmation is enabled the returned
+ * session is null — the caller should tell the user to check their inbox.
+ */
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+): Promise<{ error: string | null; needsConfirmation: boolean }> {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: window.location.origin },
+  });
+  if (error) return { error: error.message, needsConfirmation: false };
+  return { error: null, needsConfirmation: !data.session };
+}
+
+
 /**
  * Wipes all app-managed state from the browser: localStorage keys owned by
  * this app plus sessionStorage. Used on sign-out and on account-switch so
