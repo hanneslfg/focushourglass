@@ -14,6 +14,8 @@
  * Persistence: chosen sound + volume + mute state in localStorage.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useRouterState } from "@tanstack/react-router";
 import { Volume2, VolumeX, Music2, ChevronDown, Lock } from "lucide-react";
 import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
@@ -484,12 +486,20 @@ export function AmbientSound({ running }: { running: boolean }) {
 
   const hasSounds = sounds.length > 0;
 
-  // Render a stable placeholder during SSR / first paint so hydration matches.
-  if (!mounted) {
-    return <div className="relative inline-flex items-center gap-1.5 h-8" aria-hidden />;
-  }
+  // The player lives at the app root so audio keeps playing while navigating.
+  // Its UI is portalled into `#ambient-slot` when the current page provides
+  // one (the timer view), otherwise it floats in a corner.
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!mounted) return;
+    setSlot(document.getElementById("ambient-slot"));
+  }, [mounted, pathname]);
 
-  return (
+  // Render nothing during SSR / first paint so hydration matches.
+  if (!mounted) return null;
+
+  const ui = (
     <div className="relative inline-flex items-center gap-1.5 text-muted-foreground">
 
       {/* Selector */}
@@ -620,5 +630,11 @@ export function AmbientSound({ running }: { running: boolean }) {
         </>
       )}
     </div>
+  );
+
+  if (slot) return createPortal(ui, slot);
+  return createPortal(
+    <div className="fixed left-4 bottom-24 md:bottom-6 z-40">{ui}</div>,
+    document.body,
   );
 }
