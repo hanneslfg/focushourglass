@@ -9,6 +9,7 @@ import {
   Settings as SettingsIcon,
   LogOut,
   User as UserIcon,
+  Skull,
 } from "lucide-react";
 import {
   supabase,
@@ -18,6 +19,7 @@ import {
   setUserId,
   migrateSessions,
 } from "@/lib/supabase";
+import { getSettings } from "@/lib/settings";
 
 function openSettings() {
   window.dispatchEvent(new Event("hourglass:open-settings"));
