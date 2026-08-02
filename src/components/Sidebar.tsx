@@ -158,12 +158,26 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { t } = useTranslation();
+  const [mementoOn, setMementoOn] = useState(false);
+
+  // Reveal the Memento Mori tab only while the mode is enabled in Settings.
+  useEffect(() => {
+    const sync = () => setMementoOn(getSettings().mementoMoriEnabled);
+    sync();
+    window.addEventListener("hourglass:settings", sync);
+    return () => window.removeEventListener("hourglass:settings", sync);
+  }, []);
+
   const items = [
     { to: "/", label: t("nav.timer"), icon: HourglassIcon },
     { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
     { to: "/analytics", label: t("nav.analytics"), icon: BarChart3 },
     { to: "/focus-blocks", label: t("nav.focusBlocks"), icon: Layers },
+    ...(mementoOn
+      ? [{ to: "/memento-mori", label: "Memento Mori", icon: Skull }]
+      : []),
   ];
+
   return (
     <>
       {/* Desktop sidebar */}
