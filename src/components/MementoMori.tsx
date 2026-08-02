@@ -140,8 +140,10 @@ export function MementoSetupModal({
               mementoGender: gender,
               mementoMoriEnabled: true,
             });
+            void persistMementoToCloud();
             onSaved();
           }}
+
           className="flex-1 rounded-md bg-[#E2B05C] px-4 py-2.5 text-sm font-medium text-black hover:brightness-110 transition"
         >
           Start the countdown
