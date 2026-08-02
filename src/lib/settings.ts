@@ -174,3 +174,57 @@ export function maybeNotifyGoalReached(): boolean {
 export function requestNotificationPermission() {
   // no-op: in-app milestones only.
 }
+
+/* ----------------- Memento Mori cloud persistence ----------------- */
+
+/**
+ * Memento Mori state (enabled + demographics) is stored on the user's auth
+ * profile metadata so it survives refreshes, sign-outs and device changes.
+ */
+export async function persistMementoToCloud() {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("./supabase");
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+    const s = getSettings();
+    await supabase.auth.updateUser({
+      data: {
+        memento_mori_enabled: s.mementoMoriEnabled,
+        memento_birth_year: s.mementoBirthYear,
+        memento_gender: s.mementoGender,
+      },
+    });
+  } catch (e) {
+    console.warn("[settings] persistMementoToCloud failed:", e);
+  }
+}
+
+/** Restores Memento Mori state from auth metadata into local settings. */
+export async function hydrateMementoFromCloud() {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("./supabase");
+    const { data } = await supabase.auth.getUser();
+    const meta = data.user?.user_metadata as
+      | {
+          memento_mori_enabled?: boolean;
+          memento_birth_year?: number | null;
+          memento_gender?: MementoGender | null;
+        }
+      | undefined;
+    if (!meta) return;
+    if (
+      meta.memento_mori_enabled === undefined &&
+      meta.memento_birth_year === undefined
+    )
+      return;
+    setSettings({
+      mementoMoriEnabled: !!meta.memento_mori_enabled,
+      mementoBirthYear: meta.memento_birth_year ?? null,
+      mementoGender: meta.memento_gender ?? null,
+    });
+  } catch (e) {
+    console.warn("[settings] hydrateMementoFromCloud failed:", e);
+  }
+}
