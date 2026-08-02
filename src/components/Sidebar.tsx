@@ -13,13 +13,13 @@ import {
 } from "lucide-react";
 import {
   supabase,
-  signInWithGoogle,
   signOut,
   getUserId,
   setUserId,
   migrateSessions,
 } from "@/lib/supabase";
 import { getSettings } from "@/lib/settings";
+import { AuthOptions } from "@/components/AuthOptions";
 
 function openSettings() {
   window.dispatchEvent(new Event("hourglass:open-settings"));
