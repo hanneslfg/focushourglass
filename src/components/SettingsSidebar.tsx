@@ -473,6 +473,7 @@ function SettingsPanel() {
           onClick={() => {
             if (settings.mementoMoriEnabled) {
               setSettings({ mementoMoriEnabled: false });
+              void persistMementoToCloud();
               return;
             }
             if (!isPremium) {
@@ -533,6 +534,7 @@ function SettingsPanel() {
               setMementoSetup(true);
             } else {
               setSettings({ mementoMoriEnabled: true });
+              void persistMementoToCloud();
             }
           }}
         />
