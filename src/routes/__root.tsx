@@ -22,6 +22,10 @@ import { StreakMilestoneOverlay } from "@/components/StreakMilestoneOverlay";
 import { checkMilestones } from "@/lib/milestones";
 import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
+import { AmbientSound } from "@/components/AmbientSound";
+import { GuestBanner } from "@/components/GuestBanner";
+import { useTimer } from "@/lib/TimerContext";
+import { hydrateMementoFromCloud } from "@/lib/settings";
 import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
 import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
@@ -140,6 +144,11 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function GlobalAmbientSound() {
+  const { phase } = useTimer();
+  return <AmbientSound running={phase === "running"} />;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useRealtimeSessions();
@@ -171,6 +180,8 @@ function RootComponent() {
       void hydrateGoalsFromRemote().then(() => backfillUntaggedGoals("Uni"));
       void hydrateRhythmsFromRemote();
       void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
+      // Memento Mori mode + demographics live on the auth profile.
+      void hydrateMementoFromCloud();
       // Restore the user's free ambient-sound unlock from cloud metadata
       // (local caches are wiped on sign-out / account switch).
       void supabase.auth.getUser().then(({ data }) => {
@@ -204,7 +215,11 @@ function RootComponent() {
       <TimerProvider>
         <PremiumProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <GuestBanner />
           <Outlet />
+          {/* Mounted once at the root so ambient audio keeps playing across
+              navigation; the UI portals into the timer page when visible. */}
+          <GlobalAmbientSound />
           <Toaster position="bottom-center" />
           <MilestoneOverlay />
           <OnboardingOverlay />
