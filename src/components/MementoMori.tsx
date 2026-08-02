@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Hourglass as HourglassIcon } from "lucide-react";
 import {
   LIFE_EXPECTANCY,
   getSettings,
   setSettings,
+  persistMementoToCloud,
   type MementoGender,
 } from "@/lib/settings";
+
 import { Hourglass } from "@/components/Hourglass";
 
 const MEMENTO_TEXT =
@@ -140,8 +142,10 @@ export function MementoSetupModal({
               mementoGender: gender,
               mementoMoriEnabled: true,
             });
+            void persistMementoToCloud();
             onSaved();
           }}
+
           className="flex-1 rounded-md bg-[#E2B05C] px-4 py-2.5 text-sm font-medium text-black hover:brightness-110 transition"
         >
           Start the countdown
@@ -198,17 +202,37 @@ function Unit({ value, label }: { value: number; label: string }) {
   );
 }
 
-export function MementoMoriView({ onClose }: { onClose: () => void }) {
-  const s = typeof window !== "undefined" ? getSettings() : null;
+function Stat({ value, label, hint }: { value: string; label: string; hint?: string }) {
+  return (
+    <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3.5">
+      <div className="tabular-nums text-xl font-light text-white">{value}</div>
+      <div className="mt-1 text-[9px] uppercase tracking-[0.22em] text-white/40">{label}</div>
+      {hint && <div className="mt-1 text-[11px] leading-snug text-white/35">{hint}</div>}
+    </div>
+  );
+}
+
+const nf = new Intl.NumberFormat("en-US");
+
+/**
+ * The live, unpausable life countdown. Rendered inline (own route) or inside
+ * the fullscreen overlay below.
+ */
+export function MementoMoriPage() {
+  const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const raf = useRef<number | null>(null);
+  const [s, setS] = useState<ReturnType<typeof getSettings> | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+    setS(getSettings());
+    const onSettings = () => setS(getSettings());
+    window.addEventListener("hourglass:settings", onSettings);
     // Unpausable: ticks for as long as the view is mounted.
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
       window.clearInterval(id);
-      if (raf.current) cancelAnimationFrame(raf.current);
+      window.removeEventListener("hourglass:settings", onSettings);
     };
   }, []);
 
@@ -217,9 +241,96 @@ export function MementoMoriView({ onClose }: { onClose: () => void }) {
     return computeLife(s.mementoBirthYear, s.mementoGender, now);
   }, [s?.mementoBirthYear, s?.mementoGender, now]);
 
-  if (!life) return null;
-  const b = breakdown(life.remainingSeconds);
+  if (!mounted) return null;
 
+  if (!life) {
+    return (
+      <div className="mx-auto max-w-md px-6 py-24 text-center text-sm text-white/50">
+        Add your birth year and gender in Settings → Memento Mori Mode to start
+        the countdown.
+      </div>
+    );
+  }
+
+  const b = breakdown(life.remainingSeconds);
+  const remainingDaysTotal = life.remainingSeconds / 86400;
+  const weeksLeft = Math.floor(remainingDaysTotal / 7);
+  const summersLeft = Math.floor(remainingDaysTotal / 365.2425);
+  const remainingHours = life.remainingSeconds / 3600;
+  const sleepHours = remainingHours * (8 / 24);
+  const routineHours = remainingHours * (3.5 / 24); // eating, commuting, chores
+  const consciousHours = Math.max(0, remainingHours - sleepHours - routineHours);
+
+  return (
+    <div className="mx-auto flex w-full max-w-2xl flex-col items-center px-6 py-16">
+      <div className="text-[10px] uppercase tracking-[0.32em] text-[#E2B05C]/80">
+        Memento Mori
+      </div>
+
+      {/* Sand level mirrors the exact elapsed-life percentage: the top chamber
+          holds (100 - elapsed)% and the bottom holds elapsed%. */}
+      <div className="mt-8 h-64 w-44 text-white/60">
+        <Hourglass progress={life.percentElapsed / 100} flowing complete={false} />
+      </div>
+
+      <div className="mt-10 grid w-full grid-cols-5 gap-2">
+        <Unit value={b.years} label="Years" />
+        <Unit value={b.days} label="Days" />
+        <Unit value={b.hours} label="Hours" />
+        <Unit value={b.minutes} label="Min" />
+        <Unit value={b.secs} label="Sec" />
+      </div>
+      <p className="mt-3 text-[11px] tracking-wide text-white/35">estimated time remaining</p>
+
+      <div className="mt-8 w-full max-w-sm">
+        <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-[#E2B05C] transition-[width] duration-1000 ease-linear"
+            style={{ width: `${life.percentElapsed}%` }}
+          />
+        </div>
+        <div className="mt-2 text-center text-sm text-white/70 tabular-nums">
+          {life.percentElapsed.toFixed(4)}% elapsed
+        </div>
+      </div>
+
+      {/* Brevity of life */}
+      <div className="mt-12 w-full">
+        <div className="text-center text-[10px] uppercase tracking-[0.3em] text-white/35">
+          Brevity of Life
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Stat value={`~${nf.format(weeksLeft)}`} label="Weeks remaining" />
+          <Stat value={`~${nf.format(summersLeft)}`} label="Summers left" />
+          <Stat
+            value={`~${nf.format(Math.round(sleepHours + routineHours))} h`}
+            label="Sleep & routine"
+            hint="Hours you will spend asleep, eating and in transit."
+          />
+          <Stat
+            value={`~${nf.format(Math.round(consciousHours))} h`}
+            label="Active conscious hours"
+            hint="The only time you can actually spend on what matters."
+          />
+        </div>
+      </div>
+
+      <div className="mt-14 w-full border-t border-white/8 pt-8">
+        <p className="text-center text-[15px] leading-[1.9] tracking-[0.01em] text-white/55 [font-family:Georgia,'Times_New_Roman',serif]">
+          {MEMENTO_TEXT}
+        </p>
+      </div>
+
+      <div className="mt-10 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/25">
+        <HourglassIcon className="h-3 w-3" strokeWidth={1.5} />
+        This countdown cannot be paused
+      </div>
+    </div>
+  );
+}
+
+export function MementoMoriView({ onClose }: { onClose: () => void }) {
+  if (typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[200] overflow-y-auto bg-[#08080a]">
       <button
@@ -229,49 +340,9 @@ export function MementoMoriView({ onClose }: { onClose: () => void }) {
       >
         <X className="h-5 w-5" />
       </button>
-
-      <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center px-6 py-16">
-        <div className="text-[10px] uppercase tracking-[0.32em] text-[#E2B05C]/80">
-          Memento Mori
-        </div>
-
-        <div className="mt-8 h-64 w-44 text-white/60">
-          <Hourglass progress={life.percentElapsed / 100} flowing complete={false} />
-        </div>
-
-        <div className="mt-10 grid w-full grid-cols-5 gap-2">
-          <Unit value={b.years} label="Years" />
-          <Unit value={b.days} label="Days" />
-          <Unit value={b.hours} label="Hours" />
-          <Unit value={b.minutes} label="Min" />
-          <Unit value={b.secs} label="Sec" />
-        </div>
-        <p className="mt-3 text-[11px] tracking-wide text-white/35">estimated time remaining</p>
-
-        <div className="mt-8 w-full max-w-sm">
-          <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-[#E2B05C] transition-[width] duration-1000 ease-linear"
-              style={{ width: `${life.percentElapsed}%` }}
-            />
-          </div>
-          <div className="mt-2 text-center text-sm text-white/70 tabular-nums">
-            {life.percentElapsed.toFixed(4)}% elapsed
-          </div>
-        </div>
-
-        <div className="mt-14 w-full border-t border-white/8 pt-8">
-          <p className="text-center text-[15px] leading-[1.9] tracking-[0.01em] text-white/55 [font-family:Georgia,'Times_New_Roman',serif]">
-            {MEMENTO_TEXT}
-          </p>
-        </div>
-
-        <div className="mt-10 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-white/25">
-          <HourglassIcon className="h-3 w-3" strokeWidth={1.5} />
-          This countdown cannot be paused
-        </div>
-      </div>
+      <MementoMoriPage />
     </div>,
     document.body,
   );
 }
+

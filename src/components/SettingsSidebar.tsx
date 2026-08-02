@@ -27,7 +27,9 @@ import {
   getTodayGoal,
   getTodayFocusedMinutes,
   setTodayOverride,
+  persistMementoToCloud,
 } from "@/lib/settings";
+
 import { playClick } from "@/lib/click";
 import { LegalFooter } from "@/components/LegalFooter";
 import { SUPPORTED_LANGUAGES, setLanguage, getLanguage, type LanguageCode } from "@/lib/i18n";
@@ -473,6 +475,7 @@ function SettingsPanel() {
           onClick={() => {
             if (settings.mementoMoriEnabled) {
               setSettings({ mementoMoriEnabled: false });
+              void persistMementoToCloud();
               return;
             }
             if (!isPremium) {
@@ -533,6 +536,7 @@ function SettingsPanel() {
               setMementoSetup(true);
             } else {
               setSettings({ mementoMoriEnabled: true });
+              void persistMementoToCloud();
             }
           }}
         />

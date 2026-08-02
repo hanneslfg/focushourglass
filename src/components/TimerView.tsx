@@ -4,7 +4,6 @@ import { Minus, Plus, Play, Pause, Check, X, Coffee, Focus as FocusIcon } from "
 import { Link } from "@tanstack/react-router";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
-import { AmbientSound } from "./AmbientSound";
 import { VisualWarmup } from "./VisualWarmup";
 
 
@@ -172,7 +171,7 @@ export function TimerView() {
         </div>
 
         {/* Ambient sound selector */}
-        <AmbientSound running={phase === "running"} />
+        <div id="ambient-slot" className="relative inline-flex min-h-8" />
 
 
 

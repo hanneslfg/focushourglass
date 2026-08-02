@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as FocusBlocksRouteImport } from './routes/focus-blocks'
+import { Route as MementoMoriRouteImport } from './routes/memento-mori'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 
@@ -36,6 +37,11 @@ const FocusBlocksRoute = FocusBlocksRouteImport.update({
   path: '/focus-blocks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MementoMoriRoute = MementoMoriRouteImport.update({
+  id: '/memento-mori',
+  path: '/memento-mori',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/focus-blocks': typeof FocusBlocksRoute
+  '/memento-mori': typeof MementoMoriRoute
   '/projects': typeof ProjectsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/focus-blocks': typeof FocusBlocksRoute
+  '/memento-mori': typeof MementoMoriRoute
   '/projects': typeof ProjectsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/calendar': typeof CalendarRoute
   '/focus-blocks': typeof FocusBlocksRoute
+  '/memento-mori': typeof MementoMoriRoute
   '/projects': typeof ProjectsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/focus-blocks'
+    | '/memento-mori'
     | '/projects'
     | '/api/public/stripe-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/focus-blocks'
+    | '/memento-mori'
     | '/projects'
     | '/api/public/stripe-webhook'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/calendar'
     | '/focus-blocks'
+    | '/memento-mori'
     | '/projects'
     | '/api/public/stripe-webhook'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   CalendarRoute: typeof CalendarRoute
   FocusBlocksRoute: typeof FocusBlocksRoute
+  MementoMoriRoute: typeof MementoMoriRoute
   ProjectsRoute: typeof ProjectsRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
@@ -138,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FocusBlocksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/memento-mori': {
+      id: '/memento-mori'
+      path: '/memento-mori'
+      fullPath: '/memento-mori'
+      preLoaderRoute: typeof MementoMoriRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   CalendarRoute: CalendarRoute,
   FocusBlocksRoute: FocusBlocksRoute,
+  MementoMoriRoute: MementoMoriRoute,
   ProjectsRoute: ProjectsRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { supabase, signInWithGoogle } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { AuthOptions } from "@/components/AuthOptions";
 import { safeStorage } from "@/lib/safeStorage";
 import { addProject } from "@/lib/projects";
 import {
@@ -72,6 +73,7 @@ function playChime() {
 export function OnboardingOverlay() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
+  const [guestChosen, setGuestChosen] = useState(false);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [pain, setPain] = useState<Pain | null>(null);
   const [flipped, setFlipped] = useState(false);
@@ -555,7 +557,7 @@ export function OnboardingOverlay() {
                   </p>
                 </div>
 
-                {/* Google sign-in as prominent CTA on the final slide. */}
+                {/* Google / email / guest — three ways in. */}
                 <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-4">
                   <p className="text-[10px] uppercase tracking-[0.28em] text-white/50">
                     Secure Your Progress
@@ -570,17 +572,14 @@ export function OnboardingOverlay() {
                       </div>
                     </div>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => void signInWithGoogle()}
-                      className="mt-3 w-full inline-flex items-center justify-center gap-3 rounded-md border border-white/15 bg-white px-4 py-3 text-sm font-medium text-black hover:bg-white/90 transition-all shadow-[0_10px_30px_-15px_rgba(255,255,255,0.4)]"
-                    >
-                      <GoogleIcon />
-                      Sign in with Google
-                    </button>
+                    <div className="mt-3">
+                      <AuthOptions onGuest={() => setGuestChosen(true)} />
+                    </div>
                   )}
                   <p className="mt-2.5 text-[11px] text-white/45 leading-snug">
-                    Required to save your 5-day challenge progress. No spam, ever.
+                    {guestChosen && !isAuthed
+                      ? "Guest mode: your data stays on this device. You can create an account any time and everything syncs up."
+                      : "Sign in to keep your 5-day challenge progress backed up. No spam, ever."}
                   </p>
                 </div>
 
@@ -600,12 +599,12 @@ export function OnboardingOverlay() {
               </button>
             )}
             <button
-              disabled={!canAdvance || (step === 6 && !isAuthed)}
+              disabled={!canAdvance || (step === 6 && !isAuthed && !guestChosen)}
               onClick={() => {
                 if (step === 6) void finish();
                 else setStep((n) => n + 1);
               }}
-              title={step === 6 && !isAuthed ? "Sign in with Google above to continue" : undefined}
+              title={step === 6 && !isAuthed && !guestChosen ? "Sign in above, or continue as guest" : undefined}
               className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white px-5 py-2.5 text-xs font-medium tracking-wide text-black transition-all hover:bg-white/90 hover:shadow-[0_0_30px_rgba(226,176,92,0.25)] disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {step === 1 && "Build My Focus Environment"}
