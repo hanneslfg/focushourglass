@@ -79,26 +79,43 @@ function AvatarBlock({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
   if (!user) {
     return (
-      <button
-        onClick={async () => {
-          setBusy(true);
-          await signInWithGoogle();
-          setBusy(false);
-        }}
-        disabled={busy}
-        className={`group flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/60 transition-colors disabled:opacity-50 ${
-          collapsed ? "h-10 w-10" : "h-10 w-10"
-        }`}
-        aria-label={t("nav.signIn")}
-        title={t("nav.signInWithGoogle")}
-      >
-        <UserIcon className="h-4 w-4" strokeWidth={1.5} />
-      </button>
+      <>
+        <button
+          onClick={() => setAuthOpen(true)}
+          className={`group flex items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/60 transition-colors ${
+            collapsed ? "h-10 w-10" : "h-10 w-10"
+          }`}
+          aria-label={t("nav.signIn")}
+          title={t("nav.signIn")}
+        >
+          <UserIcon className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        {authOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+            <div
+              className="absolute inset-0"
+              onClick={() => setAuthOpen(false)}
+              aria-hidden
+            />
+            <div className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#0b0b0d] p-6 shadow-2xl">
+              <h2 className="text-lg font-semibold text-white">Sign in</h2>
+              <p className="mt-2 text-sm text-white/55">
+                Sync your sessions across devices — or keep going as a guest.
+              </p>
+              <div className="mt-5">
+                <AuthOptions onGuest={() => setAuthOpen(false)} />
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
+
 
   const initial = (user.name || user.email || "?").trim().charAt(0).toUpperCase();
 
