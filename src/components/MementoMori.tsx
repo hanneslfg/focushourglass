@@ -253,13 +253,7 @@ export function MementoMoriPage() {
   }
 
   const b = breakdown(life.remainingSeconds);
-  const remainingDaysTotal = life.remainingSeconds / 86400;
-  const weeksLeft = Math.floor(remainingDaysTotal / 7);
-  const summersLeft = Math.floor(remainingDaysTotal / 365.2425);
-  const remainingHours = life.remainingSeconds / 3600;
-  const sleepHours = remainingHours * (8 / 24);
-  const routineHours = remainingHours * (3.5 / 24); // eating, commuting, chores
-  const consciousHours = Math.max(0, remainingHours - sleepHours - routineHours);
+
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col items-center px-6 py-16">
