@@ -202,18 +202,6 @@ function Unit({ value, label }: { value: number; label: string }) {
   );
 }
 
-function Stat({ value, label, hint }: { value: string; label: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3.5">
-      <div className="tabular-nums text-xl font-light text-white">{value}</div>
-      <div className="mt-1 text-[9px] uppercase tracking-[0.22em] text-white/40">{label}</div>
-      {hint && <div className="mt-1 text-[11px] leading-snug text-white/35">{hint}</div>}
-    </div>
-  );
-}
-
-const nf = new Intl.NumberFormat("en-US");
-
 /**
  * The live, unpausable life countdown. Rendered inline (own route) or inside
  * the fullscreen overlay below.
