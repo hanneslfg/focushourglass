@@ -165,6 +165,12 @@ export function DailyLogSidebar() {
               <DailyFocusBudget />
             </section>
 
+            {/* Share with a friend */}
+            <section className="flex justify-center">
+              <ShareWithFriend />
+            </section>
+
+
 
             {/* Center: Goal progress */}
             <section className="rounded-md border border-border bg-background/40 px-4 py-3.5">
