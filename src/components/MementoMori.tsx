@@ -294,26 +294,8 @@ export function MementoMoriPage() {
         </div>
       </div>
 
-      {/* Brevity of life */}
-      <div className="mt-12 w-full">
-        <div className="text-center text-[10px] uppercase tracking-[0.3em] text-white/35">
-          Brevity of Life
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <Stat value={`~${nf.format(weeksLeft)}`} label="Weeks remaining" />
-          <Stat value={`~${nf.format(summersLeft)}`} label="Summers left" />
-          <Stat
-            value={`~${nf.format(Math.round(sleepHours + routineHours))} h`}
-            label="Sleep & routine"
-            hint="Hours you will spend asleep, eating and in transit."
-          />
-          <Stat
-            value={`~${nf.format(Math.round(consciousHours))} h`}
-            label="Active conscious hours"
-            hint="The only time you can actually spend on what matters."
-          />
-        </div>
-      </div>
+
+
 
       <div className="mt-14 w-full border-t border-white/8 pt-8">
         <p className="text-center text-[15px] leading-[1.9] tracking-[0.01em] text-white/55 [font-family:Georgia,'Times_New_Roman',serif]">

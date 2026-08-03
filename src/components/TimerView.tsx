@@ -170,8 +170,8 @@ export function TimerView() {
 
         </div>
 
-        {/* Ambient sound selector */}
-        <div id="ambient-slot" className="relative inline-flex min-h-8" />
+
+
 
 
 
