@@ -15,7 +15,7 @@ import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
 import { DailyFocusBudget } from "./DailyFocusBudget";
 import { DailyStreakWidget } from "./DailyStreakWidget";
-import { ShareWithFriend } from "./ShareWithFriend";
+import { AccountabilityPartner } from "./AccountabilityPartner";
 
 
 
@@ -167,9 +167,9 @@ export function DailyLogSidebar() {
               <DailyFocusBudget />
             </section>
 
-            {/* Share with a friend */}
+            {/* Accountability partner */}
             <section className="flex justify-center">
-              <ShareWithFriend />
+              <AccountabilityPartner />
             </section>
 
 

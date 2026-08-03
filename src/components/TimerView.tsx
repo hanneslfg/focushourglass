@@ -170,10 +170,11 @@ export function TimerView() {
 
         </div>
 
-
-
-
-
+        {/* Ambient sound selector — between the project row and the hourglass */}
+        <div
+          id="ambient-slot"
+          className="relative inline-flex min-h-8 justify-center -mt-2"
+        />
 
         {/* Hourglass */}
         <div
@@ -351,8 +352,8 @@ export function TimerView() {
           </div>
         )}
 
-        {/* Ambient sound selector — sits right under the timer controls */}
-        <div id="ambient-slot" className="relative inline-flex min-h-8" />
+
+
 
 
         {!canStart && phase === "idle" && !nextIsBreak && (
