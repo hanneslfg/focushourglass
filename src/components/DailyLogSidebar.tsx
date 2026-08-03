@@ -167,9 +167,9 @@ export function DailyLogSidebar() {
               <DailyFocusBudget />
             </section>
 
-            {/* Share with a friend */}
+            {/* Accountability partner */}
             <section className="flex justify-center">
-              <ShareWithFriend />
+              <AccountabilityPartner />
             </section>
 
 
