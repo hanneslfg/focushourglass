@@ -352,8 +352,8 @@ export function TimerView() {
           </div>
         )}
 
-        {/* Ambient sound selector — sits right under the timer controls */}
-        <div id="ambient-slot" className="relative inline-flex min-h-8" />
+
+
 
 
         {!canStart && phase === "idle" && !nextIsBreak && (
