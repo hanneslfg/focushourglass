@@ -9,6 +9,7 @@ import { Check } from "lucide-react";
 import type { ProjectTag } from "@/lib/projects";
 import { getProjectGoals, isGoalAchieved, type ProjectGoal } from "@/lib/goals";
 import { getSessions } from "@/lib/sessions";
+import { useTimer } from "@/lib/TimerContext";
 
 
 interface Props {
@@ -21,6 +22,8 @@ interface Props {
 export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: Props) {
   const [goals, setGoals] = useState<ProjectGoal[]>([]);
   const [tick, setTick] = useState(0);
+  const { phase } = useTimer();
+  const sessionActive = phase === "running" || phase === "paused";
 
   useEffect(() => {
     const sync = () => setGoals(project ? getProjectGoals(project.id, project.name) : []);
@@ -47,15 +50,22 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, tick]);
 
+  // While a session is running (or paused) only the picked goals stay on
+  // screen — everything else collapses away to reduce visual clutter.
+  const visibleGoals =
+    sessionActive && selectedIds.length > 0
+      ? goals.filter((g) => selectedIds.includes(g.id))
+      : goals;
+
   if (!project) return null;
-  if (goals.length === 0) return null;
+  if (visibleGoals.length === 0) return null;
 
   const allSelected = selectedIds.length > 0 && selectedIds.length === goals.length;
 
   return (
     <div className="flex flex-col items-center gap-2 animate-in fade-in duration-300">
       <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {goals.map((g) => {
+        {visibleGoals.map((g) => {
           const on = selectedIds.includes(g.id);
           const focused =
             (focusedByGoal.get(g.id) ?? 0) +

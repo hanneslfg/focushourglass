@@ -202,18 +202,6 @@ function Unit({ value, label }: { value: number; label: string }) {
   );
 }
 
-function Stat({ value, label, hint }: { value: string; label: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3.5">
-      <div className="tabular-nums text-xl font-light text-white">{value}</div>
-      <div className="mt-1 text-[9px] uppercase tracking-[0.22em] text-white/40">{label}</div>
-      {hint && <div className="mt-1 text-[11px] leading-snug text-white/35">{hint}</div>}
-    </div>
-  );
-}
-
-const nf = new Intl.NumberFormat("en-US");
-
 /**
  * The live, unpausable life countdown. Rendered inline (own route) or inside
  * the fullscreen overlay below.
@@ -253,13 +241,7 @@ export function MementoMoriPage() {
   }
 
   const b = breakdown(life.remainingSeconds);
-  const remainingDaysTotal = life.remainingSeconds / 86400;
-  const weeksLeft = Math.floor(remainingDaysTotal / 7);
-  const summersLeft = Math.floor(remainingDaysTotal / 365.2425);
-  const remainingHours = life.remainingSeconds / 3600;
-  const sleepHours = remainingHours * (8 / 24);
-  const routineHours = remainingHours * (3.5 / 24); // eating, commuting, chores
-  const consciousHours = Math.max(0, remainingHours - sleepHours - routineHours);
+
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col items-center px-6 py-16">
@@ -294,26 +276,8 @@ export function MementoMoriPage() {
         </div>
       </div>
 
-      {/* Brevity of life */}
-      <div className="mt-12 w-full">
-        <div className="text-center text-[10px] uppercase tracking-[0.3em] text-white/35">
-          Brevity of Life
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <Stat value={`~${nf.format(weeksLeft)}`} label="Weeks remaining" />
-          <Stat value={`~${nf.format(summersLeft)}`} label="Summers left" />
-          <Stat
-            value={`~${nf.format(Math.round(sleepHours + routineHours))} h`}
-            label="Sleep & routine"
-            hint="Hours you will spend asleep, eating and in transit."
-          />
-          <Stat
-            value={`~${nf.format(Math.round(consciousHours))} h`}
-            label="Active conscious hours"
-            hint="The only time you can actually spend on what matters."
-          />
-        </div>
-      </div>
+
+
 
       <div className="mt-14 w-full border-t border-white/8 pt-8">
         <p className="text-center text-[15px] leading-[1.9] tracking-[0.01em] text-white/55 [font-family:Georgia,'Times_New_Roman',serif]">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Lock, Sparkles } from "lucide-react";
-import { getSessions, dayKey, type Session } from "@/lib/sessions";
+import { getSessions, type Session } from "@/lib/sessions";
+import { effectiveDayKey } from "@/lib/settings";
 import { usePremium } from "@/lib/premium";
 
 const BLOCK_MIN = 90;
@@ -69,14 +70,14 @@ function MiniHourglass({ fill, complete, muted }: MiniHourglassProps) {
 }
 
 function todaysFocusedMinutes(sessions: Session[]): number {
-  const today = dayKey(new Date());
+  const today = effectiveDayKey(new Date());
   let total = 0;
   for (const s of sessions) {
     // Attribute a session to the day it was *worked*, not the day the
     // auto-save fired.
     const anchor = s.startedAt || s.completedAt;
     if (!anchor) continue;
-    if (anchor.slice(0, 10) !== today) continue;
+    if (effectiveDayKey(anchor) !== today) continue;
 
     total += Math.max(0, s.focusedMinutes || 0);
   }
