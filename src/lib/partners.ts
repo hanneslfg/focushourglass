@@ -1,6 +1,15 @@
 import { safeStorage } from "./safeStorage";
 import { getUserId } from "./supabase";
-import { effectiveDayKey } from "./settings";
+
+/** 3-tier granular sharing permissions, per buddy. */
+export interface PartnerPerms {
+  /** Total focus minutes today + current streak. */
+  progress: boolean;
+  /** Active project name + task title. */
+  tasks: boolean;
+  /** Live status broadcast (Focusing / On Break / Offline). */
+  live: boolean;
+}
 
 export interface Partner {
   /** Buddy code (their user id). */
@@ -8,41 +17,26 @@ export interface Partner {
   /** Friendly name the user gave them. */
   name: string;
   linkedAt: string;
+  perms: PartnerPerms;
 }
 
-export interface PartnerPrivacy {
-  /** Share task / project names with the partner (duration is always shared). */
-  shareNames: boolean;
-}
-
-export interface PartnerSessionSummary {
-  id: string;
-  minutes: number;
-  completedAt: string;
-  task?: string;
-  project?: string;
-}
-
-export interface PartnerActivity {
-  minutes: number;
-  sessions: PartnerSessionSummary[];
-  /** Last time the partner completed a session (ISO), if any. */
-  lastActiveAt: string | null;
-  /** True when remote data could actually be read. */
-  available: boolean;
-}
-
-const PARTNER_KEY = "hourglass.partner.v1";
-const PRIVACY_KEY = "hourglass.partner.privacy.v1";
+const PARTNERS_KEY = "hourglass.partners.v2";
+const LEGACY_KEY = "hourglass.partner.v1";
 
 export const PARTNERS_EVENT = "hourglass:partner";
+
+export const DEFAULT_PERMS: PartnerPerms = {
+  progress: true,
+  tasks: true,
+  live: true,
+};
 
 function emit() {
   if (typeof window !== "undefined")
     window.dispatchEvent(new Event(PARTNERS_EVENT));
 }
 
-/** Your own buddy code — short, shareable, derived from your user id. */
+/** Your own buddy code — shareable, derived from your user id. */
 export function myBuddyCode(): string {
   return getUserId();
 }
@@ -55,51 +49,85 @@ export function inviteUrl(): string {
   return `${base}/?buddy=${encodeURIComponent(myBuddyCode())}`;
 }
 
-export function getPartner(): Partner | null {
-  if (typeof window === "undefined") return null;
+function normalize(raw: unknown): Partner[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((p): p is Partial<Partner> => !!p && typeof p === "object")
+    .filter((p) => typeof p.code === "string" && p.code.trim().length > 0)
+    .map((p) => ({
+      code: String(p.code).trim(),
+      name: (p.name ?? "").trim() || "Your partner",
+      linkedAt: p.linkedAt ?? new Date().toISOString(),
+      perms: { ...DEFAULT_PERMS, ...(p.perms ?? {}) },
+    }));
+}
+
+export function getPartners(): Partner[] {
+  if (typeof window === "undefined") return [];
   try {
-    const raw = safeStorage.getItem(PARTNER_KEY);
-    return raw ? (JSON.parse(raw) as Partner) : null;
+    const raw = safeStorage.getItem(PARTNERS_KEY);
+    if (raw) return normalize(JSON.parse(raw));
+    // Migrate the old single-partner shape.
+    const legacy = safeStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      const list = normalize([JSON.parse(legacy)]);
+      if (list.length) savePartners(list);
+      return list;
+    }
+    return [];
   } catch {
-    return null;
+    return [];
   }
 }
 
-export function setPartner(code: string, name?: string) {
+function savePartners(list: Partner[]) {
+  safeStorage.setItem(PARTNERS_KEY, JSON.stringify(list));
+}
+
+export function addPartner(code: string, name?: string): boolean {
   const clean = code.trim();
   if (!clean || clean === myBuddyCode()) return false;
-  const partner: Partner = {
+  const list = getPartners();
+  if (list.some((p) => p.code === clean)) return false;
+  list.push({
     code: clean,
     name: (name ?? "").trim() || "Your partner",
     linkedAt: new Date().toISOString(),
-  };
-  safeStorage.setItem(PARTNER_KEY, JSON.stringify(partner));
+    perms: { ...DEFAULT_PERMS },
+  });
+  savePartners(list);
   emit();
   return true;
 }
 
-export function removePartner() {
-  safeStorage.removeItem(PARTNER_KEY);
+export function removePartner(code: string) {
+  savePartners(getPartners().filter((p) => p.code !== code));
   emit();
 }
 
-export function getPrivacy(): PartnerPrivacy {
-  if (typeof window === "undefined") return { shareNames: true };
-  try {
-    const raw = safeStorage.getItem(PRIVACY_KEY);
-    if (!raw) return { shareNames: true };
-    const parsed = JSON.parse(raw) as Partial<PartnerPrivacy>;
-    return { shareNames: parsed.shareNames !== false };
-  } catch {
-    return { shareNames: true };
-  }
+export function renamePartner(code: string, name: string) {
+  savePartners(
+    getPartners().map((p) =>
+      p.code === code ? { ...p, name: name.trim() || p.name } : p,
+    ),
+  );
+  emit();
 }
 
-export function setPrivacy(patch: Partial<PartnerPrivacy>) {
-  const next = { ...getPrivacy(), ...patch };
-  safeStorage.setItem(PRIVACY_KEY, JSON.stringify(next));
+export function setPartnerPerms(code: string, patch: Partial<PartnerPerms>) {
+  savePartners(
+    getPartners().map((p) =>
+      p.code === code ? { ...p, perms: { ...p.perms, ...patch } } : p,
+    ),
+  );
   emit();
-  return next;
+}
+
+/** Map of buddy code → the permissions I grant them. */
+export function permsByPartner(): Record<string, PartnerPerms> {
+  const out: Record<string, PartnerPerms> = {};
+  for (const p of getPartners()) out[p.code] = p.perms;
+  return out;
 }
 
 /** Pick up ?buddy=CODE from the URL and link that partner once. */
@@ -108,7 +136,7 @@ export function consumeInviteFromUrl(): boolean {
   const params = new URLSearchParams(window.location.search);
   const code = params.get("buddy");
   if (!code) return false;
-  const linked = getPartner() ? false : setPartner(code);
+  const linked = addPartner(code);
   params.delete("buddy");
   const qs = params.toString();
   window.history.replaceState(
@@ -119,66 +147,17 @@ export function consumeInviteFromUrl(): boolean {
   return linked;
 }
 
-/**
- * Best-effort read of the partner's focus for today. Returns
- * `available: false` when the backend does not expose their rows (e.g. row
- * level security), so the UI can show a waiting state instead of zeroes.
- */
-export async function fetchPartnerActivity(
-  code: string,
-): Promise<PartnerActivity> {
-  const empty: PartnerActivity = {
-    minutes: 0,
-    sessions: [],
-    lastActiveAt: null,
-    available: false,
-  };
-  if (typeof window === "undefined" || !code) return empty;
-  try {
-    const { supabase } = await import("./supabase");
-    const { data, error } = await supabase
-      .from("sessions")
-      .select(
-        "id, task_name, project_tag, actual_duration, started_at, completed_at",
-      )
-      .eq("user_id", code)
-      .order("started_at", { ascending: false })
-      .limit(50);
-    if (error || !data) return empty;
-
-    const today = effectiveDayKey(new Date());
-    const rows = (
-      data as Array<{
-        id: string;
-        task_name: string | null;
-        project_tag: string | null;
-        actual_duration: number | null;
-        started_at: string;
-        completed_at: string | null;
-      }>
-    ).filter((r) => effectiveDayKey(r.completed_at ?? r.started_at) === today);
-
-    const sessions: PartnerSessionSummary[] = rows.map((r) => ({
-      id: r.id,
-      minutes: Math.max(0, Math.round(r.actual_duration ?? 0)),
-      completedAt: r.completed_at ?? r.started_at,
-      task: r.task_name ?? undefined,
-      project: r.project_tag ?? undefined,
-    }));
-
-    return {
-      minutes: sessions.reduce((sum, s) => sum + s.minutes, 0),
-      sessions,
-      lastActiveAt: sessions[0]?.completedAt ?? null,
-      available: true,
-    };
-  } catch {
-    return empty;
-  }
-}
-
 /** Online-ish heuristic: active within the last 2 hours. */
 export function isActive(lastActiveAt: string | null): boolean {
   if (!lastActiveAt) return false;
   return Date.now() - new Date(lastActiveAt).getTime() < 2 * 60 * 60 * 1000;
+}
+
+export function fmtHM(mins: number) {
+  if (mins <= 0) return "0m";
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
 }
