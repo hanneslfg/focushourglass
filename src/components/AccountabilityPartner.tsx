@@ -1,178 +1,196 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Copy,
+  Flame,
   Link2,
-  Share2,
+  Lock,
+  Send,
+  Sparkle,
+  Trash2,
   UserPlus,
   Users,
   X,
 } from "lucide-react";
-import { getSessions, type Session } from "@/lib/sessions";
-import { effectiveDayKey, getTodayFocusedMinutes } from "@/lib/settings";
+import { useTimer } from "@/lib/TimerContext";
+import { getTodayGoal, getTodayFocusedMinutes } from "@/lib/settings";
+import { getDailyStreak } from "@/lib/streaks";
 import {
   PARTNERS_EVENT,
+  addPartner,
   consumeInviteFromUrl,
-  fetchPartnerActivity,
-  getPartner,
-  getPrivacy,
+  fmtHM,
+  getPartners,
   inviteUrl,
-  isActive,
   removePartner,
-  setPartner,
-  setPrivacy,
+  setPartnerPerms,
   type Partner,
-  type PartnerActivity,
 } from "@/lib/partners";
+import { useFocusRoom, type BuddyState } from "@/lib/focusRoom";
 
-function fmtHM(mins: number) {
-  if (mins <= 0) return "0m";
+function fmtAgo(iso: string | null) {
+  if (!iso) return "never";
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
   const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
-function fmtTime(iso: string) {
-  try {
-    return new Date(iso).toLocaleTimeString(undefined, {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "";
-  }
+function statusMeta(b: BuddyState) {
+  if (b.status === "focusing")
+    return { dot: "bg-emerald-400", label: "Focusing", tone: "text-emerald-300/90" };
+  if (b.status === "break")
+    return { dot: "bg-amber-300", label: "On break", tone: "text-amber-200/90" };
+  return { dot: "bg-muted-foreground/40", label: "Offline", tone: "text-muted-foreground" };
 }
 
 export function AccountabilityPartner() {
-  const [partner, setPartnerState] = useState<Partner | null>(null);
-  const [privacy, setPrivacyState] = useState({ shareNames: true });
+  const { phase, blockKind, task, project, remaining } = useTimer();
+  const [partners, setPartners] = useState<Partner[]>([]);
   const [mine, setMine] = useState(0);
-  const [mySessions, setMySessions] = useState<Session[]>([]);
-  const [activity, setActivity] = useState<PartnerActivity | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [goalMinutes, setGoalMinutes] = useState(180);
+  const [roomOpen, setRoomOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  const syncLocal = useCallback(() => {
-    setPartnerState(getPartner());
-    setPrivacyState(getPrivacy());
+  const sync = useCallback(() => {
+    setPartners(getPartners());
     setMine(getTodayFocusedMinutes());
-    const today = effectiveDayKey(new Date());
-    setMySessions(
-      getSessions()
-        .filter((s) => effectiveDayKey(s.completedAt) === today)
-        .sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1)),
-    );
+    setStreak(getDailyStreak());
+    setGoalMinutes(getTodayGoal());
   }, []);
 
   useEffect(() => {
     consumeInviteFromUrl();
-    syncLocal();
-    window.addEventListener(PARTNERS_EVENT, syncLocal);
-    window.addEventListener("hourglass:sessions", syncLocal);
-    window.addEventListener("hourglass:settings", syncLocal);
+    sync();
+    window.addEventListener(PARTNERS_EVENT, sync);
+    window.addEventListener("hourglass:sessions", sync);
+    window.addEventListener("hourglass:settings", sync);
     return () => {
-      window.removeEventListener(PARTNERS_EVENT, syncLocal);
-      window.removeEventListener("hourglass:sessions", syncLocal);
-      window.removeEventListener("hourglass:settings", syncLocal);
+      window.removeEventListener(PARTNERS_EVENT, sync);
+      window.removeEventListener("hourglass:sessions", sync);
+      window.removeEventListener("hourglass:settings", sync);
     };
-  }, [syncLocal]);
+  }, [sync]);
 
-  useEffect(() => {
-    if (!partner) {
-      setActivity(null);
-      return;
-    }
-    let cancelled = false;
-    const load = async () => {
-      const a = await fetchPartnerActivity(partner.code);
-      if (!cancelled) setActivity(a);
-    };
-    load();
-    const id = window.setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [partner]);
+  const running = phase === "running";
+  const myStatus = running
+    ? blockKind === "break"
+      ? ("break" as const)
+      : ("focusing" as const)
+    : phase === "paused"
+      ? ("break" as const)
+      : ("offline" as const);
 
-  const online = isActive(activity?.lastActiveAt ?? null);
+  const meState = useMemo(
+    () => ({
+      status: myStatus,
+      task: task || undefined,
+      project: project?.name,
+      remainingSec: running ? Math.max(0, Math.round(remaining)) : undefined,
+      goalMinutes,
+      displayName: "Partner",
+    }),
+    [myStatus, task, project?.name, remaining, running, goalMinutes],
+  );
+
+  const { buddies, messages, sendMessage, roomMinutes } = useFocusRoom(
+    meState,
+    partners.length > 0,
+  );
+
+  const onlineCount = buddies.filter((b) => b.status !== "offline").length;
 
   return (
     <>
-      {partner ? (
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="w-full max-w-md rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3.5 text-left transition-all hover:border-white/[0.12] hover:bg-white/[0.04]"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-              <Users className="h-3.5 w-3.5" strokeWidth={1.75} />
-              Accountability
-            </div>
+      <button
+        type="button"
+        onClick={() => (partners.length ? setRoomOpen(true) : setInviteOpen(true))}
+        className="w-full max-w-md rounded-2xl border border-white/[0.07] bg-gradient-to-b from-white/[0.05] to-white/[0.015] backdrop-blur-md px-5 py-5 text-left transition-all hover:border-amber-200/25 hover:from-white/[0.07]"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            <Users className="h-3.5 w-3.5" strokeWidth={1.75} />
+            Accountability
+          </span>
+          {partners.length > 0 && (
             <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.2em] text-muted-foreground/80">
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
-                  online ? "bg-emerald-400/80" : "bg-muted-foreground/40"
+                  onlineCount ? "bg-emerald-400" : "bg-muted-foreground/40"
                 }`}
               />
-              {online ? "Active" : "Offline"}
+              {onlineCount} online
             </span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
-                You
-              </div>
-              <div className="font-display text-2xl tabular-nums tracking-tight">
-                {fmtHM(mine)}
-              </div>
+          )}
+        </div>
+
+        <div className="mt-3 font-display text-xl tracking-tight text-foreground/95">
+          Virtual Focus Room
+        </div>
+
+        {partners.length === 0 ? (
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            Invite a partner and focus side by side — shared progress, streaks
+            and a distraction-safe chat.
+          </p>
+        ) : (
+          <>
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <Metric label="You" value={fmtHM(mine)} />
+              <Metric label="Room" value={fmtHM(roomMinutes)} />
+              <Metric label="Buddies" value={String(partners.length)} />
             </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 truncate">
-                {partner.name}
-              </div>
-              <div className="font-display text-2xl tabular-nums tracking-tight">
-                {activity?.available ? fmtHM(activity.minutes) : "—"}
-              </div>
+            <div className="mt-4 space-y-2">
+              {buddies.slice(0, 3).map((b) => {
+                const s = statusMeta(b);
+                return (
+                  <div key={b.code} className="flex items-center gap-2 text-[11px]">
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${s.dot}`} />
+                    <span className="truncate text-foreground/85">{b.name}</span>
+                    <span className={`ml-auto shrink-0 tabular-nums ${s.tone}`}>
+                      {b.sharesProgress ? fmtHM(b.minutes) : s.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setInviteOpen(true)}
-          className="w-full max-w-md rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md px-4 py-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] flex items-center justify-center gap-2"
-        >
-          <UserPlus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
-          <span className="text-xs text-foreground/85">Invite partner</span>
-        </button>
-      )}
+          </>
+        )}
+
+        <div className="mt-4 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-amber-200/80">
+          {partners.length ? "Enter focus room" : "Invite a partner"}
+          <Sparkle className="h-3 w-3" strokeWidth={1.75} />
+        </div>
+      </button>
 
       {inviteOpen && (
         <InviteModal
           onClose={() => setInviteOpen(false)}
           onLinked={() => {
             setInviteOpen(false);
-            syncLocal();
+            sync();
           }}
         />
       )}
 
-      {modalOpen && partner && (
-        <PartnerModal
-          partner={partner}
-          privacy={privacy}
+      {roomOpen && (
+        <FocusRoomModal
+          buddies={buddies}
+          partners={partners}
           mine={mine}
-          mySessions={mySessions}
-          activity={activity}
-          onClose={() => setModalOpen(false)}
-          onTogglePrivacy={() => setPrivacyState(setPrivacy({ shareNames: !privacy.shareNames }))}
-          onUnlink={() => {
-            removePartner();
-            setModalOpen(false);
+          streak={streak}
+          goalMinutes={goalMinutes}
+          roomMinutes={roomMinutes}
+          messages={messages}
+          onSend={sendMessage}
+          chatLocked={running}
+          onClose={() => setRoomOpen(false)}
+          onInvite={() => {
+            setRoomOpen(false);
+            setInviteOpen(true);
           }}
         />
       )}
@@ -180,14 +198,29 @@ export function AccountabilityPartner() {
   );
 }
 
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/70">
+        {label}
+      </div>
+      <div className="font-display text-lg tabular-nums tracking-tight">{value}</div>
+    </div>
+  );
+}
+
 function Shell({
   title,
+  subtitle,
   onClose,
   children,
+  wide,
 }: {
   title: string;
+  subtitle?: string;
   onClose: () => void;
   children: React.ReactNode;
+  wide?: boolean;
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -202,12 +235,19 @@ function Shell({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl border border-white/[0.08] bg-card shadow-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-xl tracking-tight">{title}</h3>
+      <div
+        className={`relative w-full ${wide ? "max-w-lg" : "max-w-md"} max-h-[88vh] overflow-y-auto rounded-2xl border border-white/[0.08] bg-card shadow-2xl p-5`}
+      >
+        <div className="flex items-start justify-between mb-4 gap-3">
+          <div className="min-w-0">
+            <h3 className="font-display text-xl tracking-tight">{title}</h3>
+            {subtitle && (
+              <p className="mt-1 text-[11px] text-muted-foreground">{subtitle}</p>
+            )}
+          </div>
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
+            className="h-8 w-8 shrink-0 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
             aria-label="Close"
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -264,10 +304,14 @@ function InviteModal({
   const [error, setError] = useState("");
 
   return (
-    <Shell title="Accountability partner" onClose={onClose}>
+    <Shell
+      title="Accountability partners"
+      subtitle="Focus together, quietly."
+      onClose={onClose}
+    >
       <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-        Send your invite link to a friend. When they open it, you're linked and
-        can see each other's focus for the day.
+        Send your invite link to a friend. When they open it you're linked and
+        can see each other's focus in the Virtual Focus Room.
       </p>
       <CopyRow value={url} label="Your invite link" />
 
@@ -287,12 +331,12 @@ function InviteModal({
           placeholder="Their name (optional)"
           className="w-full rounded-lg border border-border bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-foreground/50"
         />
-        {error && <p className="text-[11px] text-red-400">{error}</p>}
+        {error && <p className="text-[11px] text-destructive">{error}</p>}
         <button
           type="button"
           onClick={() => {
-            if (setPartner(code, name)) onLinked();
-            else setError("Enter a valid buddy code (not your own).");
+            if (addPartner(code, name)) onLinked();
+            else setError("Enter a valid, new buddy code (not your own).");
           }}
           className="w-full rounded-lg border border-border px-3 py-2.5 text-sm hover:border-foreground/60 transition-colors"
         >
@@ -303,180 +347,276 @@ function InviteModal({
   );
 }
 
-function PartnerModal({
-  partner,
-  privacy,
+function FocusRoomModal({
+  buddies,
+  partners,
   mine,
-  mySessions,
-  activity,
+  streak,
+  goalMinutes,
+  roomMinutes,
+  messages,
+  onSend,
+  chatLocked,
   onClose,
-  onTogglePrivacy,
-  onUnlink,
+  onInvite,
 }: {
-  partner: Partner;
-  privacy: { shareNames: boolean };
+  buddies: BuddyState[];
+  partners: Partner[];
   mine: number;
-  mySessions: Session[];
-  activity: PartnerActivity | null;
+  streak: number;
+  goalMinutes: number;
+  roomMinutes: number;
+  messages: { id: string; name: string; text: string; at: string; mine: boolean }[];
+  onSend: (text: string) => void;
+  chatLocked: boolean;
   onClose: () => void;
-  onTogglePrivacy: () => void;
-  onUnlink: () => void;
+  onInvite: () => void;
 }) {
-  const [shared, setShared] = useState(false);
+  const [openPerms, setOpenPerms] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const listRef = useRef<HTMLDivElement | null>(null);
 
-  const summary = useMemo(() => {
-    const lines = [
-      `Focus Hourglass — today: ${fmtHM(mine)} across ${mySessions.length} session${mySessions.length === 1 ? "" : "s"}`,
-    ];
-    for (const s of mySessions) {
-      const label = privacy.shareNames
-        ? ` — ${s.task || "Untitled"}${s.projectName ? ` [${s.projectName}]` : ""}`
-        : "";
-      lines.push(`• ${fmtTime(s.completedAt)} · ${s.focusedMinutes}m${label}`);
-    }
-    lines.push("https://focushourglass.com");
-    return lines.join("\n");
-  }, [mine, mySessions, privacy.shareNames]);
+  useEffect(() => {
+    if (chatLocked) return;
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [messages.length, chatLocked]);
 
-  async function shareStats() {
-    const data = { title: "Focus Hourglass", text: summary };
-    try {
-      if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share(data);
-        return;
-      }
-    } catch {
-      /* dismissed — fall through */
-    }
-    try {
-      await navigator.clipboard.writeText(summary);
-      setShared(true);
-      window.setTimeout(() => setShared(false), 2000);
-    } catch {
-      /* clipboard unavailable */
-    }
-  }
+  const hours = (roomMinutes / 60).toFixed(1);
 
   return (
-    <Shell title="Accountability" onClose={onClose}>
-      {/* Live activity feed */}
-      <section>
-        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
-          Live activity feed
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-border bg-background/40 px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
-              You
-            </div>
-            <div className="font-display text-2xl tabular-nums">{fmtHM(mine)}</div>
-          </div>
-          <div className="rounded-lg border border-border bg-background/40 px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70 truncate">
-              {partner.name}
-            </div>
-            <div className="font-display text-2xl tabular-nums">
-              {activity?.available ? fmtHM(activity.minutes) : "—"}
-            </div>
-          </div>
-        </div>
-
-        <ul className="mt-4 space-y-2">
-          {mySessions.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-baseline justify-between gap-2 text-xs"
-            >
-              <span className="truncate text-foreground/85">
-                You
-                {privacy.shareNames
-                  ? ` · ${s.task || "Untitled"}${s.projectName ? ` [${s.projectName}]` : ""}`
-                  : " · Focus block"}
-              </span>
-              <span className="tabular-nums text-muted-foreground shrink-0">
-                {s.focusedMinutes} min
-              </span>
-            </li>
-          ))}
-          {activity?.sessions.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-baseline justify-between gap-2 text-xs"
-            >
-              <span className="truncate text-foreground/85">
-                {partner.name}
-                {s.task ? ` · ${s.task}${s.project ? ` [${s.project}]` : ""}` : " · Focus block"}
-              </span>
-              <span className="tabular-nums text-muted-foreground shrink-0">
-                {s.minutes} min
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {!activity?.available && (
-          <p className="mt-3 text-[11px] text-muted-foreground/70 italic">
-            Waiting for {partner.name}'s data — their sessions appear here once
-            they share their focus.
-          </p>
-        )}
-      </section>
-
-      {/* Privacy & permissions */}
-      <section className="mt-6 pt-5 border-t border-border">
-        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
-          Privacy & permissions
-        </div>
-        <button
-          type="button"
-          onClick={onTogglePrivacy}
-          className="w-full flex items-center justify-between gap-3 text-left"
-        >
-          <span className="min-w-0">
-            <span className="block text-sm text-foreground/90">
-              Share task / project names
-            </span>
-            <span className="block text-[11px] text-muted-foreground">
-              Off still shares your focus duration.
-            </span>
+    <Shell
+      wide
+      title="Virtual Focus Room"
+      subtitle={`Together you focused for ${hours} hours today.`}
+      onClose={onClose}
+    >
+      {/* You */}
+      <div className="rounded-xl border border-amber-200/20 bg-amber-200/[0.04] px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-foreground/90">You</span>
+          <span className="inline-flex items-center gap-1 text-[11px] text-amber-200/90">
+            <Flame className="h-3 w-3" strokeWidth={1.75} />
+            {streak} day streak
           </span>
-          <span
-            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-              privacy.shareNames ? "bg-amber-300/80" : "bg-border"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 h-4 w-4 rounded-full bg-background transition-all ${
-                privacy.shareNames ? "left-[18px]" : "left-0.5"
-              }`}
-            />
-          </span>
-        </button>
-      </section>
+        </div>
+        <Progress value={mine} max={goalMinutes} />
+        <div className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
+          {fmtHM(mine)} / {fmtHM(goalMinutes)} today
+        </div>
+      </div>
 
-      {/* Share + invite */}
-      <section className="mt-6 pt-5 border-t border-border space-y-3">
-        <button
-          type="button"
-          onClick={shareStats}
-          className="w-full rounded-lg border border-border px-3 py-2.5 text-sm hover:border-foreground/60 transition-colors inline-flex items-center justify-center gap-2"
-        >
-          {shared ? (
-            <Check className="h-3.5 w-3.5 text-amber-300" strokeWidth={2} />
-          ) : (
-            <Share2 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+      {/* Buddies */}
+      <div className="mt-4 space-y-2">
+        {buddies.map((b) => {
+          const s = statusMeta(b);
+          const partner = partners.find((p) => p.code === b.code);
+          const isOpen = openPerms === b.code;
+          return (
+            <div
+              key={b.code}
+              className="rounded-xl border border-border bg-background/40 overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenPerms(isOpen ? null : b.code)}
+                className="w-full px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${s.dot}`} />
+                    <span className="truncate text-sm text-foreground/90">{b.name}</span>
+                  </span>
+                  <span className={`shrink-0 text-[11px] ${s.tone}`}>
+                    {b.status === "focusing" && b.remainingSec != null
+                      ? `Focusing · ${Math.ceil(b.remainingSec / 60)}m left`
+                      : b.status === "offline"
+                        ? `Offline · ${fmtAgo(b.lastActiveAt)}`
+                        : s.label}
+                  </span>
+                </div>
+                {b.sharesTasks && (b.task || b.project) && (
+                  <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                    {b.task || "Focus block"}
+                    {b.project ? ` · ${b.project}` : ""}
+                  </div>
+                )}
+                <Progress value={b.minutes} max={b.goalMinutes || goalMinutes} />
+                <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground tabular-nums">
+                  <span>{b.sharesProgress ? `${fmtHM(b.minutes)} today` : "Progress hidden"}</span>
+                  {b.sharesProgress && (
+                    <span className="inline-flex items-center gap-1 text-amber-200/85">
+                      <Flame className="h-3 w-3" strokeWidth={1.75} />
+                      {b.streak} day streak
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              {isOpen && partner && (
+                <div className="border-t border-border px-4 py-3 space-y-3">
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                    What {partner.name} can see
+                  </div>
+                  <PermToggle
+                    label="Share daily progress & streak"
+                    hint="Focus hours completed today and your streak count."
+                    on={partner.perms.progress}
+                    onToggle={() =>
+                      setPartnerPerms(partner.code, { progress: !partner.perms.progress })
+                    }
+                  />
+                  <PermToggle
+                    label="Share task details"
+                    hint="Active project names and task titles."
+                    on={partner.perms.tasks}
+                    onToggle={() =>
+                      setPartnerPerms(partner.code, { tasks: !partner.perms.tasks })
+                    }
+                  />
+                  <PermToggle
+                    label="Share live online status"
+                    hint="Broadcast Focusing / On break / Offline."
+                    on={partner.perms.live}
+                    onToggle={() =>
+                      setPartnerPerms(partner.code, { live: !partner.perms.live })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePartner(partner.code)}
+                    className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" strokeWidth={1.75} />
+                    Unlink
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Quiet chat */}
+      <section className="mt-5 pt-4 border-t border-border">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Quiet chat
+          </span>
+          {chatLocked && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-amber-200/80">
+              <Lock className="h-3 w-3" strokeWidth={1.75} />
+              Locked
+            </span>
           )}
-          {shared ? "Summary copied" : "Share daily stats"}
-        </button>
-        <CopyRow value={inviteUrl()} label="Invite another buddy" />
-        <button
-          type="button"
-          onClick={onUnlink}
-          className="w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-red-400 transition-colors"
+        </div>
+
+        <div
+          ref={listRef}
+          className="max-h-40 overflow-y-auto rounded-lg border border-border bg-background/40 p-3 space-y-2"
         >
-          Unlink partner
-        </button>
+          {messages.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground/70 italic">
+              No messages yet — say hi during your next break.
+            </p>
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className="text-[12px] leading-relaxed">
+                <span className={m.mine ? "text-amber-200/90" : "text-foreground/85"}>
+                  {m.mine ? "You" : m.name}
+                </span>
+                <span className="text-muted-foreground"> · {m.text}</span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <p className="mt-2 text-[11px] text-muted-foreground/80">
+          🔒 Chat is locked during focus sessions to preserve Deep Work.
+        </p>
+
+        <form
+          className="mt-2 flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (chatLocked || !draft.trim()) return;
+            onSend(draft);
+            setDraft("");
+          }}
+        >
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, 300))}
+            disabled={chatLocked}
+            placeholder={chatLocked ? "Locked while focusing…" : "Message your buddies"}
+            className="flex-1 rounded-lg border border-border bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-foreground/50 disabled:opacity-50"
+          />
+          <button
+            type="submit"
+            disabled={chatLocked || !draft.trim()}
+            className="h-10 w-10 shrink-0 rounded-lg border border-border flex items-center justify-center hover:border-foreground/60 transition-colors disabled:opacity-40"
+            aria-label="Send message"
+          >
+            <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
+          </button>
+        </form>
       </section>
+
+      <button
+        type="button"
+        onClick={onInvite}
+        className="mt-4 w-full rounded-lg border border-border px-3 py-2.5 text-sm hover:border-foreground/60 transition-colors inline-flex items-center justify-center gap-2"
+      >
+        <UserPlus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+        Invite another buddy
+      </button>
     </Shell>
+  );
+}
+
+function Progress({ value, max }: { value: number; max: number }) {
+  const pct = Math.max(0, Math.min(100, max > 0 ? (value / max) * 100 : 0));
+  return (
+    <div className="mt-2 h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
+      <div
+        className="h-full rounded-full bg-amber-300/70 transition-all"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+function PermToggle({
+  label,
+  hint,
+  on,
+  onToggle,
+}: {
+  label: string;
+  hint: string;
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-between gap-3 text-left"
+    >
+      <span className="min-w-0">
+        <span className="block text-[13px] text-foreground/90">{label}</span>
+        <span className="block text-[11px] text-muted-foreground">{hint}</span>
+      </span>
+      <span
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+          on ? "bg-amber-300/80" : "bg-border"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 h-4 w-4 rounded-full bg-background transition-all ${
+            on ? "left-[18px]" : "left-0.5"
+          }`}
+        />
+      </span>
+    </button>
   );
 }

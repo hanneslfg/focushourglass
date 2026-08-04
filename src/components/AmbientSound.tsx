@@ -487,14 +487,21 @@ export function AmbientSound({ running }: { running: boolean }) {
   const hasSounds = sounds.length > 0;
 
   // The player lives at the app root so audio keeps playing while navigating.
-  // Its UI is portalled into `#ambient-slot` when the current page provides
-  // one (the timer view), otherwise it floats in a corner.
+  // Its UI ALWAYS renders inside the timer view's `#ambient-slot` (between the
+  // project row and the hourglass) — never in a fixed/floating footer.
   const pathname = useRouterState({ select: (st) => st.location.pathname });
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (!mounted) return;
-    setSlot(document.getElementById("ambient-slot"));
+    const find = () => setSlot(document.getElementById("ambient-slot"));
+    find();
+    // The slot may mount a tick later (lazy routes, guest/auth gates), so
+    // watch the DOM until it appears or disappears.
+    const obs = new MutationObserver(find);
+    obs.observe(document.body, { childList: true, subtree: true });
+    return () => obs.disconnect();
   }, [mounted, pathname]);
+
 
   // Render nothing during SSR / first paint so hydration matches.
   if (!mounted) return null;
@@ -632,9 +639,8 @@ export function AmbientSound({ running }: { running: boolean }) {
     </div>
   );
 
-  if (slot) return createPortal(ui, slot);
-  return createPortal(
-    <div className="fixed left-4 bottom-24 md:bottom-6 z-40">{ui}</div>,
-    document.body,
-  );
+  // No slot on this page → audio keeps playing, but no floating control.
+  if (!slot) return null;
+  return createPortal(ui, slot);
 }
+
