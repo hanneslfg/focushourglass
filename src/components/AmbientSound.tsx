@@ -639,9 +639,8 @@ export function AmbientSound({ running }: { running: boolean }) {
     </div>
   );
 
-  if (slot) return createPortal(ui, slot);
-  return createPortal(
-    <div className="fixed left-4 bottom-24 md:bottom-6 z-40">{ui}</div>,
-    document.body,
-  );
+  // No slot on this page → audio keeps playing, but no floating control.
+  if (!slot) return null;
+  return createPortal(ui, slot);
 }
+
