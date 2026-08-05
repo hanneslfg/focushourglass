@@ -86,7 +86,7 @@ function normalize(raw: unknown): Partner[] {
     .filter((p) => typeof p.code === "string" && p.code.trim().length > 0)
     .map((p) => ({
       code: String(p.code).trim(),
-      name: (p.name ?? "").trim() || "Your partner",
+      name: (p.name ?? "").trim() || FALLBACK_BUDDY_NAME,
       linkedAt: p.linkedAt ?? new Date().toISOString(),
       perms: { ...DEFAULT_PERMS, ...(p.perms ?? {}) },
     }));
