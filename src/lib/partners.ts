@@ -114,21 +114,26 @@ function savePartners(list: Partner[]) {
   safeStorage.setItem(PARTNERS_KEY, JSON.stringify(list));
 }
 
-export function addPartner(code: string, name?: string): boolean {
+export function addPartner(
+  code: string,
+  name?: string,
+  perms?: Partial<PartnerPerms>,
+): boolean {
   const clean = code.trim();
   if (!clean || clean === myBuddyCode()) return false;
   const list = getPartners();
   if (list.some((p) => p.code === clean)) return false;
   list.push({
     code: clean,
-    name: (name ?? "").trim() || "Your partner",
+    name: (name ?? "").trim() || FALLBACK_BUDDY_NAME,
     linkedAt: new Date().toISOString(),
-    perms: { ...DEFAULT_PERMS },
+    perms: { ...DEFAULT_PERMS, ...(perms ?? {}) },
   });
   savePartners(list);
   emit();
   return true;
 }
+
 
 export function removePartner(code: string) {
   savePartners(getPartners().filter((p) => p.code !== code));
