@@ -428,7 +428,10 @@ export function MementoMoriPage() {
 
 
 
+      <PerspectiveGrid birthYear={s?.mementoBirthYear ?? null} />
+
       <div className="mt-14 w-full border-t border-white/8 pt-8">
+
         <p className="text-center text-[15px] leading-[1.9] tracking-[0.01em] text-white/55 [font-family:Georgia,'Times_New_Roman',serif]">
           {MEMENTO_TEXT}
         </p>
