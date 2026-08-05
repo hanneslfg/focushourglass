@@ -18,15 +18,18 @@ import { getDailyStreak } from "@/lib/streaks";
 import {
   PARTNERS_EVENT,
   addPartner,
-  consumeInviteFromUrl,
+  pendingInviteCode,
   fmtHM,
+  getMyDisplayName,
   getPartners,
   inviteUrl,
   removePartner,
   setPartnerPerms,
   type Partner,
 } from "@/lib/partners";
+import { BuddyInviteOnboarding } from "@/components/BuddyInviteOnboarding";
 import { useFocusRoom, type BuddyState } from "@/lib/focusRoom";
+
 
 function fmtAgo(iso: string | null) {
   if (!iso) return "never";
