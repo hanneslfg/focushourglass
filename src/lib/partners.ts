@@ -165,22 +165,30 @@ export function permsByPartner(): Record<string, PartnerPerms> {
   return out;
 }
 
-/** Pick up ?buddy=CODE from the URL and link that partner once. */
-export function consumeInviteFromUrl(): boolean {
-  if (typeof window === "undefined") return false;
+/** Read ?buddy=CODE / ?code=CODE without linking yet. */
+export function pendingInviteCode(): string | null {
+  if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
-  const code = params.get("buddy");
-  if (!code) return false;
-  const linked = addPartner(code);
+  const code = (params.get("buddy") ?? params.get("code") ?? "").trim();
+  if (!code || code === myBuddyCode()) return null;
+  if (getPartners().some((p) => p.code === code)) return null;
+  return code;
+}
+
+/** Strip the invite params from the address bar. */
+export function clearInviteFromUrl() {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
   params.delete("buddy");
+  params.delete("code");
   const qs = params.toString();
   window.history.replaceState(
     {},
     "",
     `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`,
   );
-  return linked;
 }
+
 
 /** Online-ish heuristic: active within the last 2 hours. */
 export function isActive(lastActiveAt: string | null): boolean {
