@@ -22,6 +22,7 @@ export interface Partner {
 
 const PARTNERS_KEY = "hourglass.partners.v2";
 const LEGACY_KEY = "hourglass.partner.v1";
+const DISPLAY_NAME_KEY = "hourglass.displayName.v1";
 
 export const PARTNERS_EVENT = "hourglass:partner";
 
@@ -30,6 +31,35 @@ export const DEFAULT_PERMS: PartnerPerms = {
   tasks: true,
   live: true,
 };
+
+/** Conservative defaults applied when accepting an invite link. */
+export const INVITE_PERMS: PartnerPerms = {
+  progress: true,
+  tasks: false,
+  live: false,
+};
+
+export const FALLBACK_BUDDY_NAME = "Focus Buddy";
+
+/** The name other people see in the Virtual Focus Room. */
+export function getMyDisplayName(): string {
+  if (typeof window === "undefined") return FALLBACK_BUDDY_NAME;
+  const v = (safeStorage.getItem(DISPLAY_NAME_KEY) ?? "").trim();
+  return v || FALLBACK_BUDDY_NAME;
+}
+
+export function hasMyDisplayName(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(safeStorage.getItem(DISPLAY_NAME_KEY) ?? "").trim();
+}
+
+export function setMyDisplayName(name: string) {
+  const clean = name.trim().slice(0, 30);
+  if (!clean) return;
+  safeStorage.setItem(DISPLAY_NAME_KEY, clean);
+  emit();
+}
+
 
 function emit() {
   if (typeof window !== "undefined")
@@ -56,7 +86,7 @@ function normalize(raw: unknown): Partner[] {
     .filter((p) => typeof p.code === "string" && p.code.trim().length > 0)
     .map((p) => ({
       code: String(p.code).trim(),
-      name: (p.name ?? "").trim() || "Your partner",
+      name: (p.name ?? "").trim() || FALLBACK_BUDDY_NAME,
       linkedAt: p.linkedAt ?? new Date().toISOString(),
       perms: { ...DEFAULT_PERMS, ...(p.perms ?? {}) },
     }));
@@ -84,21 +114,26 @@ function savePartners(list: Partner[]) {
   safeStorage.setItem(PARTNERS_KEY, JSON.stringify(list));
 }
 
-export function addPartner(code: string, name?: string): boolean {
+export function addPartner(
+  code: string,
+  name?: string,
+  perms?: Partial<PartnerPerms>,
+): boolean {
   const clean = code.trim();
   if (!clean || clean === myBuddyCode()) return false;
   const list = getPartners();
   if (list.some((p) => p.code === clean)) return false;
   list.push({
     code: clean,
-    name: (name ?? "").trim() || "Your partner",
+    name: (name ?? "").trim() || FALLBACK_BUDDY_NAME,
     linkedAt: new Date().toISOString(),
-    perms: { ...DEFAULT_PERMS },
+    perms: { ...DEFAULT_PERMS, ...(perms ?? {}) },
   });
   savePartners(list);
   emit();
   return true;
 }
+
 
 export function removePartner(code: string) {
   savePartners(getPartners().filter((p) => p.code !== code));
@@ -130,22 +165,30 @@ export function permsByPartner(): Record<string, PartnerPerms> {
   return out;
 }
 
-/** Pick up ?buddy=CODE from the URL and link that partner once. */
-export function consumeInviteFromUrl(): boolean {
-  if (typeof window === "undefined") return false;
+/** Read ?buddy=CODE / ?code=CODE without linking yet. */
+export function pendingInviteCode(): string | null {
+  if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
-  const code = params.get("buddy");
-  if (!code) return false;
-  const linked = addPartner(code);
+  const code = (params.get("buddy") ?? params.get("code") ?? "").trim();
+  if (!code || code === myBuddyCode()) return null;
+  if (getPartners().some((p) => p.code === code)) return null;
+  return code;
+}
+
+/** Strip the invite params from the address bar. */
+export function clearInviteFromUrl() {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
   params.delete("buddy");
+  params.delete("code");
   const qs = params.toString();
   window.history.replaceState(
     {},
     "",
     `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`,
   );
-  return linked;
 }
+
 
 /** Online-ish heuristic: active within the last 2 hours. */
 export function isActive(lastActiveAt: string | null): boolean {

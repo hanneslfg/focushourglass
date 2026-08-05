@@ -202,6 +202,155 @@ function Unit({ value, label }: { value: number; label: string }) {
   );
 }
 
+/* ---------------- Perspective grid ---------------- */
+
+type Perspective = "year" | "life";
+type Granularity = "days" | "weeks" | "months" | "years";
+
+const LIFETIME_YEARS = 80;
+
+function isLeap(y: number) {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function gridData(
+  perspective: Perspective,
+  unit: Granularity,
+  birthYear: number | null,
+  now: Date,
+): { total: number; passed: number; currentIndex: number; noun: string } {
+  if (perspective === "year") {
+    const year = now.getFullYear();
+    const start = new Date(year, 0, 1).getTime();
+    const dayOfYear = Math.floor((now.getTime() - start) / 86_400_000);
+    if (unit === "weeks") {
+      const total = 52;
+      const idx = Math.min(total - 1, Math.floor(dayOfYear / 7));
+      return { total, passed: idx, currentIndex: idx, noun: "weeks" };
+    }
+    const total = isLeap(year) ? 366 : 365;
+    return { total, passed: dayOfYear, currentIndex: dayOfYear, noun: "days" };
+  }
+
+  const by = birthYear ?? now.getFullYear();
+  const birth = new Date(by, 0, 1).getTime();
+  const livedMs = Math.max(0, now.getTime() - birth);
+  if (unit === "years") {
+    const idx = Math.min(LIFETIME_YEARS - 1, Math.floor(livedMs / (365.2425 * 86_400_000)));
+    return { total: LIFETIME_YEARS, passed: idx, currentIndex: idx, noun: "years" };
+  }
+  if (unit === "months") {
+    const total = LIFETIME_YEARS * 12;
+    const idx = Math.min(total - 1, Math.floor(livedMs / (30.436875 * 86_400_000)));
+    return { total, passed: idx, currentIndex: idx, noun: "months" };
+  }
+  const total = Math.round(LIFETIME_YEARS * 52.1775);
+  const idx = Math.min(total - 1, Math.floor(livedMs / (7 * 86_400_000)));
+  return { total, passed: idx, currentIndex: idx, noun: "weeks" };
+}
+
+function PerspectiveGrid({ birthYear }: { birthYear: number | null }) {
+  const [perspective, setPerspective] = useState<Perspective>("year");
+  const [unit, setUnit] = useState<Granularity>("days");
+
+  const units: Granularity[] =
+    perspective === "year" ? ["days", "weeks"] : ["weeks", "months", "years"];
+
+  const switchPerspective = (p: Perspective) => {
+    setPerspective(p);
+    setUnit(p === "year" ? "days" : "weeks");
+  };
+
+  const data = useMemo(
+    () => gridData(perspective, unit, birthYear, new Date()),
+    [perspective, unit, birthYear],
+  );
+
+  const cell =
+    data.total > 2000
+      ? "h-[5px] w-[5px]"
+      : data.total > 700
+        ? "h-1.5 w-1.5"
+        : data.total > 120
+          ? "h-2 w-2"
+          : "h-3 w-3";
+
+  return (
+    <section className="mt-14 w-full">
+      {/* Perspective toggle */}
+      <div className="mx-auto flex w-full max-w-xs rounded-full border border-white/10 bg-white/[0.03] p-1">
+        {(
+          [
+            ["year", "This Year"],
+            ["life", "My Lifetime"],
+          ] as [Perspective, string][]
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => switchPerspective(key)}
+            className={`flex-1 rounded-full px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] transition-colors ${
+              perspective === key
+                ? "bg-[#E2B05C] text-black"
+                : "text-white/50 hover:text-white/80"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Granularity */}
+      <div className="mt-4 flex justify-center gap-2">
+        {units.map((u) => (
+          <button
+            key={u}
+            onClick={() => setUnit(u)}
+            className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] capitalize transition-colors ${
+              unit === u
+                ? "border-[#E2B05C]/70 text-[#E2B05C]"
+                : "border-white/10 text-white/45 hover:border-white/25"
+            }`}
+          >
+            {u}
+          </button>
+        ))}
+      </div>
+
+      {perspective === "life" && !birthYear ? (
+        <p className="mt-8 text-center text-sm text-white/45">
+          Add your birth year in Settings → Memento Mori Mode to see your lifetime grid.
+        </p>
+      ) : (
+        <>
+          <div className="mt-8 flex flex-wrap justify-center gap-[3px] sm:gap-1">
+            {Array.from({ length: data.total }, (_, i) => {
+              const isPast = i < data.passed;
+              const isNow = i === data.currentIndex;
+              return (
+                <span
+                  key={i}
+                  className={`${cell} rounded-[2px] ${
+                    isNow
+                      ? "animate-pulse bg-[#E2B05C] ring-1 ring-[#E2B05C]/60"
+                      : isPast
+                        ? "bg-[#E2B05C]/70"
+                        : "border border-white/12 bg-transparent"
+                  }`}
+                />
+              );
+            })}
+          </div>
+          <p className="mt-5 text-center text-[11px] uppercase tracking-[0.22em] text-white/35">
+            {data.passed.toLocaleString()} of {data.total.toLocaleString()} {data.noun}{" "}
+            {perspective === "year" ? "of this year" : "of a life"} spent
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+
 /**
  * The live, unpausable life countdown. Rendered inline (own route) or inside
  * the fullscreen overlay below.
@@ -279,7 +428,10 @@ export function MementoMoriPage() {
 
 
 
+      <PerspectiveGrid birthYear={s?.mementoBirthYear ?? null} />
+
       <div className="mt-14 w-full border-t border-white/8 pt-8">
+
         <p className="text-center text-[15px] leading-[1.9] tracking-[0.01em] text-white/55 [font-family:Georgia,'Times_New_Roman',serif]">
           {MEMENTO_TEXT}
         </p>

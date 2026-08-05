@@ -18,15 +18,18 @@ import { getDailyStreak } from "@/lib/streaks";
 import {
   PARTNERS_EVENT,
   addPartner,
-  consumeInviteFromUrl,
+  pendingInviteCode,
   fmtHM,
+  getMyDisplayName,
   getPartners,
   inviteUrl,
   removePartner,
   setPartnerPerms,
   type Partner,
 } from "@/lib/partners";
+import { BuddyInviteOnboarding } from "@/components/BuddyInviteOnboarding";
 import { useFocusRoom, type BuddyState } from "@/lib/focusRoom";
+
 
 function fmtAgo(iso: string | null) {
   if (!iso) return "never";
@@ -54,16 +57,19 @@ export function AccountabilityPartner() {
   const [goalMinutes, setGoalMinutes] = useState(180);
   const [roomOpen, setRoomOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [invite, setInvite] = useState<string | null>(null);
+  const [myName, setMyName] = useState("Focus Buddy");
 
   const sync = useCallback(() => {
     setPartners(getPartners());
     setMine(getTodayFocusedMinutes());
     setStreak(getDailyStreak());
     setGoalMinutes(getTodayGoal());
+    setMyName(getMyDisplayName());
   }, []);
 
   useEffect(() => {
-    consumeInviteFromUrl();
+    setInvite(pendingInviteCode());
     sync();
     window.addEventListener(PARTNERS_EVENT, sync);
     window.addEventListener("hourglass:sessions", sync);
@@ -91,10 +97,11 @@ export function AccountabilityPartner() {
       project: project?.name,
       remainingSec: running ? Math.max(0, Math.round(remaining)) : undefined,
       goalMinutes,
-      displayName: "Partner",
+      displayName: myName,
     }),
-    [myStatus, task, project?.name, remaining, running, goalMinutes],
+    [myStatus, task, project?.name, remaining, running, goalMinutes, myName],
   );
+
 
   const { buddies, messages, sendMessage, roomMinutes } = useFocusRoom(
     meState,
@@ -165,6 +172,19 @@ export function AccountabilityPartner() {
           <Sparkle className="h-3 w-3" strokeWidth={1.75} />
         </div>
       </button>
+
+      {invite && (
+        <BuddyInviteOnboarding
+          code={invite}
+          onDismiss={() => setInvite(null)}
+          onAccepted={() => {
+            setInvite(null);
+            sync();
+            setRoomOpen(true);
+          }}
+        />
+      )}
+
 
       {inviteOpen && (
         <InviteModal
