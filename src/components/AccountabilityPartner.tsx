@@ -173,6 +173,19 @@ export function AccountabilityPartner() {
         </div>
       </button>
 
+      {invite && (
+        <BuddyInviteOnboarding
+          code={invite}
+          onDismiss={() => setInvite(null)}
+          onAccepted={() => {
+            setInvite(null);
+            sync();
+            setRoomOpen(true);
+          }}
+        />
+      )}
+
+
       {inviteOpen && (
         <InviteModal
           onClose={() => setInviteOpen(false)}
