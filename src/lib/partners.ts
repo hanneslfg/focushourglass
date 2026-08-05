@@ -22,6 +22,7 @@ export interface Partner {
 
 const PARTNERS_KEY = "hourglass.partners.v2";
 const LEGACY_KEY = "hourglass.partner.v1";
+const DISPLAY_NAME_KEY = "hourglass.displayName.v1";
 
 export const PARTNERS_EVENT = "hourglass:partner";
 
@@ -30,6 +31,35 @@ export const DEFAULT_PERMS: PartnerPerms = {
   tasks: true,
   live: true,
 };
+
+/** Conservative defaults applied when accepting an invite link. */
+export const INVITE_PERMS: PartnerPerms = {
+  progress: true,
+  tasks: false,
+  live: false,
+};
+
+export const FALLBACK_BUDDY_NAME = "Focus Buddy";
+
+/** The name other people see in the Virtual Focus Room. */
+export function getMyDisplayName(): string {
+  if (typeof window === "undefined") return FALLBACK_BUDDY_NAME;
+  const v = (safeStorage.getItem(DISPLAY_NAME_KEY) ?? "").trim();
+  return v || FALLBACK_BUDDY_NAME;
+}
+
+export function hasMyDisplayName(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!(safeStorage.getItem(DISPLAY_NAME_KEY) ?? "").trim();
+}
+
+export function setMyDisplayName(name: string) {
+  const clean = name.trim().slice(0, 30);
+  if (!clean) return;
+  safeStorage.setItem(DISPLAY_NAME_KEY, clean);
+  emit();
+}
+
 
 function emit() {
   if (typeof window !== "undefined")
