@@ -668,3 +668,382 @@ function PermToggle({
     </button>
   );
 }
+
+/* ============================ Friend list ============================ */
+
+function FriendListModal({
+  buddies,
+  mine,
+  streak,
+  goalMinutes,
+  roomMinutes,
+  onOpenFriend,
+  onRoom,
+  onInvite,
+  onClose,
+}: {
+  buddies: BuddyState[];
+  mine: number;
+  streak: number;
+  goalMinutes: number;
+  roomMinutes: number;
+  onOpenFriend: (code: string) => void;
+  onRoom: () => void;
+  onInvite: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Shell
+      wide
+      title="Friend list"
+      subtitle={`Together you focused for ${(roomMinutes / 60).toFixed(1)} hours today.`}
+      onClose={onClose}
+    >
+      <div className="rounded-xl border border-amber-200/20 bg-amber-200/[0.04] px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-foreground/90">You</span>
+          <span className="inline-flex items-center gap-1 text-[11px] text-amber-200/90">
+            <Flame className="h-3 w-3" strokeWidth={1.75} />
+            {streak} day streak
+          </span>
+        </div>
+        <Progress value={mine} max={goalMinutes} />
+        <div className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
+          {fmtHM(mine)} / {fmtHM(goalMinutes)} today
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {buddies.map((b) => {
+          const s = statusMeta(b);
+          return (
+            <button
+              key={b.code}
+              type="button"
+              onClick={() => onOpenFriend(b.code)}
+              className="w-full rounded-xl border border-border bg-background/40 px-4 py-3 text-left hover:border-foreground/30 hover:bg-white/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="relative h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/[0.04] flex items-center justify-center text-xs text-foreground/80">
+                  {b.name.trim().charAt(0).toUpperCase() || "F"}
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-background ${s.dot}`}
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-foreground/90">
+                    {b.name}
+                  </span>
+                  <span className={`block text-[11px] ${s.tone}`}>
+                    {b.status === "focusing" && b.remainingSec != null
+                      ? `Focusing · ${Math.ceil(b.remainingSec / 60)}m left`
+                      : b.status === "offline"
+                        ? `Offline · ${fmtAgo(b.lastActiveAt)}`
+                        : s.label}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-[11px] tabular-nums text-foreground/85">
+                    {b.sharesProgress ? fmtHM(b.minutes) : "—"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-200/85">
+                    <Flame className="h-3 w-3" strokeWidth={1.75} />
+                    {b.sharesProgress ? b.streak : "–"}
+                  </span>
+                </span>
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-muted-foreground/60"
+                  strokeWidth={1.75}
+                />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={onInvite}
+        className="mt-3 w-full rounded-lg border border-border px-3 py-2.5 text-sm hover:border-foreground/60 transition-colors inline-flex items-center justify-center gap-2"
+      >
+        <UserPlus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.75} />
+        Invite another buddy
+      </button>
+
+      <button
+        type="button"
+        onClick={onRoom}
+        className="mt-4 w-full rounded-xl border border-amber-200/30 bg-gradient-to-r from-amber-200/[0.12] to-amber-200/[0.04] px-4 py-3.5 text-sm text-amber-100 hover:border-amber-200/60 transition-colors inline-flex items-center justify-center gap-2"
+      >
+        <Users className="h-4 w-4" strokeWidth={1.75} />
+        Virtual Study Room →
+      </button>
+    </Shell>
+  );
+}
+
+/* ========================= Friend detail view ========================= */
+
+function dailyHistory(days = 7) {
+  const out: { key: string; minutes: number }[] = [];
+  const byDay = new Map<string, number>();
+  for (const s of getSessions()) {
+    if (!s.focusedMinutes) continue;
+    const key = effectiveDayKey(s.startedAt || s.completedAt);
+    byDay.set(key, (byDay.get(key) ?? 0) + s.focusedMinutes);
+  }
+  const cursor = new Date();
+  for (let i = 0; i < days; i++) {
+    const key = effectiveDayKey(cursor);
+    out.push({ key, minutes: Math.round(byDay.get(key) ?? 0) });
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return out;
+}
+
+function FriendDetailModal({
+  buddy,
+  partner,
+  myName,
+  liveMessages,
+  chatLocked,
+  goalMinutes,
+  onBroadcast,
+  onClose,
+}: {
+  buddy: BuddyState | null;
+  partner: Partner | null;
+  myName: string;
+  liveMessages: { id: string; from?: string; name: string; text: string; at: string; mine: boolean }[];
+  chatLocked: boolean;
+  goalMinutes: number;
+  onBroadcast: (text: string) => void;
+  onClose: () => void;
+}) {
+  const code = buddy?.code ?? partner?.code ?? "";
+  const [thread, setThread] = useState<BuddyMessage[]>(() => getLocalThread(code));
+  const [draft, setDraft] = useState("");
+  const [tab, setTab] = useState<"chat" | "history" | "privacy">("chat");
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const history = useMemo(() => dailyHistory(7), []);
+
+  useEffect(() => {
+    if (!code) return;
+    let alive = true;
+    void loadThread(code).then((t) => alive && setThread(t));
+    const onUpdate = () => setThread(getLocalThread(code));
+    window.addEventListener(BUDDY_MESSAGES_EVENT, onUpdate);
+    return () => {
+      alive = false;
+      window.removeEventListener(BUDDY_MESSAGES_EVENT, onUpdate);
+    };
+  }, [code]);
+
+  // Fold realtime messages from this buddy into the durable thread.
+  useEffect(() => {
+    if (!code) return;
+    for (const m of liveMessages) {
+      if (m.mine || m.from !== code) continue;
+      cacheMessage({
+        id: m.id,
+        from: code,
+        to: myBuddyCode(),
+        name: m.name,
+        text: m.text,
+        at: m.at,
+        mine: false,
+      });
+    }
+  }, [liveMessages, code]);
+
+  useEffect(() => {
+    if (tab !== "chat") return;
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [thread.length, tab]);
+
+  if (!code) return null;
+  const s = buddy
+    ? statusMeta(buddy)
+    : { dot: "bg-muted-foreground/40", label: "Offline", tone: "text-muted-foreground" };
+  const name = buddy?.name || partner?.name || "Focus Buddy";
+
+  async function send() {
+    if (chatLocked || !draft.trim()) return;
+    const text = draft;
+    setDraft("");
+    onBroadcast(text);
+    await sendBuddyMessage(code, text, myName);
+    setThread(getLocalThread(code));
+  }
+
+  return (
+    <Shell wide title={name} subtitle={s.label} onClose={onClose}>
+      {buddy && (
+        <div className="rounded-xl border border-border bg-background/40 px-4 py-3">
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="inline-flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+              <span className={s.tone}>
+                {buddy.status === "focusing" && buddy.remainingSec != null
+                  ? `Focusing · ${Math.ceil(buddy.remainingSec / 60)}m left`
+                  : buddy.status === "offline"
+                    ? `Offline · ${fmtAgo(buddy.lastActiveAt)}`
+                    : s.label}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-amber-200/85">
+              <Flame className="h-3 w-3" strokeWidth={1.75} />
+              {buddy.sharesProgress ? `${buddy.streak} day streak` : "Streak hidden"}
+            </span>
+          </div>
+          <Progress value={buddy.minutes} max={buddy.goalMinutes || goalMinutes} />
+          <div className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
+            {buddy.sharesProgress ? `${fmtHM(buddy.minutes)} today` : "Progress hidden"}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 grid grid-cols-3 gap-1 rounded-lg border border-border p-1">
+        {(["chat", "history", "privacy"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setTab(k)}
+            className={`rounded-md px-2 py-1.5 text-[11px] uppercase tracking-[0.16em] transition-colors ${
+              tab === k
+                ? "bg-white/[0.07] text-foreground/90"
+                : "text-muted-foreground hover:text-foreground/80"
+            }`}
+          >
+            {k === "chat" ? "Quiet chat" : k === "history" ? "History" : "Privacy"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "chat" && (
+        <section className="mt-4">
+          <div
+            ref={listRef}
+            className="max-h-56 overflow-y-auto rounded-lg border border-border bg-background/40 p-3 space-y-2"
+          >
+            {thread.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground/70 italic">
+                No messages yet — say hi during your next break.
+              </p>
+            ) : (
+              thread.map((m) => (
+                <div key={m.id} className="text-[12px] leading-relaxed">
+                  <span className={m.mine ? "text-amber-200/90" : "text-foreground/85"}>
+                    {m.mine ? "You" : m.name}
+                  </span>
+                  <span className="text-muted-foreground"> · {m.text}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground/80">
+            <Lock className="h-3 w-3" strokeWidth={1.75} />
+            Chat is locked during focus sessions to preserve Deep Work.
+          </p>
+
+          <form
+            className="mt-2 flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void send();
+            }}
+          >
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, 300))}
+              disabled={chatLocked}
+              placeholder={chatLocked ? "Locked while focusing…" : `Message ${name}`}
+              className="flex-1 rounded-lg border border-border bg-background/40 px-3 py-2.5 text-sm outline-none focus:border-foreground/50 disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={chatLocked || !draft.trim()}
+              className="h-10 w-10 shrink-0 rounded-lg border border-border flex items-center justify-center hover:border-foreground/60 transition-colors disabled:opacity-40"
+              aria-label="Send message"
+            >
+              <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          </form>
+        </section>
+      )}
+
+      {tab === "history" && (
+        <section className="mt-4">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            What you got done
+          </div>
+          <div className="mt-3 space-y-1.5">
+            {history.map((d, i) => (
+              <div key={d.key} className="flex items-center gap-3">
+                <span className="w-20 shrink-0 text-[11px] text-muted-foreground">
+                  {i === 0 ? "Today" : i === 1 ? "Yesterday" : d.key.slice(5)}
+                </span>
+                <span className="h-1.5 flex-1 rounded-full bg-white/[0.06] overflow-hidden">
+                  <span
+                    className="block h-full rounded-full bg-amber-300/70"
+                    style={{
+                      width: `${Math.min(100, (d.minutes / Math.max(1, goalMinutes)) * 100)}%`,
+                    }}
+                  />
+                </span>
+                <span className="w-14 shrink-0 text-right text-[11px] tabular-nums text-foreground/80">
+                  {fmtHM(d.minutes)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-muted-foreground/70">
+            {buddy?.sharesProgress
+              ? `${name} focused ${fmtHM(buddy.minutes)} today.`
+              : `${name} keeps their daily progress private.`}
+          </p>
+        </section>
+      )}
+
+      {tab === "privacy" && partner && (
+        <section className="mt-4 space-y-3">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            What {partner.name} can see
+          </div>
+          <PermToggle
+            label="Share daily progress & streak"
+            hint="Focus hours completed today and your streak count."
+            on={partner.perms.progress}
+            onToggle={() =>
+              setPartnerPerms(partner.code, { progress: !partner.perms.progress })
+            }
+          />
+          <PermToggle
+            label="Share task details"
+            hint="Active project names and task titles."
+            on={partner.perms.tasks}
+            onToggle={() => setPartnerPerms(partner.code, { tasks: !partner.perms.tasks })}
+          />
+          <PermToggle
+            label="Share live online status"
+            hint="Broadcast Focusing / On break / Offline."
+            on={partner.perms.live}
+            onToggle={() => setPartnerPerms(partner.code, { live: !partner.perms.live })}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              removePartner(partner.code);
+              onClose();
+            }}
+            className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-destructive transition-colors"
+          >
+            <Trash2 className="h-3 w-3" strokeWidth={1.75} />
+            Unlink
+          </button>
+        </section>
+      )}
+    </Shell>
+  );
+}
