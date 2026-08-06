@@ -12,6 +12,7 @@ export const MAX_FREEZES = 3;
 
 const FREEZES_KEY = "hourglass.streakFreezes.v1";
 const AWARDED_KEY = "hourglass.streakFreezes.awarded.v1";
+const PROTECTED_KEY = "hourglass.streakFreezes.protectedDays.v1";
 
 interface FreezeState {
   count: number;
@@ -106,4 +107,96 @@ export function claimMilestones(currentStreak: number): number[] {
   const next = Math.min(MAX_FREEZES, state.count + newlyHit.length);
   writeState({ count: next });
   return newlyHit;
+}
+
+/* ----------------- Automatic freeze consumption ----------------- */
+
+/**
+ * Days (YYYY-MM-DD keys) that were missed but automatically rescued by
+ * spending a Streak Freeze. Stored so the same day never costs twice.
+ */
+export function getProtectedDays(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = safeStorage.getItem(PROTECTED_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((d) => typeof d === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function isDayProtected(dayKey: string): boolean {
+  return getProtectedDays().includes(dayKey);
+}
+
+function markProtected(dayKey: string) {
+  const list = getProtectedDays();
+  if (list.includes(dayKey)) return;
+  list.push(dayKey);
+  try {
+    safeStorage.setItem(PROTECTED_KEY, JSON.stringify(list.slice(-400)));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Spends one Streak Freeze to rescue a missed day. Returns true when the day
+ * is protected (either it already was, or a token was just deducted).
+ */
+export function consumeFreezeForDay(dayKey: string): boolean {
+  if (!dayKey) return false;
+  if (isDayProtected(dayKey)) return true;
+  const state = readState();
+  if (state.count <= 0) return false;
+  writeState({ count: state.count - 1 });
+  markProtected(dayKey);
+  void syncFreezesToCloud();
+  return true;
+}
+
+/**
+ * Best-effort mirror of the freeze balance to the user's profile so it
+ * survives device changes. Silently ignored when signed out.
+ */
+export async function syncFreezesToCloud() {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("./supabase");
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+    await supabase.auth.updateUser({
+      data: {
+        streak_freezes_count: getFreezeCount(),
+        streak_protected_days: getProtectedDays().slice(-60),
+      },
+    });
+  } catch {
+    /* offline / signed out */
+  }
+}
+
+/** Restores the freeze balance from the cloud profile when it is ahead. */
+export async function hydrateFreezesFromCloud() {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("./supabase");
+    const { data } = await supabase.auth.getUser();
+    const meta = data.user?.user_metadata as
+      | { streak_freezes_count?: number; streak_protected_days?: string[] }
+      | undefined;
+    if (!meta || typeof meta.streak_freezes_count !== "number") return;
+    const local = readState().count;
+    const remote = Math.max(0, Math.min(MAX_FREEZES, meta.streak_freezes_count));
+    if (remote !== local) writeState({ count: remote });
+    if (Array.isArray(meta.streak_protected_days)) {
+      const merged = Array.from(
+        new Set([...getProtectedDays(), ...meta.streak_protected_days]),
+      );
+      safeStorage.setItem(PROTECTED_KEY, JSON.stringify(merged.slice(-400)));
+    }
+  } catch {
+    /* offline / signed out */
+  }
 }

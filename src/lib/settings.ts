@@ -52,7 +52,7 @@ export function getSettings(): Settings {
     const parsed = JSON.parse(raw) as Partial<Settings>;
     const merged: Settings = { ...DEFAULTS, ...parsed };
     // Sanitize ranges
-    merged.dayStartHour = Math.max(0, Math.min(4, Math.floor(merged.dayStartHour ?? 0)));
+    merged.dayStartHour = Math.max(0, Math.min(6, Math.floor(merged.dayStartHour ?? 0)));
     merged.weekStartsOn = (merged.weekStartsOn === 0 ? 0 : 1) as WeekStart;
     return merged;
   } catch {
@@ -226,5 +226,59 @@ export async function hydrateMementoFromCloud() {
     });
   } catch (e) {
     console.warn("[settings] hydrateMementoFromCloud failed:", e);
+  }
+}
+
+/* ----------------- Day-start-hour cloud persistence ----------------- */
+
+/**
+ * The custom "day start hour" defines when a new day begins for streaks,
+ * the Daily Focus Budget and every historical stat. It is saved to the
+ * user's profile so it only has to be set once, on any device.
+ */
+export async function persistDayStartToCloud() {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("./supabase");
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return;
+    await supabase.auth.updateUser({
+      data: { day_start_hour: getSettings().dayStartHour },
+    });
+    // Mirror into profiles when the table/column exists (best effort).
+    await supabase
+      .from("profiles")
+      .update({ day_start_hour: getSettings().dayStartHour })
+      .eq("id", data.session.user.id);
+  } catch (e) {
+    console.warn("[settings] persistDayStartToCloud failed:", e);
+  }
+}
+
+/** Restores the saved day-start hour from the cloud profile. */
+export async function hydrateDayStartFromCloud() {
+  if (typeof window === "undefined") return;
+  try {
+    const { supabase } = await import("./supabase");
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    let hour: number | null = null;
+    const meta = data.user.user_metadata as { day_start_hour?: number } | undefined;
+    if (typeof meta?.day_start_hour === "number") hour = meta.day_start_hour;
+    try {
+      const { data: row } = await supabase
+        .from("profiles")
+        .select("day_start_hour")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      if (row && typeof row.day_start_hour === "number") hour = row.day_start_hour;
+    } catch {
+      /* profiles table not available */
+    }
+    if (hour == null) return;
+    const clamped = Math.max(0, Math.min(6, Math.floor(hour)));
+    if (clamped !== getSettings().dayStartHour) setSettings({ dayStartHour: clamped });
+  } catch (e) {
+    console.warn("[settings] hydrateDayStartFromCloud failed:", e);
   }
 }

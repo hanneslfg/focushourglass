@@ -25,7 +25,8 @@ import { PremiumProvider } from "@/lib/premium";
 import { AmbientSound } from "@/components/AmbientSound";
 import { GuestBanner } from "@/components/GuestBanner";
 import { useTimer } from "@/lib/TimerContext";
-import { hydrateMementoFromCloud } from "@/lib/settings";
+import { hydrateMementoFromCloud, hydrateDayStartFromCloud } from "@/lib/settings";
+import { hydrateFreezesFromCloud } from "@/lib/streakFreezes";
 import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
 import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
@@ -182,6 +183,9 @@ function RootComponent() {
       void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
       // Memento Mori mode + demographics live on the auth profile.
       void hydrateMementoFromCloud();
+      // Custom day-start hour + streak freeze balance follow the account.
+      void hydrateDayStartFromCloud();
+      void hydrateFreezesFromCloud();
       // Restore the user's free ambient-sound unlock from cloud metadata
       // (local caches are wiped on sign-out / account switch).
       void supabase.auth.getUser().then(({ data }) => {

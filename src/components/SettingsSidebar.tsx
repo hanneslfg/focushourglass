@@ -28,6 +28,7 @@ import {
   getTodayFocusedMinutes,
   setTodayOverride,
   persistMementoToCloud,
+  persistDayStartToCloud,
 } from "@/lib/settings";
 
 import { playClick } from "@/lib/click";
@@ -233,7 +234,8 @@ function SettingsPanel() {
   }
 
   function setDayStart(h: number) {
-    setSettings({ dayStartHour: Math.max(0, Math.min(4, h)) });
+    setSettings({ dayStartHour: Math.max(0, Math.min(6, h)) });
+    void persistDayStartToCloud();
   }
 
   function setWeekStart(v: 0 | 1) {
@@ -638,6 +640,8 @@ function SettingsPanel() {
               <option value={2}>02:00</option>
               <option value={3}>03:00</option>
               <option value={4}>04:00</option>
+              <option value={5}>05:00</option>
+              <option value={6}>06:00</option>
             </select>
           </label>
           <p className="text-[11px] text-muted-foreground/70 -mt-1">
