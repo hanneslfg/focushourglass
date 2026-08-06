@@ -50,12 +50,22 @@ export function ProjectGoalPicker({ project, selectedIds, onToggle, disabled }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, tick]);
 
+  // Completed goals are hidden from the pre-session picker so only what's
+  // still pending competes for attention. A goal that is already picked stays
+  // visible even if it completes mid-session.
+  const pendingGoals = goals.filter((g) => {
+    if (selectedIds.includes(g.id)) return true;
+    const focused =
+      (focusedByGoal.get(g.id) ?? 0) + (focusedByGoal.get(g.text.toLowerCase()) ?? 0);
+    return !isGoalAchieved(g, focused);
+  });
+
   // While a session is running (or paused) only the picked goals stay on
   // screen — everything else collapses away to reduce visual clutter.
   const visibleGoals =
     sessionActive && selectedIds.length > 0
-      ? goals.filter((g) => selectedIds.includes(g.id))
-      : goals;
+      ? pendingGoals.filter((g) => selectedIds.includes(g.id))
+      : pendingGoals;
 
   if (!project) return null;
   if (visibleGoals.length === 0) return null;
