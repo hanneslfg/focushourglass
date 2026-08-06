@@ -52,7 +52,7 @@ export function getSettings(): Settings {
     const parsed = JSON.parse(raw) as Partial<Settings>;
     const merged: Settings = { ...DEFAULTS, ...parsed };
     // Sanitize ranges
-    merged.dayStartHour = Math.max(0, Math.min(4, Math.floor(merged.dayStartHour ?? 0)));
+    merged.dayStartHour = Math.max(0, Math.min(6, Math.floor(merged.dayStartHour ?? 0)));
     merged.weekStartsOn = (merged.weekStartsOn === 0 ? 0 : 1) as WeekStart;
     return merged;
   } catch {
