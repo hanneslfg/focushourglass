@@ -181,7 +181,7 @@ export function AccountabilityPartner() {
           onAccepted={() => {
             setInvite(null);
             sync();
-            setRoomOpen(true);
+            setView("list");
           }}
         />
       )}
@@ -197,7 +197,34 @@ export function AccountabilityPartner() {
         />
       )}
 
-      {roomOpen && (
+      {view === "list" && !activeFriend && (
+        <FriendListModal
+          buddies={buddies}
+          mine={mine}
+          streak={streak}
+          goalMinutes={goalMinutes}
+          roomMinutes={roomMinutes}
+          onOpenFriend={(code) => setActiveFriend(code)}
+          onRoom={() => setView("room")}
+          onInvite={() => setInviteOpen(true)}
+          onClose={() => setView("none")}
+        />
+      )}
+
+      {activeFriend && (
+        <FriendDetailModal
+          buddy={buddies.find((b) => b.code === activeFriend) ?? null}
+          partner={partners.find((p) => p.code === activeFriend) ?? null}
+          myName={myName}
+          liveMessages={messages}
+          chatLocked={running}
+          goalMinutes={goalMinutes}
+          onBroadcast={sendMessage}
+          onClose={() => setActiveFriend(null)}
+        />
+      )}
+
+      {view === "room" && (
         <FocusRoomModal
           buddies={buddies}
           partners={partners}
@@ -208,9 +235,9 @@ export function AccountabilityPartner() {
           messages={messages}
           onSend={sendMessage}
           chatLocked={running}
-          onClose={() => setRoomOpen(false)}
+          onClose={() => setView("list")}
           onInvite={() => {
-            setRoomOpen(false);
+            setView("list");
             setInviteOpen(true);
           }}
         />
