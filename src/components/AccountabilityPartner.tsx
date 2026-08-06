@@ -115,7 +115,7 @@ export function AccountabilityPartner() {
     <>
       <button
         type="button"
-        onClick={() => (partners.length ? setRoomOpen(true) : setInviteOpen(true))}
+        onClick={() => (partners.length ? setView("list") : setInviteOpen(true))}
         className="w-full max-w-md rounded-2xl border border-white/[0.07] bg-gradient-to-b from-white/[0.05] to-white/[0.015] backdrop-blur-md px-5 py-5 text-left transition-all hover:border-amber-200/25 hover:from-white/[0.07]"
       >
         <div className="flex items-center justify-between gap-2">
