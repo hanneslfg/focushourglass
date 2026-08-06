@@ -55,7 +55,8 @@ export function AccountabilityPartner() {
   const [mine, setMine] = useState(0);
   const [streak, setStreak] = useState(0);
   const [goalMinutes, setGoalMinutes] = useState(180);
-  const [roomOpen, setRoomOpen] = useState(false);
+  const [view, setView] = useState<"none" | "list" | "room">("none");
+  const [activeFriend, setActiveFriend] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [invite, setInvite] = useState<string | null>(null);
   const [myName, setMyName] = useState("Focus Buddy");
