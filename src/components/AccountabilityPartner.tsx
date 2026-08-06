@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
+  ChevronRight,
   Copy,
   Flame,
   Link2,
@@ -13,11 +14,17 @@ import {
   X,
 } from "lucide-react";
 import { useTimer } from "@/lib/TimerContext";
-import { getTodayGoal, getTodayFocusedMinutes } from "@/lib/settings";
+import {
+  effectiveDayKey,
+  getTodayGoal,
+  getTodayFocusedMinutes,
+} from "@/lib/settings";
+import { getSessions } from "@/lib/sessions";
 import { getDailyStreak } from "@/lib/streaks";
 import {
   PARTNERS_EVENT,
   addPartner,
+  myBuddyCode,
   pendingInviteCode,
   fmtHM,
   getMyDisplayName,
@@ -27,6 +34,14 @@ import {
   setPartnerPerms,
   type Partner,
 } from "@/lib/partners";
+import {
+  BUDDY_MESSAGES_EVENT,
+  cacheMessage,
+  getLocalThread,
+  loadThread,
+  sendBuddyMessage,
+  type BuddyMessage,
+} from "@/lib/buddyMessages";
 import { BuddyInviteOnboarding } from "@/components/BuddyInviteOnboarding";
 import { useFocusRoom, type BuddyState } from "@/lib/focusRoom";
 
