@@ -12,6 +12,7 @@ export const MAX_FREEZES = 3;
 
 const FREEZES_KEY = "hourglass.streakFreezes.v1";
 const AWARDED_KEY = "hourglass.streakFreezes.awarded.v1";
+const PROTECTED_KEY = "hourglass.streakFreezes.protectedDays.v1";
 
 interface FreezeState {
   count: number;
