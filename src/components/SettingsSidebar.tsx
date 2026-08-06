@@ -28,6 +28,7 @@ import {
   getTodayFocusedMinutes,
   setTodayOverride,
   persistMementoToCloud,
+  persistDayStartToCloud,
 } from "@/lib/settings";
 
 import { playClick } from "@/lib/click";

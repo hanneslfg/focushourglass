@@ -182,6 +182,9 @@ function RootComponent() {
       void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
       // Memento Mori mode + demographics live on the auth profile.
       void hydrateMementoFromCloud();
+      // Custom day-start hour + streak freeze balance follow the account.
+      void hydrateDayStartFromCloud();
+      void hydrateFreezesFromCloud();
       // Restore the user's free ambient-sound unlock from cloud metadata
       // (local caches are wiped on sign-out / account switch).
       void supabase.auth.getUser().then(({ data }) => {
