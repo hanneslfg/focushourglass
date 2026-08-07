@@ -117,8 +117,14 @@ export async function addGoal(
   opts?: { targetMinutes?: number; color?: string; deadline?: string | null },
 ): Promise<ProjectGoal | null> {
   const clean = text.trim().slice(0, 140);
-  const tagForSave = projectId.trim();
-  if (!tagForSave || !clean) return null;
+  const tagForSave = (projectId ?? "").trim();
+  if (!tagForSave) {
+    // Hard block: a goal without a project association corrupts every
+    // project-scoped view. Never let this reach Supabase.
+    console.error("[goals] BLOCKED addGoal — missing project id/tag", { text: clean });
+    return null;
+  }
+  if (!clean) return null;
   const existing = getProjectGoals(tagForSave);
   const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
   const draft: ProjectGoal = {
@@ -132,23 +138,26 @@ export async function addGoal(
     createdAt: Date.now(),
     deadline: opts?.deadline?.trim() || null,
   };
-  // eslint-disable-next-line no-console
-  console.log("[goals] addGoal insert payload", {
-    project_tag: draft.projectId,
-    text: draft.text,
-    target_minutes: draft.targetMinutes,
-    color: draft.color,
-    position: draft.position,
-    deadline: draft.deadline,
-  });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[goals] mutation: insert", {
+      projectId: draft.projectId,
+      updatedFields: { text: draft.text, targetMinutes: draft.targetMinutes, deadline: draft.deadline },
+    });
+  }
   const res = await insertGoalRemote(draft);
   if (!res.ok || !res.data) return null;
-  const saved = { ...res.data, projectId: res.data.projectId || tagForSave };
+  const savedTag = (res.data.projectId || "").trim();
+  if (!savedTag) {
+    console.error("[goals] insert returned a row without project_tag", { goalId: res.data.id });
+  }
+  const saved = { ...res.data, projectId: savedTag || tagForSave };
   const bag = readAll();
   bag[MASTER_KEY] = [...(bag[MASTER_KEY] ?? []), saved];
   writeAll(bag);
   return saved;
 }
+
 
 
 export async function backfillUntaggedGoals(projectTag?: string | null): Promise<number> {
