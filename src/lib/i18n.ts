@@ -40,7 +40,9 @@ if (!i18n.isInitialized) {
         fr: { translation: fr },
         es: { translation: es },
       },
-      lng: initialLang(),
+      // Always init with "en" so SSR markup matches the first client render.
+      // The stored/browser language is applied after hydration (see __root).
+      lng: "en",
       fallbackLng: "en",
       interpolation: { escapeValue: false },
       returnNull: false,
