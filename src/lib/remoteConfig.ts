@@ -232,12 +232,8 @@ export async function insertGoalRemote(
 ): Promise<RemoteResult<ProjectGoal>> {
   const uid = await authUid();
   if (!uid) return { ok: false, error: "Not signed in", notAuthed: true };
-  const projectTag = (g.projectId ?? "").trim();
-  if (!projectTag) {
-    const msg = "Refusing to insert goal without project_tag";
-    reportError("insertGoal", msg);
-    return { ok: false, error: msg };
-  }
+  // project_tag is mandatory on every goal row; default rather than fail.
+  const projectTag = (g.projectId ?? "").trim() || "General";
   const { data, error, status } = await supabase
     .from("goals")
     .insert(goalPayload(uid, { ...g, projectId: projectTag }))
