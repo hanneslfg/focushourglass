@@ -28,7 +28,7 @@ import { useTimer } from "@/lib/TimerContext";
 import { hydrateMementoFromCloud, hydrateDayStartFromCloud } from "@/lib/settings";
 import { hydrateFreezesFromCloud } from "@/lib/streakFreezes";
 import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
-import { backfillUntaggedGoals, hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
+import { hydrateGoalsFromRemote, reclaimOrphanedGoals, repairUntaggedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { getUnlockedFreeSound, setUnlockedFreeSound } from "@/lib/freeSound";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
