@@ -107,6 +107,7 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const backfilledTags = useRef<Set<string>>(new Set());
 
+
   const [, forceTick] = useState(0);
   useEffect(() => {
     const sync = () => setGoals(getAllGoals());
