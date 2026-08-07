@@ -160,15 +160,36 @@ export async function addGoal(
 
 
 
-export async function backfillUntaggedGoals(projectTag?: string | null): Promise<number> {
-  const tagForSave = projectTag?.trim() || "Uni";
+/**
+ * One-time safety net (app load only): goals that genuinely have NO
+ * project_tag get attached to the user's default (first) active project.
+ * Never touches goals that already carry a tag, so it can't bundle goals
+ * from several projects into whichever project is currently on screen.
+ */
+export async function repairUntaggedGoals(explicitTarget?: string | null): Promise<number> {
   const legacyGoals = getUntaggedGoals();
   if (legacyGoals.length === 0) return 0;
 
+  let target = (explicitTarget ?? "").trim();
+  if (!target) {
+    const { getProjects } = await import("./projects");
+    target = getProjects()[0]?.name?.trim() ?? "";
+  }
+  if (!target) {
+    console.warn("[goals] untagged goals found but no default project to assign them to", {
+      count: legacyGoals.length,
+    });
+    return 0;
+  }
+  console.warn("[goals] repairing untagged goals → default project", {
+    count: legacyGoals.length,
+    project_tag: target,
+  });
+
   const updated: ProjectGoal[] = [];
   for (const goal of legacyGoals) {
-    const res = await updateGoalProjectTagRemote(goal.id, tagForSave);
-    if (res.ok && res.data) updated.push({ ...res.data, projectId: tagForSave });
+    const res = await updateGoalProjectTagRemote(goal.id, target);
+    if (res.ok && res.data) updated.push({ ...res.data, projectId: target });
   }
   if (updated.length === 0) return 0;
 
@@ -186,6 +207,9 @@ export async function updateGoal(
   patch: Partial<Omit<ProjectGoal, "id" | "projectId" | "createdAt">>,
 ): Promise<boolean> {
   const normalizedPatch: Partial<ProjectGoal> = { ...patch };
+  // Defensive: a project re-assignment must never ride along with a
+  // content/status update (session end, done toggle, deadline edit…).
+  delete (normalizedPatch as Partial<ProjectGoal>).projectId;
   if (patch.text !== undefined) normalizedPatch.text = patch.text.trim().slice(0, 140);
   if (patch.targetMinutes !== undefined) {
     normalizedPatch.targetMinutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
@@ -193,6 +217,8 @@ export async function updateGoal(
   if (patch.deadline !== undefined) {
     normalizedPatch.deadline = patch.deadline ? String(patch.deadline).trim() || null : null;
   }
+  // Targeted, column-scoped patch only — undefined keys are dropped downstream
+  // so project_tag / user_id are never rewritten.
   const dbPatch = {
     text: normalizedPatch.text,
     color: normalizedPatch.color,
@@ -202,15 +228,28 @@ export async function updateGoal(
     deadline: normalizedPatch.deadline,
   };
 
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[goals] mutation: update", {
+      goalId: id,
+      projectId,
+      updatedFields: Object.fromEntries(
+        Object.entries(dbPatch).filter(([, v]) => v !== undefined),
+      ),
+    });
+  }
+
   const res = await updateGoalRemote(id, dbPatch);
   if (!res.ok) return false;
   const bag = readAll();
   const key = bag[MASTER_KEY] ? MASTER_KEY : projectId;
   const list = bag[key] ?? [];
-  bag[key] = list.map((g) => (g.id === id ? { ...g, ...normalizedPatch } : g));
+  // Preserve the existing projectId explicitly on every local merge.
+  bag[key] = list.map((g) => (g.id === id ? { ...g, ...normalizedPatch, projectId: g.projectId } : g));
   writeAll(bag);
   return true;
 }
+
 
 export async function deleteGoal(projectId: string, id: string): Promise<boolean> {
   const res = await deleteGoalRemote(id);
