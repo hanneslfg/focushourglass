@@ -32,7 +32,7 @@ import { hydrateGoalsFromRemote, reclaimOrphanedGoals, repairUntaggedGoals } fro
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { getUnlockedFreeSound, setUnlockedFreeSound } from "@/lib/freeSound";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
-import "@/lib/i18n";
+import i18nInstance, { detectStoredLanguage } from "@/lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -153,6 +153,13 @@ function GlobalAmbientSound() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useRealtimeSessions();
+
+  // Apply the stored/browser language only after hydration; SSR always
+  // renders "en", so switching earlier causes a hydration mismatch.
+  useEffect(() => {
+    const lang = detectStoredLanguage();
+    if (lang !== i18nInstance.language) void i18nInstance.changeLanguage(lang);
+  }, []);
 
   useEffect(() => {
     const run = () => checkMilestones();
