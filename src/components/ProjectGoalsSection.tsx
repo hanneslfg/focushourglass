@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import {
   addGoal,
-  backfillUntaggedGoals,
+  
   deleteGoal,
   getAllGoals,
   reorderGoals,
