@@ -117,8 +117,14 @@ export async function addGoal(
   opts?: { targetMinutes?: number; color?: string; deadline?: string | null },
 ): Promise<ProjectGoal | null> {
   const clean = text.trim().slice(0, 140);
-  const tagForSave = projectId.trim();
-  if (!tagForSave || !clean) return null;
+  const tagForSave = (projectId ?? "").trim();
+  if (!tagForSave) {
+    // Hard block: a goal without a project association corrupts every
+    // project-scoped view. Never let this reach Supabase.
+    console.error("[goals] BLOCKED addGoal — missing project id/tag", { text: clean });
+    return null;
+  }
+  if (!clean) return null;
   const existing = getProjectGoals(tagForSave);
   const maxPos = existing.reduce((m, g) => Math.max(m, g.position ?? 0), -1);
   const draft: ProjectGoal = {
@@ -132,18 +138,20 @@ export async function addGoal(
     createdAt: Date.now(),
     deadline: opts?.deadline?.trim() || null,
   };
-  // eslint-disable-next-line no-console
-  console.log("[goals] addGoal insert payload", {
-    project_tag: draft.projectId,
-    text: draft.text,
-    target_minutes: draft.targetMinutes,
-    color: draft.color,
-    position: draft.position,
-    deadline: draft.deadline,
-  });
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[goals] mutation: insert", {
+      projectId: draft.projectId,
+      updatedFields: { text: draft.text, targetMinutes: draft.targetMinutes, deadline: draft.deadline },
+    });
+  }
   const res = await insertGoalRemote(draft);
   if (!res.ok || !res.data) return null;
-  const saved = { ...res.data, projectId: res.data.projectId || tagForSave };
+  const savedTag = (res.data.projectId || "").trim();
+  if (!savedTag) {
+    console.error("[goals] insert returned a row without project_tag", { goalId: res.data.id });
+  }
+  const saved = { ...res.data, projectId: savedTag || tagForSave };
   const bag = readAll();
   bag[MASTER_KEY] = [...(bag[MASTER_KEY] ?? []), saved];
   writeAll(bag);
@@ -151,15 +159,37 @@ export async function addGoal(
 }
 
 
-export async function backfillUntaggedGoals(projectTag?: string | null): Promise<number> {
-  const tagForSave = projectTag?.trim() || "Uni";
+
+/**
+ * One-time safety net (app load only): goals that genuinely have NO
+ * project_tag get attached to the user's default (first) active project.
+ * Never touches goals that already carry a tag, so it can't bundle goals
+ * from several projects into whichever project is currently on screen.
+ */
+export async function repairUntaggedGoals(explicitTarget?: string | null): Promise<number> {
   const legacyGoals = getUntaggedGoals();
   if (legacyGoals.length === 0) return 0;
 
+  let target = (explicitTarget ?? "").trim();
+  if (!target) {
+    const { getProjects } = await import("./projects");
+    target = getProjects()[0]?.name?.trim() ?? "";
+  }
+  if (!target) {
+    console.warn("[goals] untagged goals found but no default project to assign them to", {
+      count: legacyGoals.length,
+    });
+    return 0;
+  }
+  console.warn("[goals] repairing untagged goals → default project", {
+    count: legacyGoals.length,
+    project_tag: target,
+  });
+
   const updated: ProjectGoal[] = [];
   for (const goal of legacyGoals) {
-    const res = await updateGoalProjectTagRemote(goal.id, tagForSave);
-    if (res.ok && res.data) updated.push({ ...res.data, projectId: tagForSave });
+    const res = await updateGoalProjectTagRemote(goal.id, target);
+    if (res.ok && res.data) updated.push({ ...res.data, projectId: target });
   }
   if (updated.length === 0) return 0;
 
@@ -177,6 +207,9 @@ export async function updateGoal(
   patch: Partial<Omit<ProjectGoal, "id" | "projectId" | "createdAt">>,
 ): Promise<boolean> {
   const normalizedPatch: Partial<ProjectGoal> = { ...patch };
+  // Defensive: a project re-assignment must never ride along with a
+  // content/status update (session end, done toggle, deadline edit…).
+  delete (normalizedPatch as Partial<ProjectGoal>).projectId;
   if (patch.text !== undefined) normalizedPatch.text = patch.text.trim().slice(0, 140);
   if (patch.targetMinutes !== undefined) {
     normalizedPatch.targetMinutes = Math.max(0, Math.round(Number(patch.targetMinutes) || 0));
@@ -184,6 +217,8 @@ export async function updateGoal(
   if (patch.deadline !== undefined) {
     normalizedPatch.deadline = patch.deadline ? String(patch.deadline).trim() || null : null;
   }
+  // Targeted, column-scoped patch only — undefined keys are dropped downstream
+  // so project_tag / user_id are never rewritten.
   const dbPatch = {
     text: normalizedPatch.text,
     color: normalizedPatch.color,
@@ -193,15 +228,28 @@ export async function updateGoal(
     deadline: normalizedPatch.deadline,
   };
 
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log("[goals] mutation: update", {
+      goalId: id,
+      projectId,
+      updatedFields: Object.fromEntries(
+        Object.entries(dbPatch).filter(([, v]) => v !== undefined),
+      ),
+    });
+  }
+
   const res = await updateGoalRemote(id, dbPatch);
   if (!res.ok) return false;
   const bag = readAll();
   const key = bag[MASTER_KEY] ? MASTER_KEY : projectId;
   const list = bag[key] ?? [];
-  bag[key] = list.map((g) => (g.id === id ? { ...g, ...normalizedPatch } : g));
+  // Preserve the existing projectId explicitly on every local merge.
+  bag[key] = list.map((g) => (g.id === id ? { ...g, ...normalizedPatch, projectId: g.projectId } : g));
   writeAll(bag);
   return true;
 }
+
 
 export async function deleteGoal(projectId: string, id: string): Promise<boolean> {
   const res = await deleteGoalRemote(id);
@@ -259,9 +307,6 @@ export async function reclaimOrphanedGoals(): Promise<number> {
   if (projects.length === 0) return 0;
   const byNameLower = new Map(projects.map((p) => [p.name.trim().toLowerCase(), p]));
   const byIdLower = new Map(projects.map((p) => [p.id.toLowerCase(), p]));
-  // Fallback target for rename-orphaned goals: if only one active project
-  // remains after a rename (e.g. "Uni" → "Business"), pull orphans into it.
-  const soleProject = projects.length === 1 ? projects[0] : null;
 
   const goals = getAllGoals();
   let fixed = 0;
@@ -270,9 +315,16 @@ export async function reclaimOrphanedGoals(): Promise<number> {
     if (!tag) continue;
     const lower = tag.toLowerCase();
     if (byNameLower.has(lower) || byIdLower.has(lower)) continue;
-    const match =
-      byIdLower.get(projectIdFromName(tag).toLowerCase()) ?? soleProject;
-    if (!match) continue;
+    // ONLY a slug-id match is safe. No "sole project" fallback: pulling every
+    // unmatched goal into one project is exactly the data-loss bug.
+    const match = byIdLower.get(projectIdFromName(tag).toLowerCase());
+    if (!match) {
+      console.warn("[goals] orphaned goal kept as-is (no safe project match)", {
+        goalId: g.id,
+        projectId: tag,
+      });
+      continue;
+    }
     const ok = await updateGoalProjectTagRemote(g.id, match.name);
     if (ok.ok) fixed++;
   }
