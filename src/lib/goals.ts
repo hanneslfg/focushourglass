@@ -87,6 +87,8 @@ export function getProjectGoals(projectId: string, activeProjectTag?: string): P
 
 }
 
+export const DEFAULT_PROJECT_TAG = "General";
+
 export function getUntaggedGoals(): ProjectGoal[] {
   const bag = readAll();
   const master = bag[MASTER_KEY] ?? [];
@@ -117,12 +119,12 @@ export async function addGoal(
   opts?: { targetMinutes?: number; color?: string; deadline?: string | null },
 ): Promise<ProjectGoal | null> {
   const clean = text.trim().slice(0, 140);
-  const tagForSave = (projectId ?? "").trim();
+  // A goal must ALWAYS carry a project_tag. If the caller has no active
+  // project we fall back to "General" instead of failing the user's save.
+  let tagForSave = (projectId ?? "").trim();
   if (!tagForSave) {
-    // Hard block: a goal without a project association corrupts every
-    // project-scoped view. Never let this reach Supabase.
-    console.error("[goals] BLOCKED addGoal — missing project id/tag", { text: clean });
-    return null;
+    tagForSave = DEFAULT_PROJECT_TAG;
+    console.warn("[goals] addGoal called without a project tag — defaulting to", DEFAULT_PROJECT_TAG, { text: clean });
   }
   if (!clean) return null;
   const existing = getProjectGoals(tagForSave);

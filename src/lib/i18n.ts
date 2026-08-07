@@ -17,7 +17,7 @@ export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
 const STORAGE_KEY = "hourglass.lang.v1";
 
-function initialLang(): LanguageCode {
+export function detectStoredLanguage(): LanguageCode {
   if (typeof window === "undefined") return "en";
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY) as LanguageCode | null;
@@ -40,7 +40,9 @@ if (!i18n.isInitialized) {
         fr: { translation: fr },
         es: { translation: es },
       },
-      lng: initialLang(),
+      // Always init with "en" so SSR markup matches the first client render.
+      // The stored/browser language is applied after hydration (see __root).
+      lng: "en",
       fallbackLng: "en",
       interpolation: { escapeValue: false },
       returnNull: false,
