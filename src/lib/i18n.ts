@@ -17,7 +17,7 @@ export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
 const STORAGE_KEY = "hourglass.lang.v1";
 
-function initialLang(): LanguageCode {
+export function detectStoredLanguage(): LanguageCode {
   if (typeof window === "undefined") return "en";
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY) as LanguageCode | null;
