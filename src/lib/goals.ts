@@ -307,9 +307,6 @@ export async function reclaimOrphanedGoals(): Promise<number> {
   if (projects.length === 0) return 0;
   const byNameLower = new Map(projects.map((p) => [p.name.trim().toLowerCase(), p]));
   const byIdLower = new Map(projects.map((p) => [p.id.toLowerCase(), p]));
-  // Fallback target for rename-orphaned goals: if only one active project
-  // remains after a rename (e.g. "Uni" → "Business"), pull orphans into it.
-  const soleProject = projects.length === 1 ? projects[0] : null;
 
   const goals = getAllGoals();
   let fixed = 0;
@@ -318,9 +315,16 @@ export async function reclaimOrphanedGoals(): Promise<number> {
     if (!tag) continue;
     const lower = tag.toLowerCase();
     if (byNameLower.has(lower) || byIdLower.has(lower)) continue;
-    const match =
-      byIdLower.get(projectIdFromName(tag).toLowerCase()) ?? soleProject;
-    if (!match) continue;
+    // ONLY a slug-id match is safe. No "sole project" fallback: pulling every
+    // unmatched goal into one project is exactly the data-loss bug.
+    const match = byIdLower.get(projectIdFromName(tag).toLowerCase());
+    if (!match) {
+      console.warn("[goals] orphaned goal kept as-is (no safe project match)", {
+        goalId: g.id,
+        projectId: tag,
+      });
+      continue;
+    }
     const ok = await updateGoalProjectTagRemote(g.id, match.name);
     if (ok.ok) fixed++;
   }
