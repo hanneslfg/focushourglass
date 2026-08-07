@@ -120,21 +120,10 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
     };
   }, []);
 
-  useEffect(() => {
-    const currentTag = (activeTag || projectId || "Uni").trim();
-    const key = currentTag.toLowerCase();
-    if (!key || backfilledTags.current.has(key)) return;
-    if (!goals.some((g) => !(g.projectId ?? "").trim())) return;
+  // NOTE: no per-project backfill here. Re-tagging untagged goals to whichever
+  // project happens to be on screen bundled goals into a single project.
+  // Untagged goals are repaired once at app load (see repairUntaggedGoals).
 
-    backfilledTags.current.add(key);
-    void backfillUntaggedGoals(currentTag).then((count) => {
-      if (count > 0) {
-        // eslint-disable-next-line no-console
-        console.log("[goals] backfilled legacy untagged goals", { project_tag: currentTag, count });
-        setGoals(getAllGoals());
-      }
-    });
-  }, [goals, activeTag, projectId]);
 
   // Cleanup any pending timers on unmount / project switch
   useEffect(() => {
