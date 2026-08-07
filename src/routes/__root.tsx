@@ -178,9 +178,14 @@ function RootComponent() {
       if (lastUserId === uid) return;
       lastUserId = uid;
       if (!uid) return;
-      void hydrateGoalsFromRemote().then(() => backfillUntaggedGoals("Uni"));
+      void hydrateGoalsFromRemote();
       void hydrateRhythmsFromRemote();
-      void hydrateProjectSettingsFromRemote().then(() => reclaimOrphanedGoals());
+      // Project settings first, then a ONE-TIME safe repair of goals that
+      // genuinely have no project_tag. Never re-tags goals that already
+      // belong to a project.
+      void hydrateProjectSettingsFromRemote()
+        .then(() => reclaimOrphanedGoals())
+        .then(() => repairUntaggedGoals());
       // Memento Mori mode + demographics live on the auth profile.
       void hydrateMementoFromCloud();
       // Custom day-start hour + streak freeze balance follow the account.
