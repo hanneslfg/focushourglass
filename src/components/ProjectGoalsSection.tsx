@@ -105,7 +105,6 @@ export function ProjectGoalsSection({ projectId, activeProjectTag, focusedMinute
   // Drag state
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const backfilledTags = useRef<Set<string>>(new Set());
 
 
   const [, forceTick] = useState(0);
