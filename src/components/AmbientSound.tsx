@@ -624,12 +624,19 @@ export function AmbientSound({ running }: { running: boolean }) {
                   max={1}
                   step={0.01}
                   value={muted ? 0 : volume}
+                  onInput={(e) => {
+                    const v = Number((e.target as HTMLInputElement).value);
+                    setVolume(v);
+                    if (v > 0 && muted) setMuted(false);
+                    if (import.meta.env.DEV) console.debug("[slider] volume", v);
+                  }}
                   onChange={(e) => {
                     const v = Number(e.target.value);
                     setVolume(v);
                     if (v > 0 && muted) setMuted(false);
                   }}
-                  className="flex-1 h-1 accent-amber-400/80"
+                  aria-label="Volume"
+                  className="flex-1 h-1 accent-amber-400/80 touch-none cursor-pointer"
                 />
               </div>
             </div>
