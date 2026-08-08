@@ -778,7 +778,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setRemaining(r);
         setEndAt(null);
         setPhase("paused");
-        toast("Auto-paused", { description: "Resume to continue focusing." });
+        toast(i18n.t("toast.autoPaused"), {
+          description: i18n.t("toast.autoPausedResume"),
+        });
+
       }
       setTaskState(s);
     },
