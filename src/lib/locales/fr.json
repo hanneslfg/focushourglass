@@ -181,5 +181,28 @@
     "deactivatedToast": "Rythme désactivé",
     "deletedToast": "{{name}} supprimé",
     "savedToast": "{{name}} enregistré"
+  },
+  "projectPicker": {
+    "none": "Aucun projet",
+    "new": "Nouveau projet",
+    "manage": "Gérer les projets",
+    "name": "Nom du projet",
+    "empty": "Aucun projet",
+    "label": "Projet"
+  },
+  "adjust": {
+    "focusedTime": "Temps concentré",
+    "adjust": "Ajuster le temps de focus",
+    "tracked": "{{n}} min suivies",
+    "max": "{{n}} min max",
+    "minOne": "1 min"
+  },
+  "toast": {
+    "autoPaused": "Mis en pause",
+    "autoPausedResume": "Reprenez pour continuer.",
+    "autoPausedProject": "Projet changé en cours de session."
+  },
+  "sound": {
+    "volume": "Volume"
   }
 }

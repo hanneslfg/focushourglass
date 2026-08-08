@@ -181,5 +181,28 @@
     "deactivatedToast": "Rhythmus deaktiviert",
     "deletedToast": "{{name}} gelöscht",
     "savedToast": "{{name}} gespeichert"
+  },
+  "projectPicker": {
+    "none": "Kein Projekt",
+    "new": "Neues Projekt",
+    "manage": "Projekte verwalten",
+    "name": "Projektname",
+    "empty": "Noch keine Projekte",
+    "label": "Projekt"
+  },
+  "adjust": {
+    "focusedTime": "Fokussierte Zeit",
+    "adjust": "Fokuszeit anpassen",
+    "tracked": "{{n}} Min erfasst",
+    "max": "max. {{n}} Min",
+    "minOne": "1 Min"
+  },
+  "toast": {
+    "autoPaused": "Automatisch pausiert",
+    "autoPausedResume": "Fortsetzen, um weiter zu fokussieren.",
+    "autoPausedProject": "Projekt während der Sitzung gewechselt."
+  },
+  "sound": {
+    "volume": "Lautstärke"
   }
 }
