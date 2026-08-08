@@ -23,6 +23,8 @@ interface Props {
 }
 
 export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinutes, startExpanded }: Props) {
+  const { t } = useTranslation();
+
   const [adjust, setAdjust] = useState(Boolean(startExpanded));
   const [value, setValue] = useState(trackedMinutes);
 
