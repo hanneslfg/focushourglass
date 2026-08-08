@@ -159,8 +159,10 @@ export function TimerView() {
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
           <ProjectPickerCompact
             selectedId={project?.id ?? null}
+            selectedTag={project}
             onSelect={setProject}
           />
+
           <ProjectGoalPicker
             project={project}
             selectedIds={sessionGoals.map((g) => g.id)}

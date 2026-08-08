@@ -7,14 +7,18 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { ProjectManagerModal } from "./ProjectManagerModal";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   selectedId: string | null;
+  /** Fallback so the label never blanks out while the tag list re-syncs. */
+  selectedTag?: ProjectTag | null;
   onSelect: (tag: ProjectTag | null) => void;
   disabled?: boolean;
 }
 
-export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) {
+export function ProjectPickerCompact({ selectedId, selectedTag, onSelect, disabled }: Props) {
+  const { t } = useTranslation();
   const [tags, setTags] = useState<ProjectTag[]>([]);
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -42,7 +46,9 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
     return () => window.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  const selected = tags.find((t) => t.id === selectedId) ?? null;
+  const selected =
+    tags.find((tag) => tag.id === selectedId) ??
+    (selectedTag && selectedTag.id === selectedId ? selectedTag : null);
 
   async function commitNew() {
     const name = newName.trim();
@@ -78,7 +84,7 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
             </span>
           </>
         ) : (
-          <span>No project</span>
+          <span>{t("projectPicker.none")}</span>
         )}
         <ChevronDown className="h-3 w-3 opacity-70" strokeWidth={1.75} />
       </button>
@@ -92,30 +98,33 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
             }}
             className="w-full px-3 py-2 flex items-center justify-between text-xs hover:bg-foreground/5"
           >
-            <span className="text-muted-foreground">No project</span>
+            <span className="text-muted-foreground">{t("projectPicker.none")}</span>
             {!selected && <Check className="h-3 w-3" strokeWidth={2} />}
           </button>
           <div className="border-t border-border max-h-60 overflow-y-auto">
-            {tags.map((t) => (
+            {tags.map((tag) => (
               <button
-                key={t.id}
+                key={tag.id}
                 onClick={() => {
-                  onSelect(t);
+                  if (import.meta.env.DEV)
+                    console.debug("[tag] user selected", tag.name, tag.id);
+                  onSelect(tag);
                   setOpen(false);
                 }}
                 className="w-full px-3 py-2 flex items-center gap-2 text-xs hover:bg-foreground/5"
               >
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ background: t.color }}
+                  style={{ background: tag.color }}
                 />
-                <span className="flex-1 text-left truncate">{t.name}</span>
-                {selected?.id === t.id && <Check className="h-3 w-3" strokeWidth={2} />}
+                <span className="flex-1 text-left truncate">{tag.name}</span>
+                {selected?.id === tag.id && <Check className="h-3 w-3" strokeWidth={2} />}
               </button>
             ))}
+
             {tags.length === 0 && !adding && (
               <div className="px-3 py-3 text-[11px] text-muted-foreground/70 italic">
-                No projects yet
+                {t("projectPicker.empty")}
               </div>
             )}
           </div>
@@ -126,7 +135,7 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
                   onClick={() => setAdding(true)}
                   className="w-full px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                 >
-                  <Plus className="h-3 w-3" strokeWidth={1.75} /> New project
+                  <Plus className="h-3 w-3" strokeWidth={1.75} /> {t("projectPicker.new")}
                 </button>
                 <button
                   onClick={() => {
@@ -135,7 +144,7 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
                   }}
                   className="w-full px-3 py-2 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/5 border-t border-border"
                 >
-                  <Settings2 className="h-3 w-3" strokeWidth={1.75} /> Manage projects
+                  <Settings2 className="h-3 w-3" strokeWidth={1.75} /> {t("projectPicker.manage")}
                 </button>
               </>
             ) : (
@@ -156,7 +165,7 @@ export function ProjectPickerCompact({ selectedId, onSelect, disabled }: Props) 
                         setNewName("");
                       }
                     }}
-                    placeholder="Project name"
+                    placeholder={t("projectPicker.name")}
                     className="flex-1 bg-transparent border-b border-border focus:border-foreground/60 outline-none text-xs py-0.5"
                   />
                   <button

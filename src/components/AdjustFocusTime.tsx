@@ -8,6 +8,7 @@
  *
  * Pure presentation — all persistence lives in TimerContext.
  */
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 
@@ -22,6 +23,8 @@ interface Props {
 }
 
 export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinutes, startExpanded }: Props) {
+  const { t } = useTranslation();
+
   const [adjust, setAdjust] = useState(Boolean(startExpanded));
   const [value, setValue] = useState(trackedMinutes);
 
@@ -58,7 +61,7 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinute
           </div>
         ) : (
           <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/60">
-            Focused time
+            {t("adjust.focusedTime")}
           </div>
         )}
 
@@ -81,23 +84,28 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinute
               max={max}
               step={1}
               value={value}
+              onInput={(e) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                setValue(v);
+                if (import.meta.env.DEV) console.debug("[slider] focus minutes", v);
+              }}
               onChange={(e) => setValue(Number(e.target.value))}
-              className="adjust-slider absolute inset-0 w-full h-full opacity-0 cursor-pointer touch-manipulation"
-              aria-label="Adjust focused minutes"
+              className="adjust-slider absolute -inset-y-3 inset-x-0 w-full opacity-0 cursor-pointer touch-none"
+              aria-label={t("adjust.adjust")}
             />
             {/* Thumb */}
             <div
               className="absolute top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 rounded-full bg-amber-300 transition-[left] duration-75"
               style={{
-                left: `calc(${pct}% - 7px)`,
+                left: `calc(${pct}% + ${7 - (pct / 100) * 14}px - 7px)`,
                 boxShadow: "0 0 0 4px rgba(15,15,15,0.9), 0 0 14px rgba(245,158,11,0.6)",
               }}
             />
           </div>
           <div className="flex items-center justify-between w-full text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 tabular-nums px-0.5">
-            <span>1 min</span>
-            <span>{trackedMinutes} min tracked</span>
-            <span>{max} min max</span>
+            <span>{t("adjust.minOne")}</span>
+            <span>{t("adjust.tracked", { n: trackedMinutes })}</span>
+            <span>{t("adjust.max", { n: max })}</span>
           </div>
 
         </div>
@@ -106,7 +114,7 @@ export function AdjustFocusTime({ trackedMinutes, taskName, onConfirm, maxMinute
           onClick={() => setAdjust(true)}
           className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-amber-300 transition-colors"
         >
-          Adjust focus time
+          {t("adjust.adjust")}
         </button>
       )}
 

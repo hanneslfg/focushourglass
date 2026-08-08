@@ -37,6 +37,41 @@ import {
   type BlockKind,
 } from "./rhythms";
 import { calculateFocusScore } from "./focusScore";
+import { safeStorage } from "./safeStorage";
+import i18n from "./i18n";
+
+/**
+ * Sticky project selection. The chosen project/tag must survive session
+ * start/pause/complete, route changes and reloads — it only changes when the
+ * user picks another one explicitly.
+ */
+const STICKY_PROJECT_KEY = "hourglass.activeProject.v1";
+
+function readStickyProject(): ProjectTag | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = safeStorage.getItem(STICKY_PROJECT_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as ProjectTag;
+    return p && p.id && p.name ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStickyProject(p: ProjectTag | null) {
+  try {
+    if (p) safeStorage.setItem(STICKY_PROJECT_KEY, JSON.stringify(p));
+    else safeStorage.removeItem(STICKY_PROJECT_KEY);
+    if (import.meta.env.DEV) {
+      console.debug("[tag] active project ->", p ? `${p.name} (${p.id})` : "null");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+
 
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
@@ -246,10 +281,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     };
   }, [phase, persist]);
 
+  // ---- Sticky project: restore the last explicit selection after hydration.
+  useEffect(() => {
+    const sticky = readStickyProject();
+    if (sticky) {
+      setProjectState((cur) => cur ?? sticky);
+      if (import.meta.env.DEV) console.debug("[tag] restored sticky project", sticky.name);
+    }
+  }, []);
+
   // ---- Cold-start recovery: resume (not auto-finalize) --------------------
   useEffect(() => {
     const a = loadActive();
     if (!a || !a.task) return;
+
     const planned = Math.max(1, a.plannedMinutes);
     const plannedSec = planned * 60;
     const gapSec = Math.max(0, Math.round((Date.now() - a.lastTickAt) / 1000));
@@ -388,7 +433,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const resetIdle = useCallback(() => {
     setPhase("idle");
     setTaskState("");
-    setProjectState(null);
+    // NOTE: the selected project is sticky — never cleared automatically.
+
     setSessionGoalsState([]);
     setMinutesState(90);
     setRemaining(90 * 60);
@@ -742,7 +788,10 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setRemaining(r);
         setEndAt(null);
         setPhase("paused");
-        toast("Auto-paused", { description: "Resume to continue focusing." });
+        toast(i18n.t("toast.autoPaused"), {
+          description: i18n.t("toast.autoPausedResume"),
+        });
+
       }
       setTaskState(s);
     },
@@ -760,11 +809,15 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setRemaining(r);
         setEndAt(null);
         setPhase("paused");
-        toast("Auto-paused", { description: "Project changed mid-session." });
+        toast(i18n.t("toast.autoPaused"), {
+          description: i18n.t("toast.autoPausedProject"),
+        });
       }
       setProjectState(p);
+      writeStickyProject(p);
       // Active session goals are scoped to a project; clear on switch.
       if (changed) setSessionGoalsState([]);
+
 
     },
     [phase, project, setEndAt],

@@ -157,8 +157,13 @@ function RootComponent() {
   // Apply the stored/browser language only after hydration; SSR always
   // renders "en", so switching earlier causes a hydration mismatch.
   useEffect(() => {
-    const lang = detectStoredLanguage();
-    if (lang !== i18nInstance.language) void i18nInstance.changeLanguage(lang);
+    // Defer past the hydration commit — switching during hydration causes a
+    // server/client text mismatch in the sidebar labels.
+    const id = window.setTimeout(() => {
+      const lang = detectStoredLanguage();
+      if (lang !== i18nInstance.language) void i18nInstance.changeLanguage(lang);
+    }, 0);
+    return () => window.clearTimeout(id);
   }, []);
 
   useEffect(() => {

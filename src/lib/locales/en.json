@@ -181,5 +181,28 @@
     "deactivatedToast": "Rhythm deactivated",
     "deletedToast": "{{name}} deleted",
     "savedToast": "{{name}} saved"
+  },
+  "projectPicker": {
+    "none": "No project",
+    "new": "New project",
+    "manage": "Manage projects",
+    "name": "Project name",
+    "empty": "No projects yet",
+    "label": "Project"
+  },
+  "adjust": {
+    "focusedTime": "Focused time",
+    "adjust": "Adjust focus time",
+    "tracked": "{{n}} min tracked",
+    "max": "{{n}} min max",
+    "minOne": "1 min"
+  },
+  "toast": {
+    "autoPaused": "Auto-paused",
+    "autoPausedResume": "Resume to continue focusing.",
+    "autoPausedProject": "Project changed mid-session."
+  },
+  "sound": {
+    "volume": "Volume"
   }
 }
