@@ -102,24 +102,26 @@ export function ProjectPickerCompact({ selectedId, selectedTag, onSelect, disabl
             {!selected && <Check className="h-3 w-3" strokeWidth={2} />}
           </button>
           <div className="border-t border-border max-h-60 overflow-y-auto">
-            {tags.map((t) => (
+            {tags.map((tag) => (
               <button
-                key={t.id}
+                key={tag.id}
                 onClick={() => {
-                  if (import.meta.env.DEV) console.debug("[tag] user selected", t.name, t.id);
-                  onSelect(t);
+                  if (import.meta.env.DEV)
+                    console.debug("[tag] user selected", tag.name, tag.id);
+                  onSelect(tag);
                   setOpen(false);
                 }}
                 className="w-full px-3 py-2 flex items-center gap-2 text-xs hover:bg-foreground/5"
               >
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ background: t.color }}
+                  style={{ background: tag.color }}
                 />
-                <span className="flex-1 text-left truncate">{t.name}</span>
-                {selected?.id === t.id && <Check className="h-3 w-3" strokeWidth={2} />}
+                <span className="flex-1 text-left truncate">{tag.name}</span>
+                {selected?.id === tag.id && <Check className="h-3 w-3" strokeWidth={2} />}
               </button>
             ))}
+
             {tags.length === 0 && !adding && (
               <div className="px-3 py-3 text-[11px] text-muted-foreground/70 italic">
                 {t("projectPicker.empty")}
