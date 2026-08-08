@@ -281,10 +281,20 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     };
   }, [phase, persist]);
 
+  // ---- Sticky project: restore the last explicit selection after hydration.
+  useEffect(() => {
+    const sticky = readStickyProject();
+    if (sticky) {
+      setProjectState((cur) => cur ?? sticky);
+      if (import.meta.env.DEV) console.debug("[tag] restored sticky project", sticky.name);
+    }
+  }, []);
+
   // ---- Cold-start recovery: resume (not auto-finalize) --------------------
   useEffect(() => {
     const a = loadActive();
     if (!a || !a.task) return;
+
     const planned = Math.max(1, a.plannedMinutes);
     const plannedSec = planned * 60;
     const gapSec = Math.max(0, Math.round((Date.now() - a.lastTickAt) / 1000));
