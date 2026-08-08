@@ -423,7 +423,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const resetIdle = useCallback(() => {
     setPhase("idle");
     setTaskState("");
-    setProjectState(null);
+    // NOTE: the selected project is sticky — never cleared automatically.
+
     setSessionGoalsState([]);
     setMinutesState(90);
     setRemaining(90 * 60);
