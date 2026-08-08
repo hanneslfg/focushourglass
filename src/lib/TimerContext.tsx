@@ -37,6 +37,41 @@ import {
   type BlockKind,
 } from "./rhythms";
 import { calculateFocusScore } from "./focusScore";
+import { safeStorage } from "./safeStorage";
+import i18n from "./i18n";
+
+/**
+ * Sticky project selection. The chosen project/tag must survive session
+ * start/pause/complete, route changes and reloads — it only changes when the
+ * user picks another one explicitly.
+ */
+const STICKY_PROJECT_KEY = "hourglass.activeProject.v1";
+
+function readStickyProject(): ProjectTag | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = safeStorage.getItem(STICKY_PROJECT_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as ProjectTag;
+    return p && p.id && p.name ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStickyProject(p: ProjectTag | null) {
+  try {
+    if (p) safeStorage.setItem(STICKY_PROJECT_KEY, JSON.stringify(p));
+    else safeStorage.removeItem(STICKY_PROJECT_KEY);
+    if (import.meta.env.DEV) {
+      console.debug("[tag] active project ->", p ? `${p.name} (${p.id})` : "null");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+
 
 
 export type Phase = "idle" | "running" | "paused" | "asking" | "complete";
