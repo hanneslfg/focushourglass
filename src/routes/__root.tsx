@@ -99,18 +99,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "10x hourglass" },
-      { name: "description", content: "Flow State Timer is a minimal web app for focused work sessions with a visual hourglass." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "10x hourglass" },
-      { property: "og:description", content: "Flow State Timer is a minimal web app for focused work sessions with a visual hourglass." },
+      { title: "Focus Hourglass — Aesthetic Deep Work, Pomodoro & Virtual Focus Room" },
+      { name: "description", content: "Boost your productivity with minimalist focus timers, custom rhythms, Memento Mori, and social focus rooms." },
+      { name: "author", content: "Focus Hourglass" },
+      { property: "og:title", content: "Focus Hourglass — Aesthetic Deep Work, Pomodoro & Virtual Focus Room" },
+      { property: "og:description", content: "Boost your productivity with minimalist focus timers, custom rhythms, Memento Mori, and social focus rooms." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "10x hourglass" },
-      { name: "twitter:description", content: "Flow State Timer is a minimal web app for focused work sessions with a visual hourglass." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c2e3f20e-03f4-4783-b42d-6bb55b5a1592/id-preview-f372b578--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app-1780490616026.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c2e3f20e-03f4-4783-b42d-6bb55b5a1592/id-preview-f372b578--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app-1780490616026.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      
+      { name: "twitter:title", content: "Focus Hourglass — Aesthetic Deep Work, Pomodoro & Virtual Focus Room" },
+      { name: "twitter:description", content: "Boost your productivity with minimalist focus timers, custom rhythms, Memento Mori, and social focus rooms." },
     ],
     links: [
       {
@@ -159,11 +157,23 @@ function RootComponent() {
   useEffect(() => {
     // Defer past the hydration commit — switching during hydration causes a
     // server/client text mismatch in the sidebar labels.
-    const id = window.setTimeout(() => {
-      const lang = detectStoredLanguage();
-      if (lang !== i18nInstance.language) void i18nInstance.changeLanguage(lang);
-    }, 0);
-    return () => window.clearTimeout(id);
+    let raf2 = 0;
+    // Two animation frames + a macrotask: lazy route chunks hydrate after the
+    // root commits, so switching earlier mismatches their SSR text.
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(() => {
+        id = window.setTimeout(() => {
+          const lang = detectStoredLanguage();
+          if (lang !== i18nInstance.language) void i18nInstance.changeLanguage(lang);
+        }, 120);
+      });
+    });
+    let id = 0;
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      window.clearTimeout(id);
+    };
   }, []);
 
   useEffect(() => {
