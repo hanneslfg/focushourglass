@@ -53,7 +53,8 @@
     "break": "Pause",
     "focus": "Fokus",
     "stopRhythm": "Diesen Rhythmus beenden",
-    "end": "Beenden"
+    "end": "Beenden",
+    "addSession": "Session hinzufügen"
   },
   "analytics": {
     "title": "Analytik",

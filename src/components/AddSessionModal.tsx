@@ -14,6 +14,7 @@ import { getProjects, type ProjectTag } from "@/lib/projects";
 import { getProjectGoals, type ProjectGoal } from "@/lib/goals";
 import { addSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
+import { DatePicker, toIsoDate } from "./DatePicker";
 
 interface Props {
   open: boolean;
@@ -24,12 +25,14 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function todayIsoAt(hhmm: string): string {
+function isoAt(dateIso: string, hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date();
+  const [y, mo, day] = dateIso.split("-").map(Number);
+  const d = new Date(y, (mo || 1) - 1, day || 1);
   d.setHours(h || 0, m || 0, 0, 0);
   return d.toISOString();
 }
+
 
 function defaultStart(): string {
   const d = new Date();
@@ -57,6 +60,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   const [goalId, setGoalId] = useState<string>("");
   const [goalText, setGoalText] = useState<string>("");
   const [task, setTask] = useState("");
+  const [date, setDate] = useState<string>(toIsoDate(new Date()));
   const [start, setStart] = useState(defaultStart());
   const [end, setEnd] = useState(defaultEnd());
   const [focus, setFocus] = useState<number>(30);
@@ -69,11 +73,13 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
     setProjectId("");
     setGoalId("");
     setGoalText("");
+    setDate(toIsoDate(new Date()));
     setStart(defaultStart());
     setEnd(defaultEnd());
     setFocus(30);
     setSaving(false);
   }, [open]);
+
 
   useEffect(() => {
     const selectedProject = projects.find((p) => p.id === projectId) ?? null;
@@ -95,7 +101,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   async function handleSave() {
     if (saving) return;
     const cleanTask = task.trim() || "Untitled session";
-    const startedAt = todayIsoAt(start);
+    const startedAt = isoAt(date, start);
     // Build completed relative to start to preserve midnight wrap
     const startedDate = new Date(startedAt);
     const completedDate = new Date(startedDate.getTime() + windowMinutes * 60 * 1000);
@@ -152,7 +158,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
             Log a session
           </DialogTitle>
           <div className="text-[10px] uppercase tracking-[0.28em] text-amber-400/60 mt-1">
-            Retroactive entry · today
+            Retroactive entry
           </div>
         </DialogHeader>
 
@@ -255,6 +261,20 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
               </div>
             </div>
           )}
+
+          {/* Date */}
+          <div className="space-y-1.5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Date
+            </div>
+            <DatePicker
+              value={date}
+              onChange={(iso) => setDate(iso ?? toIsoDate(new Date()))}
+              clearable={false}
+              className="w-full"
+              placeholder="Pick a date"
+            />
+          </div>
 
           {/* Time window */}
           <div className="grid grid-cols-2 gap-3">
