@@ -59,6 +59,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   const [goalId, setGoalId] = useState<string>("");
   const [goalText, setGoalText] = useState<string>("");
   const [task, setTask] = useState("");
+  const [date, setDate] = useState<string>(toIsoDate(new Date()));
   const [start, setStart] = useState(defaultStart());
   const [end, setEnd] = useState(defaultEnd());
   const [focus, setFocus] = useState<number>(30);
@@ -71,11 +72,13 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
     setProjectId("");
     setGoalId("");
     setGoalText("");
+    setDate(toIsoDate(new Date()));
     setStart(defaultStart());
     setEnd(defaultEnd());
     setFocus(30);
     setSaving(false);
   }, [open]);
+
 
   useEffect(() => {
     const selectedProject = projects.find((p) => p.id === projectId) ?? null;
