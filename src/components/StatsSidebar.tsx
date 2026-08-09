@@ -4,8 +4,9 @@ import { ActivityGraph, type View as ActivityView } from "@/components/ActivityG
 import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
-import {
 import { DatePicker } from "./DatePicker";
+import {
+
   getTodayGoal,
   getTodayFocusedMinutes,
   getTodayOverride,
