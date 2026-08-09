@@ -5,6 +5,7 @@ import { getSessions, type Session } from "@/lib/sessions";
 import { getProjects, type ProjectTag } from "@/lib/projects";
 import { syncPendingSessions, supabase } from "@/lib/supabase";
 import {
+import { DatePicker } from "./DatePicker";
   getTodayGoal,
   getTodayFocusedMinutes,
   getTodayOverride,
@@ -303,18 +304,19 @@ export function StatsSidebar({
               </div>
               {preset === "custom" && (
                 <div className="mt-3 flex items-center gap-2">
-                  <input
-                    type="date"
+                  <DatePicker
                     value={customFrom || toInputDate(Date.now() - 7 * 86400000)}
-                    onChange={(e) => setCustomFrom(e.target.value)}
-                    className="flex-1 bg-background border border-border rounded-md px-2 py-1.5 text-xs text-foreground outline-none focus:border-foreground/60"
+                    onChange={(iso) => setCustomFrom(iso ?? "")}
+                    clearable={false}
+                    className="min-w-0 flex-1"
                   />
                   <span className="text-muted-foreground text-xs">→</span>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={customTo || toInputDate(Date.now())}
-                    onChange={(e) => setCustomTo(e.target.value)}
-                    className="flex-1 bg-background border border-border rounded-md px-2 py-1.5 text-xs text-foreground outline-none focus:border-foreground/60"
+                    onChange={(iso) => setCustomTo(iso ?? "")}
+                    clearable={false}
+                    align="end"
+                    className="min-w-0 flex-1"
                   />
                 </div>
               )}

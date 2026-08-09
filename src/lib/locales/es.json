@@ -53,7 +53,8 @@
     "break": "Descanso",
     "focus": "Foco",
     "stopRhythm": "Detener este ritmo",
-    "end": "Fin"
+    "end": "Fin",
+    "addSession": "Añadir sesión"
   },
   "analytics": {
     "title": "Analítica",

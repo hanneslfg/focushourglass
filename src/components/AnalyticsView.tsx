@@ -23,6 +23,7 @@ import { SessionDetailModal } from "./SessionDetailModal";
 import { FocusScoreBadge } from "./FocusScoreBadge";
 import { SessionGoalToggler } from "./SessionGoalToggler";
 import { SessionTimeBreakdown } from "./SessionTimeBreakdown";
+import { DatePicker } from "./DatePicker";
 
 /* =================== Helpers =================== */
 
@@ -1258,11 +1259,13 @@ function DateInput({ value, onChange, label }: { value: string; onChange: (v: st
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[9px] uppercase tracking-[0.24em] text-amber-400/60">{label}</span>
-      <input
-        type="date"
+      <DatePicker
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-[#1a1a1a] border border-amber-500/30 text-amber-100 text-sm rounded-md px-3 py-1.5 tabular-nums focus:outline-none focus:border-amber-400/70 focus:shadow-[0_0_12px_rgba(245,158,11,0.25)] [color-scheme:dark]"
+        onChange={(iso) => onChange(iso ?? "")}
+        clearable={false}
+        placeholder={label}
+        aria-label={label}
+        className="border-amber-500/30 bg-[#1a1a1a]/80 hover:border-amber-400/60"
       />
     </label>
   );
