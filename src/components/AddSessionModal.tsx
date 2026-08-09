@@ -24,12 +24,14 @@ function pad(n: number) {
   return String(n).padStart(2, "0");
 }
 
-function todayIsoAt(hhmm: string): string {
+function isoAt(dateIso: string, hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date();
+  const [y, mo, day] = dateIso.split("-").map(Number);
+  const d = new Date(y, (mo || 1) - 1, day || 1);
   d.setHours(h || 0, m || 0, 0, 0);
   return d.toISOString();
 }
+
 
 function defaultStart(): string {
   const d = new Date();
