@@ -14,6 +14,7 @@ import { getProjects, type ProjectTag } from "@/lib/projects";
 import { getProjectGoals, type ProjectGoal } from "@/lib/goals";
 import { addSession } from "@/lib/sessions";
 import { saveSessionRemote, getUserId } from "@/lib/supabase";
+import { DatePicker, toIsoDate } from "./DatePicker";
 
 interface Props {
   open: boolean;
@@ -100,7 +101,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
   async function handleSave() {
     if (saving) return;
     const cleanTask = task.trim() || "Untitled session";
-    const startedAt = todayIsoAt(start);
+    const startedAt = isoAt(date, start);
     // Build completed relative to start to preserve midnight wrap
     const startedDate = new Date(startedAt);
     const completedDate = new Date(startedDate.getTime() + windowMinutes * 60 * 1000);
@@ -157,7 +158,7 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
             Log a session
           </DialogTitle>
           <div className="text-[10px] uppercase tracking-[0.28em] text-amber-400/60 mt-1">
-            Retroactive entry · today
+            Retroactive entry
           </div>
         </DialogHeader>
 
@@ -260,6 +261,20 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
               </div>
             </div>
           )}
+
+          {/* Date */}
+          <div className="space-y-1.5">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Date
+            </div>
+            <DatePicker
+              value={date}
+              onChange={(iso) => setDate(iso ?? toIsoDate(new Date()))}
+              clearable={false}
+              className="w-full"
+              placeholder="Pick a date"
+            />
+          </div>
 
           {/* Time window */}
           <div className="grid grid-cols-2 gap-3">
