@@ -494,12 +494,17 @@ export function AmbientSound({ running }: { running: boolean }) {
   useEffect(() => {
     if (!mounted) return;
     const find = () => setSlot(document.getElementById("ambient-slot"));
-    find();
+    // Defer the first lookup by a frame: portalling into the slot while React
+    // is still hydrating the timer view causes a hydration mismatch.
+    const raf = window.requestAnimationFrame(find);
     // The slot may mount a tick later (lazy routes, guest/auth gates), so
     // watch the DOM until it appears or disappears.
     const obs = new MutationObserver(find);
     obs.observe(document.body, { childList: true, subtree: true });
-    return () => obs.disconnect();
+    return () => {
+      window.cancelAnimationFrame(raf);
+      obs.disconnect();
+    };
   }, [mounted, pathname]);
 
 
