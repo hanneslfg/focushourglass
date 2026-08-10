@@ -374,10 +374,11 @@ function queuePending(s: RemoteSession) {
 function buildPayload(
   s: RemoteSession,
   userId: string,
-  opts: { includeTags?: boolean; includeFocusScore?: boolean } = {},
+  opts: { includeTags?: boolean; includeFocusScore?: boolean; includeStatus?: boolean } = {},
 ): SessionInsertPayload {
   const includeTags = opts.includeTags ?? !tagsColumnDisabled();
   const includeFocusScore = opts.includeFocusScore ?? !focusScoreColumnDisabled();
+  const includeStatus = opts.includeStatus ?? !statusColumnDisabled();
   const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
     ? s.project_tag.trim().slice(0, 120)
     : null;
@@ -393,6 +394,10 @@ function buildPayload(
     completed_at: cleanIso(s.completed_at),
     was_aborted: Boolean(s.was_aborted),
   };
+  if (includeStatus && typeof s.status === "string" && s.status.trim()) {
+    payload.status = s.status.trim();
+  }
+
   const tags = cleanTags(s.tags);
   // Goal-to-Tag bridge: always send an ARRAY (empty when no goals selected)
   // so a toggle-off actually clears the column instead of leaving stale tags.
