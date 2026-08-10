@@ -227,11 +227,14 @@ export interface RemoteSession {
   pause_count?: number | null;
   /** Total seconds spent paused. */
   total_pause_seconds?: number | null;
+  /** Lifecycle state of the row; 'completed' for finished sessions. */
+  status?: string;
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
 const FOCUS_SCORE_COLUMN_DISABLED_KEY = "hourglass.sessions.focus_score_column_disabled.v1";
+const STATUS_COLUMN_DISABLED_KEY = "hourglass.sessions.status_column_disabled.v1";
 
 type SessionInsertPayload = {
   user_id: string;
@@ -246,7 +249,9 @@ type SessionInsertPayload = {
   focus_score?: number | null;
   pause_count?: number | null;
   total_pause_seconds?: number | null;
+  status?: string;
 };
+
 
 
 
