@@ -26,6 +26,7 @@ type Profile = {
 type Stats = {
   total_focus_minutes: number | null;
   completed_sessions_count: number | null;
+  current_streak?: number | null;
 };
 
 function sbHeaders(serviceKey: string) {
