@@ -17,6 +17,8 @@ import { Route as MementoMoriRouteImport } from './routes/memento-mori'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ApiPublicNewsletterUnsubscribeRouteImport } from './routes/api/public/newsletter-unsubscribe'
+import { Route as ApiPublicSendSundayNewsletterRouteImport } from './routes/api/public/send-sunday-newsletter'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +61,18 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicNewsletterUnsubscribeRoute =
+  ApiPublicNewsletterUnsubscribeRouteImport.update({
+    id: '/api/public/newsletter-unsubscribe',
+    path: '/api/public/newsletter-unsubscribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicSendSundayNewsletterRoute =
+  ApiPublicSendSundayNewsletterRouteImport.update({
+    id: '/api/public/send-sunday-newsletter',
+    path: '/api/public/send-sunday-newsletter',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   id: '/api/public/stripe-webhook',
   path: '/api/public/stripe-webhook',
@@ -74,6 +88,8 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/terms': typeof TermsRoute
+  '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
+  '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +101,8 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/terms': typeof TermsRoute
+  '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
+  '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesById {
@@ -97,6 +115,8 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
   '/terms': typeof TermsRoute
+  '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
+  '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +130,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/projects'
     | '/terms'
+    | '/api/public/newsletter-unsubscribe'
+    | '/api/public/send-sunday-newsletter'
     | '/api/public/stripe-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +143,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/projects'
     | '/terms'
+    | '/api/public/newsletter-unsubscribe'
+    | '/api/public/send-sunday-newsletter'
     | '/api/public/stripe-webhook'
   id:
     | '__root__'
@@ -132,6 +156,8 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/projects'
     | '/terms'
+    | '/api/public/newsletter-unsubscribe'
+    | '/api/public/send-sunday-newsletter'
     | '/api/public/stripe-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +170,8 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
   TermsRoute: typeof TermsRoute
+  ApiPublicNewsletterUnsubscribeRoute: typeof ApiPublicNewsletterUnsubscribeRoute
+  ApiPublicSendSundayNewsletterRoute: typeof ApiPublicSendSundayNewsletterRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
@@ -205,6 +233,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/newsletter-unsubscribe': {
+      id: '/api/public/newsletter-unsubscribe'
+      path: '/api/public/newsletter-unsubscribe'
+      fullPath: '/api/public/newsletter-unsubscribe'
+      preLoaderRoute: typeof ApiPublicNewsletterUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/send-sunday-newsletter': {
+      id: '/api/public/send-sunday-newsletter'
+      path: '/api/public/send-sunday-newsletter'
+      fullPath: '/api/public/send-sunday-newsletter'
+      preLoaderRoute: typeof ApiPublicSendSundayNewsletterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/stripe-webhook': {
       id: '/api/public/stripe-webhook'
       path: '/api/public/stripe-webhook'
@@ -224,6 +266,8 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
   TermsRoute: TermsRoute,
+  ApiPublicNewsletterUnsubscribeRoute: ApiPublicNewsletterUnsubscribeRoute,
+  ApiPublicSendSundayNewsletterRoute: ApiPublicSendSundayNewsletterRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
