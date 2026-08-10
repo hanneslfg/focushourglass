@@ -26,6 +26,7 @@ type Profile = {
 type Stats = {
   total_focus_minutes: number | null;
   completed_sessions_count: number | null;
+  current_streak?: number | null;
 };
 
 function sbHeaders(serviceKey: string) {
@@ -68,35 +69,56 @@ function renderEmail(opts: {
   name: string;
   minutes: number;
   sessions: number;
+  streak: number;
   unsubUrl: string;
 }) {
-  const hours = Math.floor(opts.minutes / 60);
-  const mins = opts.minutes % 60;
-  const duration = hours > 0 ? `${hours} h ${mins} min` : `${mins} min`;
+  const serif = "'Merriweather', Georgia, 'Times New Roman', serif";
+  const stat = (value: string, label: string) => `
+        <td align="center" style="padding:18px 10px;background:#ffffff;border:1px solid #E4E4E7;border-radius:10px">
+          <div style="font-family:${serif};font-size:22px;font-weight:700;color:#18181B;line-height:1.2">${value}</div>
+          <div style="font-family:${serif};font-size:12px;font-weight:300;color:#71717A;margin-top:6px;letter-spacing:.04em">${label}</div>
+        </td>`;
   return `<!doctype html>
-<html lang="de"><body style="margin:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#111827">
-  <div style="max-width:560px;margin:0 auto;padding:32px 24px">
-    <h1 style="font-size:22px;margin:0 0 8px">Deine Fokus-Woche, ${esc(opts.name)}</h1>
-    <p style="font-size:15px;line-height:1.6;color:#374151;margin:0 0 24px">
-      Hier ist dein Rückblick auf die vergangenen 7 Tage.
-    </p>
-    <table role="presentation" width="100%" style="border-collapse:collapse;margin-bottom:24px">
-      <tr>
-        <td style="padding:16px;border:1px solid #e5e7eb;border-radius:8px;text-align:center">
-          <div style="font-size:26px;font-weight:bold">${duration}</div>
-          <div style="font-size:13px;color:#6b7280">Fokuszeit</div>
-        </td>
-        <td style="width:12px"></td>
-        <td style="padding:16px;border:1px solid #e5e7eb;border-radius:8px;text-align:center">
-          <div style="font-size:26px;font-weight:bold">${opts.sessions}</div>
-          <div style="font-size:13px;color:#6b7280">Sessions</div>
-        </td>
-      </tr>
-    </table>
-    <a href="${SITE}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">Neue Woche starten</a>
-    <p style="font-size:12px;color:#9ca3af;margin-top:32px">
-      Du willst diesen Rückblick nicht mehr erhalten?
-      <a href="${opts.unsubUrl}" style="color:#6b7280">Mit einem Klick abmelden</a>.
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#F4F4F5;font-family:${serif};color:#18181B">
+  <div style="max-width:560px;margin:0 auto;padding:40px 20px">
+    <div style="background:#F8F9FA;border:1px solid #E4E4E7;border-radius:14px;padding:36px 30px">
+      <h1 style="font-family:${serif};font-size:24px;font-weight:700;margin:0 0 10px;color:#18181B">Dein Focus Recap &#8987;</h1>
+      <p style="font-family:${serif};font-size:15px;font-weight:300;line-height:1.7;color:#3F3F46;margin:0 0 28px">
+        ${esc(opts.name)}, hier sind deine Zahlen für diese Woche:
+      </p>
+
+      <table role="presentation" width="100%" style="border-collapse:separate;border-spacing:8px 0;margin:0 0 30px">
+        <tr>
+          ${stat(`${opts.minutes} Min`, "Fokuszeit")}
+          ${stat(String(opts.sessions), "Sessions")}
+          ${stat(`${opts.streak} Tage &#128293;`, "Streak")}
+        </tr>
+      </table>
+
+      <div style="border-top:1px solid #E4E4E7;padding-top:26px">
+        <h2 style="font-family:${serif};font-size:17px;font-weight:700;margin:0 0 10px;color:#18181B">Tipp für nächste Woche: Die 2-Minuten-Regel</h2>
+        <p style="font-family:${serif};font-size:14px;font-weight:300;line-height:1.75;color:#3F3F46;margin:0">
+          Wenn eine Aufgabe weniger als zwei Minuten dauert, erledige sie sofort. Wenn sie länger dauert,
+          starte heute Abend eine 25-Minuten-Session in Focus Hourglass, um das Momentum mit in den Montag zu nehmen.
+        </p>
+      </div>
+
+      <div style="margin:30px 0 4px">
+        <a href="${SITE}" style="display:inline-block;background:#18181B;color:#F8F9FA;text-decoration:none;padding:13px 24px;border-radius:8px;font-family:${serif};font-size:14px;font-weight:400">Woche planen &amp; Starten &rarr;</a>
+      </div>
+    </div>
+
+    <p style="font-family:${serif};font-size:11px;font-weight:300;line-height:1.7;color:#A1A1AA;text-align:center;margin:22px 0 0">
+      Focus Hourglass &bull; Du erhältst diese Mail als aktiver Nutzer.<br>
+      <a href="${opts.unsubUrl}" style="color:#71717A;text-decoration:underline">Mit 1 Klick abmelden</a>
     </p>
   </div>
 </body></html>`;
@@ -173,6 +195,8 @@ export const Route = createFileRoute("/api/public/send-sunday-newsletter")({
             const stats = Array.isArray(raw) ? raw[0] : raw;
             const minutes = Math.round(Number(stats?.total_focus_minutes ?? 0));
             const sessions = Number(stats?.completed_sessions_count ?? 0);
+            const streak = Number(stats?.current_streak ?? 0);
+
 
             // Nothing to report — don't spam inactive users.
             if (minutes <= 0 && sessions <= 0) {
@@ -198,6 +222,7 @@ export const Route = createFileRoute("/api/public/send-sunday-newsletter")({
                   name: profile.display_name?.trim() || "Focus Friend",
                   minutes,
                   sessions,
+                  streak,
                   unsubUrl,
                 }),
                 headers: {
