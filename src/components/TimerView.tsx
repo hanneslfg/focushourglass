@@ -10,7 +10,6 @@ import { VisualWarmup } from "./VisualWarmup";
 
 import { ProjectGoalPicker } from "./ProjectGoalPicker";
 import { AddSessionModal } from "./AddSessionModal";
-import { CircularDurationDial } from "./CircularDurationDial";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 import { getSettings } from "@/lib/settings";
