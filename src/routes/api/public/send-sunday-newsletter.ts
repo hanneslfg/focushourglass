@@ -222,6 +222,7 @@ export const Route = createFileRoute("/api/public/send-sunday-newsletter")({
                   name: profile.display_name?.trim() || "Focus Friend",
                   minutes,
                   sessions,
+                  streak,
                   unsubUrl,
                 }),
                 headers: {
