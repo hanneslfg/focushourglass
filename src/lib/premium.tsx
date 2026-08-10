@@ -210,7 +210,21 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         toast.error(res.error || "Couldn't cancel subscription.");
         return false;
       }
-      toast.success("Subscription cancelled. You keep access until the end of the paid period.");
+      const endTs = res.status === "trialing" ? res.trial_end : res.current_period_end;
+      const endDate = endTs ? new Date(endTs * 1000).toLocaleDateString() : null;
+      if (res.status === "trialing") {
+        toast.success(
+          endDate
+            ? `Trial cancelled. Your trial ends on ${endDate} — you will not be charged.`
+            : "Trial cancelled. You will not be charged.",
+        );
+      } else {
+        toast.success(
+          endDate
+            ? `Subscription cancelled. You keep access until ${endDate}.`
+            : "Subscription cancelled. You keep access until the end of the paid period.",
+        );
+      }
       return true;
     } catch (err) {
       console.error("[premium] cancelSubscription failed", err);
