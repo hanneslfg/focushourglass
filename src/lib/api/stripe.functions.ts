@@ -90,10 +90,15 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       plan: z.enum(["monthly", "yearly", "lifetime"]),
       accessToken: z.string().min(10),
       origin: z.string().url(),
+      /** Free-trial length in days for subscription plans (7 or 14). */
+      trialDays: z.number().int().min(1).max(30).optional(),
     }),
   )
   .handler(async ({ data }) => {
-    console.log("[stripe] createCheckoutSession start", { plan: data.plan });
+    console.log("[stripe] createCheckoutSession start", {
+      plan: data.plan,
+      trialDays: data.trialDays,
+    });
 
     const user = await verifySupabaseUser(data.accessToken);
     const productId = PRODUCTS[data.plan as Plan];
@@ -112,7 +117,16 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     if (mode === "subscription") {
       body.set("subscription_data[metadata][user_id]", user.id);
       body.set("subscription_data[metadata][plan]", data.plan);
+      // Without this the customer is charged immediately on day 0.
+      const trialDays = data.trialDays ?? 7;
+      body.set("subscription_data[trial_period_days]", String(trialDays));
+      // If no payment method survives the trial, cancel instead of charging.
+      body.set(
+        "subscription_data[trial_settings][end_behavior][missing_payment_method]",
+        "cancel",
+      );
     }
+
     if (user.email) body.set("customer_email", user.email);
     body.set("allow_promotion_codes", "true");
 
