@@ -12,6 +12,8 @@ import {
 
 const STORAGE_KEY = "hourglass_onboarding_completed";
 const PROFILE_KEY = "hourglass_onboarding_profile";
+/** Resume state so an OAuth redirect mid-onboarding does not restart it. */
+const RESUME_KEY = "hourglass_onboarding_resume";
 
 type Persona = "university" | "entrepreneur" | "mastery" | "knowledge";
 type Pain = "1-2" | "3-4" | "5+";
@@ -150,16 +152,75 @@ export function OnboardingOverlay() {
         | { has_completed_onboarding?: boolean }
         | undefined;
       if (meta?.has_completed_onboarding) {
+        // Already onboarded on the account — mirror it locally so a cleared
+        // browser / new device never replays the flow.
         safeStorage.setItem(STORAGE_KEY, "true");
+        safeStorage.removeItem(RESUME_KEY);
         return;
       }
-      if (!cancelled) setOpen(true);
+      if (cancelled) return;
+      // Restore progress after an OAuth redirect so the user resumes where
+      // they left off instead of running the whole flow a second time.
+      try {
+        const raw = safeStorage.getItem(RESUME_KEY);
+        if (raw) {
+          const r = JSON.parse(raw) as {
+            step?: number;
+            personas?: Persona[];
+            pain?: Pain | null;
+            blocks?: number;
+            freeSound?: string | null;
+          };
+          if (Array.isArray(r.personas)) setPersonas(r.personas);
+          if (r.pain) setPain(r.pain);
+          if (typeof r.blocks === "number") setBlocks(r.blocks);
+          if (r.freeSound) setFreeSound(r.freeSound);
+          if (typeof r.step === "number" && r.step > 1) {
+            setStep(r.step);
+            if (r.step > 4) {
+              setFlipped(true);
+              setFlipUnlocked(true);
+              setSandProgress(1);
+            }
+          }
+        }
+      } catch {
+        /* ignore malformed resume state */
+      }
+      setOpen(true);
     }
     void check();
+
+    // A sign-in that happens while the app is open must also close the
+    // overlay when that account already completed onboarding.
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      const meta = session?.user?.user_metadata as
+        | { has_completed_onboarding?: boolean }
+        | undefined;
+      if (meta?.has_completed_onboarding) {
+        safeStorage.setItem(STORAGE_KEY, "true");
+        safeStorage.removeItem(RESUME_KEY);
+        setOpen(false);
+      }
+    });
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
+
+  // Persist progress on every change (cheap, tiny payload).
+  useEffect(() => {
+    if (!open) return;
+    try {
+      safeStorage.setItem(
+        RESUME_KEY,
+        JSON.stringify({ step, personas, pain, blocks, freeSound }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [open, step, personas, pain, blocks, freeSound]);
 
   useEffect(() => {
     setBlocks(suggestBlocks(personas));
@@ -184,6 +245,7 @@ export function OnboardingOverlay() {
     const profile = { personas, pain, dailyBlocks: blocks, freeSound };
     if (freeSound) setUnlockedFreeSound(freeSound);
     safeStorage.setItem(STORAGE_KEY, "true");
+    safeStorage.removeItem(RESUME_KEY);
     safeStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
     // Save target minutes to settings (blocks × 90min)
     try {
