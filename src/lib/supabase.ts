@@ -308,6 +308,16 @@ function disableFocusScoreColumn() {
   safeStorage.setItem(FOCUS_SCORE_COLUMN_DISABLED_KEY, "1");
 }
 
+function statusColumnDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return safeStorage.getItem(STATUS_COLUMN_DISABLED_KEY) === "1";
+}
+
+function disableStatusColumn() {
+  if (typeof window === "undefined") return;
+  safeStorage.setItem(STATUS_COLUMN_DISABLED_KEY, "1");
+}
+
 function isMissingColumnError(
   error: { code?: string; message?: string } | null | undefined,
   column: string,
@@ -324,6 +334,7 @@ function isPermanentBadPayloadError(error: { code?: string; message?: string } |
     isMissingColumnError(error, "goal_id") ||
     isMissingColumnError(error, "focus_score") ||
     isMissingColumnError(error, "pause_count") ||
+    isMissingColumnError(error, "status") ||
     isMissingColumnError(error, "total_pause_seconds")
   )
     return false;
