@@ -217,18 +217,8 @@ export function TimerView() {
               />
             </div>
           </div>
-
-          {/* Circular duration dial — one full turn = 90 minutes */}
-          <div className="pointer-events-none absolute -inset-6 md:-inset-8">
-            <div className="pointer-events-auto relative h-full w-full">
-              <CircularDurationDial
-                minutes={minutes}
-                onChange={setMinutes}
-                disabled={phase !== "idle"}
-              />
-            </div>
-          </div>
         </div>
+
 
         {/* Time + duration */}
         <div className="flex flex-col items-center gap-3">
