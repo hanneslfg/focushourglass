@@ -925,15 +925,27 @@ export function AnalyticsView({
   return (
     <div className="w-full min-h-full px-6 md:px-12 lg:px-16 py-10 md:py-14 space-y-12">
       {/* Header */}
-      <header>
-        <div className="text-[10px] uppercase tracking-[0.32em] text-amber-400/60">Insights</div>
-        <h1 className="font-display text-4xl md:text-5xl lg:text-6xl tracking-tight mt-2 text-foreground">
-          Insights Analytics
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground/70">
-          Currently viewing <span className="text-amber-200/90 tabular-nums">{rangeLabel}</span>
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.32em] text-amber-400/60">Insights</div>
+          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl tracking-tight mt-2 text-foreground">
+            Insights Analytics
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground/70">
+            Currently viewing <span className="text-amber-200/90 tabular-nums">{rangeLabel}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setAddSessionOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-4 text-[11px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:border-amber-300/50 hover:text-amber-200 active:bg-accent"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+          Add session
+        </button>
       </header>
+      <AddSessionModal open={addSessionOpen} onOpenChange={setAddSessionOpen} />
+
 
       {/* Range selector */}
       <section>
