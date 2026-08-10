@@ -452,6 +452,17 @@ async function insertSessionPayload(
     });
     ({ data, error } = await query());
   }
+  if (isMissingColumnError(error, "status") && "status" in payload) {
+    console.warn("[supabase] sessions.status column missing; retrying without status.", error);
+    disableStatusColumn();
+    payload = buildPayload(session, userId, {
+      includeTags: !tagsColumnDisabled(),
+      includeFocusScore: !focusScoreColumnDisabled(),
+      includeStatus: false,
+    });
+    ({ data, error } = await query());
+  }
+
 
   return { data, error, payload };
 }
