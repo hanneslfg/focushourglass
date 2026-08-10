@@ -144,9 +144,9 @@ export const Route = createFileRoute("/api/public/send-sunday-newsletter")({
           return new Response("Unauthorized", { status: 401 });
         }
 
-        // 1. Subscribed profiles
+        // 1. Subscribed AND premium profiles only
         const profilesRes = await fetch(
-          `${url}/rest/v1/profiles?select=user_id,email,display_name&is_subscribed=eq.true`,
+          `${url}/rest/v1/profiles?select=user_id,email,display_name&is_subscribed=eq.true&is_premium=eq.true`,
           { headers: sbHeaders(serviceKey) },
         );
         if (!profilesRes.ok) {
