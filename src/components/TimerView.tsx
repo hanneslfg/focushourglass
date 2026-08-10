@@ -9,7 +9,6 @@ import { VisualWarmup } from "./VisualWarmup";
 
 
 import { ProjectGoalPicker } from "./ProjectGoalPicker";
-import { AddSessionModal } from "./AddSessionModal";
 import { playClick } from "@/lib/click";
 import { useTimer } from "@/lib/TimerContext";
 import { getSettings } from "@/lib/settings";
@@ -57,7 +56,6 @@ export function TimerView() {
   const [minuteInput, setMinuteInput] = useState(String(minutes));
   const [showAbortConfirm, setShowAbortConfirm] = useState(false);
   const [warmupActive, setWarmupActive] = useState(false);
-  const [addSessionOpen, setAddSessionOpen] = useState(false);
   // Gate any Date.now()-derived UI behind mount to avoid SSR/client hydration mismatch.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -171,15 +169,6 @@ export function TimerView() {
             onToggle={toggleSessionGoal}
             disabled={locked}
           />
-
-          <button
-            type="button"
-            onClick={() => setAddSessionOpen(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border px-3 text-[11px] tracking-wide text-muted-foreground transition-colors hover:border-foreground/50 hover:text-foreground active:bg-accent touch-manipulation"
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
-            {t("timer.addSession", { defaultValue: "Add session" })}
-          </button>
         </div>
 
         {/* Ambient sound selector — between the project row and the hourglass */}
@@ -377,7 +366,6 @@ export function TimerView() {
 
 
       </div>
-      <AddSessionModal open={addSessionOpen} onOpenChange={setAddSessionOpen} />
       {warmupActive && (
         <VisualWarmup
           onComplete={() => {

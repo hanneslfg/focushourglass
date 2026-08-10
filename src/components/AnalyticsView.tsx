@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Check, Trash2, Calendar as CalendarIcon, AlertTriangle, Lock } from "lucide-react";
+import { Check, Trash2, Calendar as CalendarIcon, AlertTriangle, Lock, Plus } from "lucide-react";
 import { usePremium } from "@/lib/premium";
 import { formatDeadline } from "@/lib/deadline";
 import { getSessions, hydrateFromRemote, dayKey, removeSession, sessionGoalTexts, type Session } from "@/lib/sessions";
@@ -24,6 +24,7 @@ import { FocusScoreBadge } from "./FocusScoreBadge";
 import { SessionGoalToggler } from "./SessionGoalToggler";
 import { SessionTimeBreakdown } from "./SessionTimeBreakdown";
 import { DatePicker } from "./DatePicker";
+import { AddSessionModal } from "./AddSessionModal";
 
 /* =================== Helpers =================== */
 
@@ -613,6 +614,7 @@ export function AnalyticsView({
   activityView: ActivityView;
   onActivityViewChange: (v: ActivityView) => void;
 }) {
+  const [addSessionOpen, setAddSessionOpen] = useState(false);
   const sessions = useSessions();
   const handleDelete = (s: Session) => {
     // Optimistic local remove — updates goal bars, daily totals, and charts instantly
