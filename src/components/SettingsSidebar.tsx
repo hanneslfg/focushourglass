@@ -179,6 +179,24 @@ function SettingsPanel() {
 
   useEffect(() => {
     setWeeklyReport(safeStorage.getItem(WEEKLY_REPORT_KEY) === "true");
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const uid = data.session?.user?.id;
+        if (!uid) return;
+        const { data: row } = await supabase
+          .from("profiles")
+          .select("is_subscribed")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (row && typeof row.is_subscribed === "boolean") {
+          setWeeklyReport(row.is_subscribed);
+          safeStorage.setItem(WEEKLY_REPORT_KEY, row.is_subscribed ? "true" : "false");
+        }
+      } catch {
+        /* noop */
+      }
+    })();
   }, []);
 
   async function toggleWeeklyReport(next: boolean) {
@@ -186,8 +204,13 @@ function SettingsPanel() {
     safeStorage.setItem(WEEKLY_REPORT_KEY, next ? "true" : "false");
     try {
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      const uid = data.session?.user?.id;
+      if (uid) {
         await supabase.auth.updateUser({ data: { weekly_report_opt_in: next } });
+        await supabase
+          .from("profiles")
+          .update({ is_subscribed: next })
+          .eq("user_id", uid);
       }
     } catch {
       /* noop */
