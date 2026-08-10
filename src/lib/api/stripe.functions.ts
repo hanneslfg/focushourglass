@@ -90,10 +90,15 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       plan: z.enum(["monthly", "yearly", "lifetime"]),
       accessToken: z.string().min(10),
       origin: z.string().url(),
+      /** Free-trial length in days for subscription plans (7 or 14). */
+      trialDays: z.number().int().min(1).max(30).optional(),
     }),
   )
   .handler(async ({ data }) => {
-    console.log("[stripe] createCheckoutSession start", { plan: data.plan });
+    console.log("[stripe] createCheckoutSession start", {
+      plan: data.plan,
+      trialDays: data.trialDays,
+    });
 
     const user = await verifySupabaseUser(data.accessToken);
     const productId = PRODUCTS[data.plan as Plan];
@@ -112,7 +117,16 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     if (mode === "subscription") {
       body.set("subscription_data[metadata][user_id]", user.id);
       body.set("subscription_data[metadata][plan]", data.plan);
+      // Without this the customer is charged immediately on day 0.
+      const trialDays = data.trialDays ?? 7;
+      body.set("subscription_data[trial_period_days]", String(trialDays));
+      // If no payment method survives the trial, cancel instead of charging.
+      body.set(
+        "subscription_data[trial_settings][end_behavior][missing_payment_method]",
+        "cancel",
+      );
     }
+
     if (user.email) body.set("customer_email", user.email);
     body.set("allow_promotion_codes", "true");
 
@@ -134,7 +148,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await verifySupabaseUser(data.accessToken);
     const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND status:'active'`,
+      `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
     );
     const res = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
       data?: Array<{
@@ -142,6 +156,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
         status: string;
         cancel_at_period_end?: boolean;
         current_period_end?: number;
+        trial_end?: number;
         created?: number;
         start_date?: number;
       }>;
@@ -154,6 +169,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
         status: sub.status,
         cancel_at_period_end: Boolean(sub.cancel_at_period_end),
         current_period_end: sub.current_period_end ?? null,
+        trial_end: sub.trial_end ?? null,
         created: sub.created ?? sub.start_date ?? null,
       },
     };
@@ -168,18 +184,31 @@ export const cancelUserSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await verifySupabaseUser(data.accessToken);
     const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND status:'active'`,
+      `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
     );
     const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
-      data?: Array<{ id: string }>;
+      data?: Array<{ id: string; status?: string }>;
     };
     const sub = search.data?.[0];
     if (!sub) {
-      return { ok: false, error: "No active subscription found for this account." };
+      return {
+        ok: false as const,
+        error: "No active subscription found for this account.",
+      };
     }
     const body = new URLSearchParams();
     body.set("cancel_at_period_end", "true");
-    await stripeFetch(`/subscriptions/${sub.id}`, { method: "POST", body });
-    console.log("[stripe] scheduled cancellation for", sub.id);
-    return { ok: true, subscriptionId: sub.id };
+    const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
+      method: "POST",
+      body,
+    })) as { status?: string; trial_end?: number; current_period_end?: number };
+    console.log("[stripe] scheduled cancellation for", sub.id, updated.status);
+    return {
+      ok: true as const,
+      subscriptionId: sub.id,
+      status: updated.status ?? sub.status ?? null,
+      trial_end: updated.trial_end ?? null,
+      current_period_end: updated.current_period_end ?? null,
+    };
   });
+

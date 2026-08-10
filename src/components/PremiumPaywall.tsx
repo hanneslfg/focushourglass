@@ -11,7 +11,7 @@ type Plan = "monthly" | "yearly" | "lifetime";
 interface PremiumPaywallProps {
   open?: boolean;
   onClose?: () => void;
-  onUpgrade?: (plan: Plan) => void | Promise<void>;
+  onUpgrade?: (plan: Plan, trialDays?: number) => void | Promise<void>;
   isLoading?: boolean;
   onRestore?: () => void | Promise<void>;
   isRestoring?: boolean;
@@ -109,7 +109,7 @@ export function PremiumPaywall({
           <Page3
             plan={plan}
             setPlan={setPlan}
-            onStart={() => onUpgrade?.(plan)}
+            onStart={() => onUpgrade?.(plan, postChallenge ? 14 : 7)}
             isLoading={isLoading}
             postChallenge={postChallenge}
           />
@@ -136,7 +136,7 @@ export function PremiumPaywall({
                 type="button"
                 onClick={() => {
                   setExitSheet(false);
-                  onUpgrade?.(plan);
+                  onUpgrade?.(plan, postChallenge ? 14 : 7);
                 }}
                 disabled={isLoading}
                 className="mt-5 w-full h-12 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] shadow-[0_10px_30px_-10px_rgba(226,176,92,0.6)] transition-all inline-flex items-center justify-center gap-2 disabled:opacity-60"
