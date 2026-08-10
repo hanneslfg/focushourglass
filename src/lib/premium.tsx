@@ -23,6 +23,7 @@ export interface ActiveSubscription {
   status: string;
   cancel_at_period_end: boolean;
   current_period_end: number | null;
+  trial_end?: number | null;
   /** Unix seconds when the subscription started (Stripe `created`). */
   created?: number | null;
 }
@@ -39,7 +40,7 @@ interface PremiumContextValue {
   isPaywallOpen: boolean;
   triggerPaywall: (opts?: TriggerPaywallOptions) => void;
   closePaywall: () => void;
-  startCheckout: (plan: Plan) => Promise<void>;
+  startCheckout: (plan: Plan, trialDays?: number) => Promise<void>;
   isCheckoutLoading: boolean;
   refreshPremium: () => Promise<void>;
   setPremiumLocal: (v: boolean) => void;
@@ -138,7 +139,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   }, []);
 
 
-  const startCheckout = useCallback(async (plan: Plan) => {
+  const startCheckout = useCallback(async (plan: Plan, trialDays?: number) => {
     setCheckoutLoading(true);
     try {
       const { data: sess } = await supabase.auth.getSession();
@@ -153,6 +154,7 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
           plan,
           accessToken,
           origin: window.location.origin,
+          ...(trialDays ? { trialDays } : {}),
         },
       });
       window.location.href = url;
@@ -294,7 +296,7 @@ export function usePremium(): PremiumContextValue {
       isPaywallOpen: false,
       triggerPaywall: () => {},
       closePaywall: () => {},
-      startCheckout: async () => {},
+      startCheckout: async (_plan: Plan, _trialDays?: number) => {},
       isCheckoutLoading: false,
       refreshPremium: async () => {},
       setPremiumLocal: () => {},
