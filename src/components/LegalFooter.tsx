@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 
 type LegalKey = "impressum" | "datenschutz";
 
@@ -40,6 +41,14 @@ export function LegalFooter({ className = "" }: { className?: string }) {
         >
           {t("legal.datenschutz")}
         </button>
+        <span aria-hidden className="opacity-40">·</span>
+        <Link to="/privacy" className="hover:text-muted-foreground transition-colors">
+          Privacy
+        </Link>
+        <span aria-hidden className="opacity-40">·</span>
+        <Link to="/terms" className="hover:text-muted-foreground transition-colors">
+          Terms
+        </Link>
       </footer>
 
       {open && <LegalModal which={open} onClose={() => setOpen(null)} />}

@@ -14,7 +14,9 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as FocusBlocksRouteImport } from './routes/focus-blocks'
 import { Route as MementoMoriRouteImport } from './routes/memento-mori'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
 
 const IndexRoute = IndexRouteImport.update({
@@ -42,9 +44,19 @@ const MementoMoriRoute = MementoMoriRouteImport.update({
   path: '/memento-mori',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsRoute = ProjectsRouteImport.update({
   id: '/projects',
   path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
@@ -59,7 +71,9 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/focus-blocks': typeof FocusBlocksRoute
   '/memento-mori': typeof MementoMoriRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/terms': typeof TermsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -68,7 +82,9 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/focus-blocks': typeof FocusBlocksRoute
   '/memento-mori': typeof MementoMoriRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/terms': typeof TermsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRoutesById {
@@ -78,7 +94,9 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/focus-blocks': typeof FocusBlocksRoute
   '/memento-mori': typeof MementoMoriRoute
+  '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/terms': typeof TermsRoute
   '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
 }
 export interface FileRouteTypes {
@@ -89,7 +107,9 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/focus-blocks'
     | '/memento-mori'
+    | '/privacy'
     | '/projects'
+    | '/terms'
     | '/api/public/stripe-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -98,7 +118,9 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/focus-blocks'
     | '/memento-mori'
+    | '/privacy'
     | '/projects'
+    | '/terms'
     | '/api/public/stripe-webhook'
   id:
     | '__root__'
@@ -107,7 +129,9 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/focus-blocks'
     | '/memento-mori'
+    | '/privacy'
     | '/projects'
+    | '/terms'
     | '/api/public/stripe-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -117,7 +141,9 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   FocusBlocksRoute: typeof FocusBlocksRoute
   MementoMoriRoute: typeof MementoMoriRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
+  TermsRoute: typeof TermsRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
 }
 
@@ -158,11 +184,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MementoMoriRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects': {
       id: '/projects'
       path: '/projects'
       fullPath: '/projects'
       preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/stripe-webhook': {
@@ -181,19 +221,11 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   FocusBlocksRoute: FocusBlocksRoute,
   MementoMoriRoute: MementoMoriRoute,
+  PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
+  TermsRoute: TermsRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
