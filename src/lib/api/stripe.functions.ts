@@ -187,15 +187,28 @@ export const cancelUserSubscription = createServerFn({ method: "POST" })
       `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
     );
     const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
-      data?: Array<{ id: string }>;
+      data?: Array<{ id: string; status?: string }>;
     };
     const sub = search.data?.[0];
     if (!sub) {
-      return { ok: false, error: "No active subscription found for this account." };
+      return {
+        ok: false as const,
+        error: "No active subscription found for this account.",
+      };
     }
     const body = new URLSearchParams();
     body.set("cancel_at_period_end", "true");
-    await stripeFetch(`/subscriptions/${sub.id}`, { method: "POST", body });
-    console.log("[stripe] scheduled cancellation for", sub.id);
-    return { ok: true, subscriptionId: sub.id };
+    const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
+      method: "POST",
+      body,
+    })) as { status?: string; trial_end?: number; current_period_end?: number };
+    console.log("[stripe] scheduled cancellation for", sub.id, updated.status);
+    return {
+      ok: true as const,
+      subscriptionId: sub.id,
+      status: updated.status ?? sub.status ?? null,
+      trial_end: updated.trial_end ?? null,
+      current_period_end: updated.current_period_end ?? null,
+    };
   });
+
