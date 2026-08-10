@@ -148,7 +148,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await verifySupabaseUser(data.accessToken);
     const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND status:'active'`,
+      `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
     );
     const res = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
       data?: Array<{
@@ -156,6 +156,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
         status: string;
         cancel_at_period_end?: boolean;
         current_period_end?: number;
+        trial_end?: number;
         created?: number;
         start_date?: number;
       }>;
@@ -168,6 +169,7 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
         status: sub.status,
         cancel_at_period_end: Boolean(sub.cancel_at_period_end),
         current_period_end: sub.current_period_end ?? null,
+        trial_end: sub.trial_end ?? null,
         created: sub.created ?? sub.start_date ?? null,
       },
     };
@@ -182,7 +184,7 @@ export const cancelUserSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const user = await verifySupabaseUser(data.accessToken);
     const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND status:'active'`,
+      `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
     );
     const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
       data?: Array<{ id: string }>;
