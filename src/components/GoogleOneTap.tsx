@@ -15,7 +15,10 @@ import { setGuestMode } from "@/lib/guest";
  * the previous redirect-based flow so sign-in never breaks.
  */
 
-const CLIENT_ID = import.meta.env['VITE_GOOGLE_CLIENT_ID'] as string | undefined;
+// Publishable Google OAuth Web client ID (safe in the bundle).
+const CLIENT_ID =
+  (import.meta.env['VITE_GOOGLE_CLIENT_ID'] as string | undefined) ||
+  "219650510350-ra2c2d7qsc0uu988apaku6ui1d6odthb.apps.googleusercontent.com";
 const GSI_SRC = "https://accounts.google.com/gsi/client";
 
 type CredentialResponse = { credential?: string };
