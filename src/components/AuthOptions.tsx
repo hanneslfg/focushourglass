@@ -1,21 +1,7 @@
 import { useState } from "react";
-import {
-  signInWithGoogle,
-  signInWithEmail,
-  signUpWithEmail,
-} from "@/lib/supabase";
+import { signInWithEmail, signUpWithEmail } from "@/lib/supabase";
+import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { setGuestMode } from "@/lib/guest";
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
-      <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.2-2.2H12v4.1h6.6c-.1 1.1-.9 2.8-2.5 3.9l3.8 3c2.3-2.1 3.6-5.2 3.6-8.8z" />
-      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.8-3c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.9-5l-4 3.1C3.1 21.3 7.2 24 12 24z" />
-      <path fill="#FBBC05" d="M5.1 14.3c-.3-.8-.4-1.5-.4-2.3s.2-1.6.4-2.3l-4-3.1C.4 8.2 0 10 0 12s.4 3.8 1.1 5.4l4-3.1z" />
-      <path fill="#EA4335" d="M12 4.7c2.3 0 3.8 1 4.7 1.8l3.4-3.3C18 1.2 15.2 0 12 0 7.2 0 3.1 2.7 1.1 6.6l4 3.1c1-2.9 3.7-5 6.9-5z" />
-    </svg>
-  );
-}
 
 /**
  * Three sign-in pathways: Google OAuth, email + password, and guest mode.
@@ -59,14 +45,7 @@ export function AuthOptions({
 
   return (
     <div className={compact ? "" : "w-full"}>
-      <button
-        type="button"
-        onClick={() => void signInWithGoogle()}
-        className="w-full inline-flex items-center justify-center gap-3 rounded-md border border-white/15 bg-white px-4 py-3 text-sm font-medium text-black hover:bg-white/90 transition-all"
-      >
-        <GoogleIcon />
-        Continue with Google
-      </button>
+      <GoogleOneTap oneTap={!compact} />
 
       <div className="my-3 flex items-center gap-3">
         <span className="h-px flex-1 bg-white/10" />
