@@ -195,6 +195,8 @@ export const Route = createFileRoute("/api/public/send-sunday-newsletter")({
             const stats = Array.isArray(raw) ? raw[0] : raw;
             const minutes = Math.round(Number(stats?.total_focus_minutes ?? 0));
             const sessions = Number(stats?.completed_sessions_count ?? 0);
+            const streak = Number(stats?.current_streak ?? 0);
+
 
             // Nothing to report — don't spam inactive users.
             if (minutes <= 0 && sessions <= 0) {
