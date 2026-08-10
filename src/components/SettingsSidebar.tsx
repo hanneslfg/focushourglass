@@ -739,11 +739,16 @@ function SettingsPanel() {
               type="button"
               role="switch"
               aria-checked={weeklyReport && isPremium}
-              disabled={!isPremium}
-              onClick={() => isPremium && toggleWeeklyReport(!weeklyReport)}
+              onClick={() => {
+                if (!isPremium) {
+                  triggerPaywall();
+                  return;
+                }
+                toggleWeeklyReport(!weeklyReport);
+              }}
               className={`relative shrink-0 h-6 w-11 rounded-full transition-colors ${
                 weeklyReport && isPremium ? "bg-primary" : "bg-border"
-              } disabled:opacity-40`}
+              }`}
             >
               <span
                 className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
