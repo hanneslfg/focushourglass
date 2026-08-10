@@ -227,11 +227,14 @@ export interface RemoteSession {
   pause_count?: number | null;
   /** Total seconds spent paused. */
   total_pause_seconds?: number | null;
+  /** Lifecycle state of the row; 'completed' for finished sessions. */
+  status?: string;
 }
 
 const PENDING_KEY = "hourglass.pending_sessions.v1";
 const TAGS_COLUMN_DISABLED_KEY = "hourglass.sessions.tags_column_disabled.v1";
 const FOCUS_SCORE_COLUMN_DISABLED_KEY = "hourglass.sessions.focus_score_column_disabled.v1";
+const STATUS_COLUMN_DISABLED_KEY = "hourglass.sessions.status_column_disabled.v1";
 
 type SessionInsertPayload = {
   user_id: string;
@@ -246,7 +249,9 @@ type SessionInsertPayload = {
   focus_score?: number | null;
   pause_count?: number | null;
   total_pause_seconds?: number | null;
+  status?: string;
 };
+
 
 
 
@@ -303,6 +308,16 @@ function disableFocusScoreColumn() {
   safeStorage.setItem(FOCUS_SCORE_COLUMN_DISABLED_KEY, "1");
 }
 
+function statusColumnDisabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return safeStorage.getItem(STATUS_COLUMN_DISABLED_KEY) === "1";
+}
+
+function disableStatusColumn() {
+  if (typeof window === "undefined") return;
+  safeStorage.setItem(STATUS_COLUMN_DISABLED_KEY, "1");
+}
+
 function isMissingColumnError(
   error: { code?: string; message?: string } | null | undefined,
   column: string,
@@ -319,6 +334,7 @@ function isPermanentBadPayloadError(error: { code?: string; message?: string } |
     isMissingColumnError(error, "goal_id") ||
     isMissingColumnError(error, "focus_score") ||
     isMissingColumnError(error, "pause_count") ||
+    isMissingColumnError(error, "status") ||
     isMissingColumnError(error, "total_pause_seconds")
   )
     return false;
@@ -358,10 +374,11 @@ function queuePending(s: RemoteSession) {
 function buildPayload(
   s: RemoteSession,
   userId: string,
-  opts: { includeTags?: boolean; includeFocusScore?: boolean } = {},
+  opts: { includeTags?: boolean; includeFocusScore?: boolean; includeStatus?: boolean } = {},
 ): SessionInsertPayload {
   const includeTags = opts.includeTags ?? !tagsColumnDisabled();
   const includeFocusScore = opts.includeFocusScore ?? !focusScoreColumnDisabled();
+  const includeStatus = opts.includeStatus ?? !statusColumnDisabled();
   const projectTag = typeof s.project_tag === "string" && s.project_tag.trim()
     ? s.project_tag.trim().slice(0, 120)
     : null;
@@ -377,6 +394,10 @@ function buildPayload(
     completed_at: cleanIso(s.completed_at),
     was_aborted: Boolean(s.was_aborted),
   };
+  if (includeStatus && typeof s.status === "string" && s.status.trim()) {
+    payload.status = s.status.trim();
+  }
+
   const tags = cleanTags(s.tags);
   // Goal-to-Tag bridge: always send an ARRAY (empty when no goals selected)
   // so a toggle-off actually clears the column instead of leaving stale tags.
@@ -431,6 +452,17 @@ async function insertSessionPayload(
     });
     ({ data, error } = await query());
   }
+  if (isMissingColumnError(error, "status") && "status" in payload) {
+    console.warn("[supabase] sessions.status column missing; retrying without status.", error);
+    disableStatusColumn();
+    payload = buildPayload(session, userId, {
+      includeTags: !tagsColumnDisabled(),
+      includeFocusScore: !focusScoreColumnDisabled(),
+      includeStatus: false,
+    });
+    ({ data, error } = await query());
+  }
+
 
   return { data, error, payload };
 }
