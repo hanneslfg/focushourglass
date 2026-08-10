@@ -128,11 +128,12 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
     const res = await saveSessionRemote({
       user_id: getUserId(),
       task_name: cleanTask,
-      project_tag: project?.name ?? null,
+      project_tag: project?.name?.trim() || "General",
       planned_duration: windowMinutes,
       actual_duration: focused,
       started_at: startedAt,
       completed_at: completedAt,
+      status: "completed",
       was_aborted: false,
       tags: goalText ? [goalText] : undefined,
     }).catch(() => ({ ok: false as const, queued: true as const }));
@@ -147,8 +148,14 @@ export function AddSessionModal({ open, onOpenChange }: Props) {
         description: `${focused} min · ${cleanTask}`,
       });
     }
+    // Refresh analytics charts, streaks and daily focus totals.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("hourglass:sessions"));
+    }
+    setSaving(false);
     onOpenChange(false);
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
