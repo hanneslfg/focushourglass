@@ -128,6 +128,8 @@ function SettingsPanel() {
     isRestoring,
     cancelSubscription,
     isCancelling,
+    extendTrial,
+    isExtendingTrial,
     fetchActiveSubscription,
     isTrialActive,
     trialDaysLeft,
@@ -159,6 +161,11 @@ function SettingsPanel() {
 
   async function handleConfirmCancel() {
     const ok = await cancelSubscription();
+    if (ok) setConfirmCancelOpen(false);
+  }
+
+  async function handleExtendTrial() {
+    const ok = await extendTrial(7);
     if (ok) setConfirmCancelOpen(false);
   }
 
