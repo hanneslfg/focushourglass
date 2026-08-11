@@ -140,7 +140,13 @@ function SettingsPanel() {
   const [mementoView, setMementoView] = useState(false);
   const [premiumDetailsOpen, setPremiumDetailsOpen] = useState(false);
   const [activeSub, setActiveSub] = useState<
-    { cancel_at_period_end: boolean; current_period_end: number | null } | null
+    {
+      status: string;
+      cancel_at_period_end: boolean;
+      current_period_end: number | null;
+      trial_end?: number | null;
+      created?: number | null;
+    } | null
   >(null);
 
 
@@ -152,7 +158,17 @@ function SettingsPanel() {
     let cancelled = false;
     void fetchActiveSubscription().then((sub) => {
       if (cancelled) return;
-      setActiveSub(sub ? { cancel_at_period_end: sub.cancel_at_period_end, current_period_end: sub.current_period_end } : null);
+      setActiveSub(
+        sub
+          ? {
+              status: sub.status,
+              cancel_at_period_end: sub.cancel_at_period_end,
+              current_period_end: sub.current_period_end,
+              trial_end: sub.trial_end ?? null,
+              created: sub.created ?? null,
+            }
+          : null,
+      );
     });
     return () => {
       cancelled = true;
