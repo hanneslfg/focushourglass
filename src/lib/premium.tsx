@@ -36,6 +36,12 @@ interface TriggerPaywallOptions {
 
 interface PremiumContextValue {
   isPremium: boolean;
+  /** ISO timestamp when the current free trial ends, if any. */
+  trialEndsAt: string | null;
+  /** True while the user is inside an active free-trial window. */
+  isTrialActive: boolean;
+  /** Whole days remaining in the trial (0 when no active trial). */
+  trialDaysLeft: number;
   isPaywallEnabled: boolean;
   isPaywallOpen: boolean;
   triggerPaywall: (opts?: TriggerPaywallOptions) => void;
@@ -50,6 +56,7 @@ interface PremiumContextValue {
   isCancelling: boolean;
   fetchActiveSubscription: () => Promise<ActiveSubscription | null>;
 }
+
 
 const PremiumContext = createContext<PremiumContextValue | null>(null);
 
