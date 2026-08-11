@@ -140,7 +140,13 @@ function SettingsPanel() {
   const [mementoView, setMementoView] = useState(false);
   const [premiumDetailsOpen, setPremiumDetailsOpen] = useState(false);
   const [activeSub, setActiveSub] = useState<
-    { cancel_at_period_end: boolean; current_period_end: number | null } | null
+    {
+      status: string;
+      cancel_at_period_end: boolean;
+      current_period_end: number | null;
+      trial_end?: number | null;
+      created?: number | null;
+    } | null
   >(null);
 
 
@@ -152,7 +158,17 @@ function SettingsPanel() {
     let cancelled = false;
     void fetchActiveSubscription().then((sub) => {
       if (cancelled) return;
-      setActiveSub(sub ? { cancel_at_period_end: sub.cancel_at_period_end, current_period_end: sub.current_period_end } : null);
+      setActiveSub(
+        sub
+          ? {
+              status: sub.status,
+              cancel_at_period_end: sub.cancel_at_period_end,
+              current_period_end: sub.current_period_end,
+              trial_end: sub.trial_end ?? null,
+              created: sub.created ?? null,
+            }
+          : null,
+      );
     });
     return () => {
       cancelled = true;
@@ -823,8 +839,10 @@ function PremiumDetailsModal({
   onClose: () => void;
   onCancel: () => void;
   activeSub: {
+    status?: string;
     cancel_at_period_end: boolean;
     current_period_end: number | null;
+    trial_end?: number | null;
     created?: number | null;
   } | null;
 }) {
@@ -942,7 +960,9 @@ function PremiumDetailsModal({
               onClick={onCancel}
               className="w-full h-11 rounded-xl text-sm text-white/60 border border-white/10 hover:border-red-500/40 hover:text-white/85 transition-all"
             >
-              Cancel Premium
+              {activeSub?.status === "trialing" && activeSub.trial_end
+                ? `Cancel Premium (trial ends ${new Date(activeSub.trial_end * 1000).toLocaleDateString()})`
+                : "Cancel Premium"}
             </button>
           )}
         </div>

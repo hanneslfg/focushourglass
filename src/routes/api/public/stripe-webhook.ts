@@ -216,8 +216,16 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             // Subscriptions with a free trial: persist when the trial ends so
             // the app can keep premium alive (and show "X days left").
             let trialEndsAt: string | null = null;
-            if (obj.mode === "subscription" && Number.isFinite(trialDays) && trialDays > 0) {
-              trialEndsAt = new Date(Date.now() + trialDays * 86400_000).toISOString();
+            if (obj.mode === "subscription") {
+              if (trialEndUnix) {
+                // Stripe's timestamp is authoritative.
+                trialEndsAt =
+                  trialEndUnix * 1000 > Date.now()
+                    ? new Date(trialEndUnix * 1000).toISOString()
+                    : null;
+              } else if (Number.isFinite(trialDays) && trialDays > 0) {
+                trialEndsAt = new Date(Date.now() + trialDays * 86400_000).toISOString();
+              }
             }
             await setPremium(userId, true, trialEndsAt, {
               stripeCustomerId: customerId || null,
