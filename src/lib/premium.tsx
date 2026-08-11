@@ -447,6 +447,8 @@ export function usePremium(): PremiumContextValue {
       isRestoring: false,
       cancelSubscription: async () => false,
       isCancelling: false,
+      extendTrial: async () => false,
+      isExtendingTrial: false,
       fetchActiveSubscription: async () => null,
     };
   }
