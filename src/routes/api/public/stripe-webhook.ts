@@ -146,12 +146,22 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             (obj.client_reference_id as string | undefined) ||
             "";
 
+          const trialEndUnix =
+            typeof obj.trial_end === "number" ? (obj.trial_end as number) : null;
+          const trialDays = Number(meta.trial_days);
+
           if (event.type === "checkout.session.completed") {
             if (!userId) {
               console.error("[stripe-webhook] no user_id in session metadata");
               return new Response("ok", { status: 200 });
             }
-            await setPremium(userId, true);
+            // Subscriptions with a free trial: persist when the trial ends so
+            // the app can keep premium alive (and show "X days left").
+            let trialEndsAt: string | null = null;
+            if (obj.mode === "subscription" && Number.isFinite(trialDays) && trialDays > 0) {
+              trialEndsAt = new Date(Date.now() + trialDays * 86400_000).toISOString();
+            }
+            await setPremium(userId, true, trialEndsAt);
           } else if (
             event.type === "customer.subscription.deleted" ||
             (event.type === "customer.subscription.updated" &&
@@ -159,8 +169,24 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                 obj.status === "unpaid" ||
                 obj.status === "incomplete_expired"))
           ) {
-            if (userId) await setPremium(userId, false);
+            if (userId) await setPremium(userId, false, null);
+          } else if (
+            event.type === "customer.subscription.created" ||
+            event.type === "customer.subscription.updated"
+          ) {
+            // Active or trialing subscription → premium, with authoritative
+            // trial_end straight from Stripe.
+            if (userId && (obj.status === "active" || obj.status === "trialing")) {
+              await setPremium(
+                userId,
+                true,
+                obj.status === "trialing" && trialEndUnix
+                  ? new Date(trialEndUnix * 1000).toISOString()
+                  : null,
+              );
+            }
           }
+
         } catch (err) {
           console.error("[stripe-webhook] handler error", err);
           return new Response("Handler error", { status: 500 });
