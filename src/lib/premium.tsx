@@ -77,15 +77,23 @@ export function triggerPaywall(opts?: TriggerPaywallOptions) {
 async function loadProfilePremium(
   userId: string,
 ): Promise<{ isPremium: boolean; trialEndsAt: string | null } | null> {
+  // Select the whole row so a missing optional column can never break the
+  // read (and therefore never downgrade an active user back to FREE).
   const full = await supabase
     .from("profiles")
-    .select("is_premium, trial_ends_at")
+    .select("*")
     .eq("user_id", userId)
     .maybeSingle();
   if (!full.error) {
-    const row = full.data as { is_premium?: boolean; trial_ends_at?: string | null } | null;
+    const row = full.data as {
+      is_premium?: boolean;
+      trial_ends_at?: string | null;
+      subscription_status?: string | null;
+    } | null;
+    const status = row?.subscription_status ?? null;
+    const statusActive = status === "active" || status === "trialing";
     return {
-      isPremium: Boolean(row?.is_premium),
+      isPremium: Boolean(row?.is_premium) || statusActive,
       trialEndsAt: row?.trial_ends_at ?? null,
     };
   }
