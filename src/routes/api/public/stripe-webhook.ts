@@ -66,33 +66,54 @@ async function verifyStripeSignature(
   }
 }
 
-async function setPremium(userId: string, isPremium: boolean) {
+async function setPremium(
+  userId: string,
+  isPremium: boolean,
+  trialEndsAt?: string | null,
+) {
   const url = process.env.HG_SUPABASE_URL;
   const serviceKey = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
     console.error("[stripe-webhook] Supabase env missing");
     throw new Error("Supabase not configured");
   }
-  // Upsert into profiles(user_id, is_premium)
-  const res = await fetch(`${url}/rest/v1/profiles?on_conflict=user_id`, {
-    method: "POST",
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=minimal",
-    },
-    body: JSON.stringify([
-      { user_id: userId, is_premium: isPremium, updated_at: new Date().toISOString() },
-    ]),
-  });
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    is_premium: isPremium,
+    updated_at: new Date().toISOString(),
+  };
+  if (trialEndsAt !== undefined) row.trial_ends_at = trialEndsAt;
+
+  // Upsert into profiles(user_id, is_premium, trial_ends_at)
+  async function upsert(payload: Record<string, unknown>) {
+    return fetch(`${url}/rest/v1/profiles?on_conflict=user_id`, {
+      method: "POST",
+      headers: {
+        apikey: serviceKey!,
+        Authorization: `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([payload]),
+    });
+  }
+
+  let res = await upsert(row);
+  if (!res.ok && "trial_ends_at" in row) {
+    // Column may not exist yet — retry without it so premium still lands.
+    const text = await res.text();
+    console.error("[stripe-webhook] upsert with trial_ends_at failed", res.status, text);
+    const { trial_ends_at: _omit, ...rest } = row;
+    res = await upsert(rest);
+  }
   if (!res.ok) {
     const text = await res.text();
     console.error("[stripe-webhook] failed to upsert profile", res.status, text);
     throw new Error("Failed to update profile");
   }
-  console.log("[stripe-webhook] profile updated", { userId, isPremium });
+  console.log("[stripe-webhook] profile updated", { userId, isPremium, trialEndsAt });
 }
+
 
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
