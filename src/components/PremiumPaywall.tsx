@@ -78,21 +78,8 @@ export function PremiumPaywall({
           <X className="h-4 w-4" strokeWidth={1.5} />
         </button>
 
-        {/* Restore purchases — small, top-right of body */}
-        {onRestore && (
-          <button
-            type="button"
-            onClick={() => void onRestore()}
-            disabled={isRestoring}
-            className="absolute top-4 right-20 z-10 inline-flex items-center gap-1.5 text-[11px] text-white/50 hover:text-white/85 disabled:opacity-40 transition-colors"
-          >
-            <RotateCcw className="h-3 w-3" strokeWidth={1.75} />
-            {isRestoring ? "Restoring…" : "Restore purchases"}
-          </button>
-        )}
-
         {/* Progress dots */}
-        <div className="absolute top-6 right-6 z-10 flex items-center gap-1.5">
+        <div className="absolute top-5 right-6 z-10 flex items-center gap-1.5">
           {[1, 2, 3].map((n) => (
             <span
               key={n}
@@ -102,6 +89,20 @@ export function PremiumPaywall({
             />
           ))}
         </div>
+
+        {/* Restore purchases — below the progress bars, right aligned */}
+        {onRestore && (
+          <button
+            type="button"
+            onClick={() => void onRestore()}
+            disabled={isRestoring}
+            className="absolute top-9 right-6 z-10 inline-flex items-center gap-1.5 text-[11px] leading-none text-white/50 hover:text-white/85 disabled:opacity-40 transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" strokeWidth={1.75} />
+            {isRestoring ? "Restoring…" : "Restore purchases"}
+          </button>
+        )}
+
 
         {step === 1 && <Page1 onNext={() => setStep(2)} />}
         {step === 2 && <Page2 onNext={() => setStep(3)} />}
