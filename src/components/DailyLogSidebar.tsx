@@ -286,7 +286,11 @@ export function DailyLogSidebar() {
 
 
 
-function SyncDot({ state }: { state: ReturnType<typeof useSyncState> }) {
+function SyncDot({ state: liveState }: { state: ReturnType<typeof useSyncState> }) {
+  // Avoid SSR/client mismatch: render the neutral state until hydrated.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const state = mounted ? liveState : "idle";
   const label =
     state === "syncing"
       ? "Syncing…"
