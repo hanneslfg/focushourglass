@@ -178,6 +178,8 @@ function SettingsPanel() {
   );
   const [lang, setLangState] = useState<LanguageCode>("en");
   const [weeklyReport, setWeeklyReport] = useState(false);
+  const [savingWeekly, setSavingWeekly] = useState(false);
+
 
   useEffect(() => {
     setWeeklyReport(safeStorage.getItem(WEEKLY_REPORT_KEY) === "true");
