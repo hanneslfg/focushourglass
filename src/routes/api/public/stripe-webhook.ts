@@ -115,6 +115,39 @@ async function setPremium(
 }
 
 
+/** Look up a Supabase user id from a Stripe customer (metadata or email). */
+async function userIdFromCustomer(customerId: string): Promise<string> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/customers/${customerId}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return "";
+    const cust = (await res.json()) as {
+      metadata?: Record<string, string>;
+      email?: string | null;
+    };
+    const metaId = cust.metadata?.user_id;
+    if (metaId) return metaId;
+    const email = cust.email;
+    if (!email) return "";
+    const url = process.env.HG_SUPABASE_URL;
+    const serviceKey = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey) return "";
+    const p = await fetch(
+      `${url}/rest/v1/profiles?select=user_id&email=eq.${encodeURIComponent(email)}&limit=1`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!p.ok) return "";
+    const rows = (await p.json()) as Array<{ user_id?: string }>;
+    return rows?.[0]?.user_id ?? "";
+  } catch (err) {
+    console.error("[stripe-webhook] customer lookup failed", err);
+    return "";
+  }
+}
+
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
@@ -141,10 +174,18 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         try {
           const obj = event.data.object as Record<string, unknown>;
           const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
-          const userId =
+          let userId =
             meta.user_id ||
             (obj.client_reference_id as string | undefined) ||
             "";
+          if (!userId) {
+            const customerId =
+              typeof obj.customer === "string"
+                ? obj.customer
+                : ((obj.customer as { id?: string } | undefined)?.id ?? "");
+            if (customerId) userId = await userIdFromCustomer(customerId);
+            if (userId) console.log("[stripe-webhook] resolved user via customer", customerId);
+          }
 
           const trialEndUnix =
             typeof obj.trial_end === "number" ? (obj.trial_end as number) : null;
@@ -152,7 +193,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
 
           if (event.type === "checkout.session.completed") {
             if (!userId) {
-              console.error("[stripe-webhook] no user_id in session metadata");
+              console.error("[stripe-webhook] could not resolve user for session");
               return new Response("ok", { status: 200 });
             }
             // Subscriptions with a free trial: persist when the trial ends so
@@ -176,11 +217,13 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           ) {
             // Active or trialing subscription → premium, with authoritative
             // trial_end straight from Stripe.
-            if (userId && (obj.status === "active" || obj.status === "trialing")) {
+            if (!userId) {
+              console.error("[stripe-webhook] could not resolve user for subscription event");
+            } else if (obj.status === "active" || obj.status === "trialing") {
               await setPremium(
                 userId,
                 true,
-                obj.status === "trialing" && trialEndUnix
+                trialEndUnix && trialEndUnix * 1000 > Date.now()
                   ? new Date(trialEndUnix * 1000).toISOString()
                   : null,
               );
