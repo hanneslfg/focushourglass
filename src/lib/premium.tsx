@@ -179,6 +179,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
 
   // Returning from Stripe Checkout: the webhook may land a moment later, so
   // poll a few times so the trial unlocks immediately without a manual reload.
+  // If the webhook is slow/misconfigured, fall back to asking Stripe directly
+  // and write the entitlement ourselves.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -190,14 +192,57 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       "",
       window.location.pathname + (qs ? `?${qs}` : ""),
     );
+
+    let cancelled = false;
+
+    async function syncFromStripe() {
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess.session?.access_token;
+      const userId = sess.session?.user?.id;
+      if (!accessToken || !userId) return;
+      try {
+        const res = await findActiveSubscription({ data: { accessToken } });
+        const sub = res.subscription;
+        if (!sub) return;
+        const trialEnd =
+          sub.status === "trialing" && sub.trial_end
+            ? new Date(sub.trial_end * 1000).toISOString()
+            : null;
+        await supabase
+          .from("profiles")
+          .update({
+            is_premium: true,
+            ...(trialEnd ? { trial_ends_at: trialEnd } : {}),
+          })
+          .eq("user_id", userId);
+        if (cancelled) return;
+        setEntitled(true);
+        if (trialEnd) setTrialEndsAt(trialEnd);
+      } catch (err) {
+        console.error("[premium] stripe fallback sync failed", err);
+      }
+    }
+
     let tries = 0;
     const id = window.setInterval(() => {
       tries += 1;
       void refreshPremium();
-      if (tries >= 6) window.clearInterval(id);
+      if (tries === 3) void syncFromStripe();
+      if (tries >= 8) window.clearInterval(id);
     }, 2000);
     void refreshPremium();
-    return () => window.clearInterval(id);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [refreshPremium]);
+
+  // Coming back to the tab (e.g. after managing billing) re-reads entitlement.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onFocus = () => void refreshPremium();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [refreshPremium]);
 
   const setPremiumLocal = useCallback((v: boolean) => setEntitled(v), []);
