@@ -13,6 +13,7 @@ import {
   createCheckoutSession,
   cancelUserSubscription,
   findActiveSubscription,
+  extendUserTrial,
 } from "@/lib/api/stripe.functions";
 import { toast } from "sonner";
 
@@ -54,6 +55,9 @@ interface PremiumContextValue {
   isRestoring: boolean;
   cancelSubscription: () => Promise<boolean>;
   isCancelling: boolean;
+  /** Retention: push the free trial out by N days (default 7). */
+  extendTrial: (days?: number) => Promise<boolean>;
+  isExtendingTrial: boolean;
   fetchActiveSubscription: () => Promise<ActiveSubscription | null>;
 }
 
