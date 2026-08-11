@@ -217,11 +217,13 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
           ) {
             // Active or trialing subscription → premium, with authoritative
             // trial_end straight from Stripe.
-            if (userId && (obj.status === "active" || obj.status === "trialing")) {
+            if (!userId) {
+              console.error("[stripe-webhook] could not resolve user for subscription event");
+            } else if (obj.status === "active" || obj.status === "trialing") {
               await setPremium(
                 userId,
                 true,
-                obj.status === "trialing" && trialEndUnix
+                trialEndUnix && trialEndUnix * 1000 > Date.now()
                   ? new Date(trialEndUnix * 1000).toISOString()
                   : null,
               );
