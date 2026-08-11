@@ -960,7 +960,9 @@ function PremiumDetailsModal({
               onClick={onCancel}
               className="w-full h-11 rounded-xl text-sm text-white/60 border border-white/10 hover:border-red-500/40 hover:text-white/85 transition-all"
             >
-              Cancel Premium
+              {activeSub?.status === "trialing" && activeSub.trial_end
+                ? `Cancel Premium (trial ends ${new Date(activeSub.trial_end * 1000).toLocaleDateString()})`
+                : "Cancel Premium"}
             </button>
           )}
         </div>
