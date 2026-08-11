@@ -364,9 +364,9 @@ function SettingsPanel() {
               </div>
             )}
 
-            {isPremium && activeSub && (
+            {isPremium && (
               <>
-                {activeSub.cancel_at_period_end ? (
+                {activeSub?.cancel_at_period_end ? (
                   <div className="rounded-md border border-border/60 bg-background/40 px-4 py-3 text-[12px] text-muted-foreground">
                     Your subscription is set to cancel
                     {activeSub.current_period_end
@@ -379,15 +379,10 @@ function SettingsPanel() {
                     type="button"
                     onClick={() => setConfirmCancelOpen(true)}
                     disabled={isCancelling}
-                    className="w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-red-500/40 transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 rounded-md border border-white/12 bg-transparent px-4 py-3 text-sm text-white/60 hover:text-red-300 hover:border-red-500/40 transition-colors disabled:opacity-50"
                   >
-                    <span className="flex items-center gap-2.5 text-sm text-white/85">
-                      <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
-                      Cancel subscription
-                    </span>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      Abonnement kündigen
-                    </span>
+                    <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
+                    Cancel subscription
                   </button>
                 )}
               </>
@@ -400,7 +395,9 @@ function SettingsPanel() {
         <CancelConfirmModal
           onKeep={() => setConfirmCancelOpen(false)}
           onConfirm={handleConfirmCancel}
-          isBusy={isCancelling}
+          onExtend={handleExtendTrial}
+          isBusy={isCancelling || isExtendingTrial}
+          isTrial={isTrialActive}
           currentPeriodEnd={activeSub?.current_period_end ?? null}
         />
       )}
