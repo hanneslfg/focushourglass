@@ -115,6 +115,39 @@ async function setPremium(
 }
 
 
+/** Look up a Supabase user id from a Stripe customer (metadata or email). */
+async function userIdFromCustomer(customerId: string): Promise<string> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return "";
+  try {
+    const res = await fetch(`https://api.stripe.com/v1/customers/${customerId}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return "";
+    const cust = (await res.json()) as {
+      metadata?: Record<string, string>;
+      email?: string | null;
+    };
+    const metaId = cust.metadata?.user_id;
+    if (metaId) return metaId;
+    const email = cust.email;
+    if (!email) return "";
+    const url = process.env.HG_SUPABASE_URL;
+    const serviceKey = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey) return "";
+    const p = await fetch(
+      `${url}/rest/v1/profiles?select=user_id&email=eq.${encodeURIComponent(email)}&limit=1`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (!p.ok) return "";
+    const rows = (await p.json()) as Array<{ user_id?: string }>;
+    return rows?.[0]?.user_id ?? "";
+  } catch (err) {
+    console.error("[stripe-webhook] customer lookup failed", err);
+    return "";
+  }
+}
+
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
