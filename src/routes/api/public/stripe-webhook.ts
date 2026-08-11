@@ -174,10 +174,18 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         try {
           const obj = event.data.object as Record<string, unknown>;
           const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
-          const userId =
+          let userId =
             meta.user_id ||
             (obj.client_reference_id as string | undefined) ||
             "";
+          if (!userId) {
+            const customerId =
+              typeof obj.customer === "string"
+                ? obj.customer
+                : ((obj.customer as { id?: string } | undefined)?.id ?? "");
+            if (customerId) userId = await userIdFromCustomer(customerId);
+            if (userId) console.log("[stripe-webhook] resolved user via customer", customerId);
+          }
 
           const trialEndUnix =
             typeof obj.trial_end === "number" ? (obj.trial_end as number) : null;
@@ -185,7 +193,7 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
 
           if (event.type === "checkout.session.completed") {
             if (!userId) {
-              console.error("[stripe-webhook] no user_id in session metadata");
+              console.error("[stripe-webhook] could not resolve user for session");
               return new Response("ok", { status: 200 });
             }
             // Subscriptions with a free trial: persist when the trial ends so
