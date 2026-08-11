@@ -120,6 +120,10 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       // Without this the customer is charged immediately on day 0.
       const trialDays = data.trialDays ?? 7;
       body.set("subscription_data[trial_period_days]", String(trialDays));
+      // Mirrored into metadata so the webhook can compute `trial_ends_at`
+      // even before Stripe sends the subscription object.
+      body.set("metadata[trial_days]", String(trialDays));
+      body.set("subscription_data[metadata][trial_days]", String(trialDays));
       // If no payment method survives the trial, cancel instead of charging.
       body.set(
         "subscription_data[trial_settings][end_behavior][missing_payment_method]",
