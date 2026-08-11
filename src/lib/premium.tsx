@@ -323,6 +323,9 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PremiumContextValue>(
     () => ({
       isPremium,
+      trialEndsAt,
+      isTrialActive,
+      trialDaysLeft,
       isPaywallEnabled: ENABLE_PAYWALL,
       isPaywallOpen,
       triggerPaywall,
@@ -339,6 +342,9 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     }),
     [
       isPremium,
+      trialEndsAt,
+      isTrialActive,
+      trialDaysLeft,
       isPaywallOpen,
       triggerPaywall,
       closePaywall,
@@ -376,6 +382,9 @@ export function usePremium(): PremiumContextValue {
   if (!ctx) {
     return {
       isPremium: false,
+      trialEndsAt: null,
+      isTrialActive: false,
+      trialDaysLeft: 0,
       isPaywallEnabled: ENABLE_PAYWALL,
       isPaywallOpen: false,
       triggerPaywall: () => {},
