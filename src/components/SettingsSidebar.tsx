@@ -129,6 +129,8 @@ function SettingsPanel() {
     cancelSubscription,
     isCancelling,
     fetchActiveSubscription,
+    isTrialActive,
+    trialDaysLeft,
   } = usePremium();
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [mementoWarning, setMementoWarning] = useState(false);
@@ -343,6 +345,14 @@ function SettingsPanel() {
                 Käufe wiederherstellen
               </span>
             </button>
+
+            {isPremium && isTrialActive && (
+              <div className="rounded-md border border-[#E2B05C]/40 bg-[#E2B05C]/5 px-4 py-3 text-[12px] text-[#E2B05C]">
+                {trialDaysLeft === 1
+                  ? "1 day left in your free trial"
+                  : `${trialDaysLeft} days left in your free trial`}
+              </div>
+            )}
 
             {isPremium && activeSub && (
               <>
