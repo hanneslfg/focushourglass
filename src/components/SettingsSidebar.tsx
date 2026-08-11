@@ -204,22 +204,30 @@ function SettingsPanel() {
   }, []);
 
   async function toggleWeeklyReport(next: boolean) {
+    const prev = weeklyReport;
     setWeeklyReport(next);
+    setSavingWeekly(true);
     safeStorage.setItem(WEEKLY_REPORT_KEY, next ? "true" : "false");
     try {
       const { data } = await supabase.auth.getSession();
       const uid = data.session?.user?.id;
       if (uid) {
         await supabase.auth.updateUser({ data: { weekly_report_opt_in: next } });
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({ is_subscribed: next })
           .eq("user_id", uid);
+        if (error) throw error;
       }
-    } catch {
-      /* noop */
+    } catch (err) {
+      console.error("[settings] weekly report toggle failed", err);
+      setWeeklyReport(prev);
+      safeStorage.setItem(WEEKLY_REPORT_KEY, prev ? "true" : "false");
+    } finally {
+      setSavingWeekly(false);
     }
   }
+
 
   useEffect(() => {
     setLangState(getLanguage());
