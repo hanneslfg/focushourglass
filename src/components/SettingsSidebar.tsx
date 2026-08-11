@@ -178,6 +178,8 @@ function SettingsPanel() {
   );
   const [lang, setLangState] = useState<LanguageCode>("en");
   const [weeklyReport, setWeeklyReport] = useState(false);
+  const [savingWeekly, setSavingWeekly] = useState(false);
+
 
   useEffect(() => {
     setWeeklyReport(safeStorage.getItem(WEEKLY_REPORT_KEY) === "true");
@@ -202,22 +204,30 @@ function SettingsPanel() {
   }, []);
 
   async function toggleWeeklyReport(next: boolean) {
+    const prev = weeklyReport;
     setWeeklyReport(next);
+    setSavingWeekly(true);
     safeStorage.setItem(WEEKLY_REPORT_KEY, next ? "true" : "false");
     try {
       const { data } = await supabase.auth.getSession();
       const uid = data.session?.user?.id;
       if (uid) {
         await supabase.auth.updateUser({ data: { weekly_report_opt_in: next } });
-        await supabase
+        const { error } = await supabase
           .from("profiles")
           .update({ is_subscribed: next })
           .eq("user_id", uid);
+        if (error) throw error;
       }
-    } catch {
-      /* noop */
+    } catch (err) {
+      console.error("[settings] weekly report toggle failed", err);
+      setWeeklyReport(prev);
+      safeStorage.setItem(WEEKLY_REPORT_KEY, prev ? "true" : "false");
+    } finally {
+      setSavingWeekly(false);
     }
   }
+
 
   useEffect(() => {
     setLangState(getLanguage());
@@ -749,23 +759,26 @@ function SettingsPanel() {
               type="button"
               role="switch"
               aria-checked={weeklyReport && isPremium}
+              aria-label="Weekly Sunday Progress Report"
+              disabled={savingWeekly}
               onClick={() => {
                 if (!isPremium) {
                   triggerPaywall();
                   return;
                 }
-                toggleWeeklyReport(!weeklyReport);
+                void toggleWeeklyReport(!weeklyReport);
               }}
-              className={`relative shrink-0 h-6 w-11 rounded-full transition-colors ${
+              className={`relative shrink-0 self-center h-6 w-11 rounded-full transition-colors touch-manipulation cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60 ${
                 weeklyReport && isPremium ? "bg-primary" : "bg-border"
               }`}
             >
               <span
-                className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${
-                  weeklyReport && isPremium ? "translate-x-[22px]" : "translate-x-1"
+                className={`absolute left-0 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                  weeklyReport && isPremium ? "translate-x-[26px]" : "translate-x-1"
                 }`}
               />
             </button>
+
           </div>
         </div>
       </section>
