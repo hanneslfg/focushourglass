@@ -70,6 +70,7 @@ async function setPremium(
   userId: string,
   isPremium: boolean,
   trialEndsAt?: string | null,
+  extra?: { stripeCustomerId?: string | null; subscriptionStatus?: string | null },
 ) {
   const url = process.env.HG_SUPABASE_URL;
   const serviceKey = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
@@ -83,8 +84,12 @@ async function setPremium(
     updated_at: new Date().toISOString(),
   };
   if (trialEndsAt !== undefined) row.trial_ends_at = trialEndsAt;
+  if (extra?.stripeCustomerId) row.stripe_customer_id = extra.stripeCustomerId;
+  if (extra?.subscriptionStatus !== undefined && extra.subscriptionStatus !== null) {
+    row.subscription_status = extra.subscriptionStatus;
+  }
 
-  // Upsert into profiles(user_id, is_premium, trial_ends_at)
+  // Upsert into profiles(user_id, is_premium, trial_ends_at, ...)
   async function upsert(payload: Record<string, unknown>) {
     return fetch(`${url}/rest/v1/profiles?on_conflict=user_id`, {
       method: "POST",
@@ -99,11 +104,17 @@ async function setPremium(
   }
 
   let res = await upsert(row);
-  if (!res.ok && "trial_ends_at" in row) {
-    // Column may not exist yet — retry without it so premium still lands.
+  if (!res.ok) {
+    // Optional columns may not exist yet — retry with the minimal payload so
+    // premium still lands.
     const text = await res.text();
-    console.error("[stripe-webhook] upsert with trial_ends_at failed", res.status, text);
-    const { trial_ends_at: _omit, ...rest } = row;
+    console.error("[stripe-webhook] upsert with optional columns failed", res.status, text);
+    const {
+      trial_ends_at: _t,
+      stripe_customer_id: _c,
+      subscription_status: _s,
+      ...rest
+    } = row;
     res = await upsert(rest);
   }
   if (!res.ok) {
@@ -111,7 +122,12 @@ async function setPremium(
     console.error("[stripe-webhook] failed to upsert profile", res.status, text);
     throw new Error("Failed to update profile");
   }
-  console.log("[stripe-webhook] profile updated", { userId, isPremium, trialEndsAt });
+  console.log("[stripe-webhook] profile updated", {
+    userId,
+    isPremium,
+    trialEndsAt,
+    status: extra?.subscriptionStatus,
+  });
 }
 
 
@@ -174,19 +190,20 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
         try {
           const obj = event.data.object as Record<string, unknown>;
           const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
+          const customerId =
+            typeof obj.customer === "string"
+              ? obj.customer
+              : ((obj.customer as { id?: string } | undefined)?.id ?? "");
           let userId =
             meta.user_id ||
             (obj.client_reference_id as string | undefined) ||
             "";
-          if (!userId) {
-            const customerId =
-              typeof obj.customer === "string"
-                ? obj.customer
-                : ((obj.customer as { id?: string } | undefined)?.id ?? "");
-            if (customerId) userId = await userIdFromCustomer(customerId);
+          if (!userId && customerId) {
+            userId = await userIdFromCustomer(customerId);
             if (userId) console.log("[stripe-webhook] resolved user via customer", customerId);
           }
 
+          const status = typeof obj.status === "string" ? (obj.status as string) : null;
           const trialEndUnix =
             typeof obj.trial_end === "number" ? (obj.trial_end as number) : null;
           const trialDays = Number(meta.trial_days);
@@ -202,7 +219,10 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             if (obj.mode === "subscription" && Number.isFinite(trialDays) && trialDays > 0) {
               trialEndsAt = new Date(Date.now() + trialDays * 86400_000).toISOString();
             }
-            await setPremium(userId, true, trialEndsAt);
+            await setPremium(userId, true, trialEndsAt, {
+              stripeCustomerId: customerId || null,
+              subscriptionStatus: trialEndsAt ? "trialing" : (status ?? "active"),
+            });
           } else if (
             event.type === "customer.subscription.deleted" ||
             (event.type === "customer.subscription.updated" &&
@@ -210,7 +230,11 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
                 obj.status === "unpaid" ||
                 obj.status === "incomplete_expired"))
           ) {
-            if (userId) await setPremium(userId, false, null);
+            if (userId)
+              await setPremium(userId, false, null, {
+                stripeCustomerId: customerId || null,
+                subscriptionStatus: status ?? "canceled",
+              });
           } else if (
             event.type === "customer.subscription.created" ||
             event.type === "customer.subscription.updated"
@@ -219,13 +243,14 @@ export const Route = createFileRoute("/api/public/stripe-webhook")({
             // trial_end straight from Stripe.
             if (!userId) {
               console.error("[stripe-webhook] could not resolve user for subscription event");
-            } else if (obj.status === "active" || obj.status === "trialing") {
+            } else if (status === "active" || status === "trialing") {
               await setPremium(
                 userId,
                 true,
                 trialEndUnix && trialEndUnix * 1000 > Date.now()
                   ? new Date(trialEndUnix * 1000).toISOString()
                   : null,
+                { stripeCustomerId: customerId || null, subscriptionStatus: status },
               );
             }
           }
