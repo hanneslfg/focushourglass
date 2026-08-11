@@ -404,6 +404,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       isRestoring,
       cancelSubscription,
       isCancelling,
+      extendTrial,
+      isExtendingTrial,
       fetchActiveSubscription,
     ],
   );
