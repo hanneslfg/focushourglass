@@ -180,6 +180,52 @@ export const findActiveSubscription = createServerFn({ method: "POST" })
   });
 
 /**
+ * Retention: push the user's free-trial end date out by N days (default 7).
+ * Works only while the subscription is still `trialing`. Returns the new
+ * trial end as an ISO string so the caller can persist it to `profiles`.
+ */
+export const extendUserTrial = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      accessToken: z.string().min(10),
+      days: z.number().int().min(1).max(30).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const user = await verifySupabaseUser(data.accessToken);
+    const days = data.days ?? 7;
+    const query = encodeURIComponent(
+      `metadata['user_id']:'${user.id}' AND status:'trialing'`,
+    );
+    const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
+      data?: Array<{ id: string; trial_end?: number }>;
+    };
+    const sub = search.data?.[0];
+    if (!sub) {
+      // No Stripe trial (e.g. app-granted trial) — caller extends locally.
+      return { ok: true as const, stripe: false as const, trialEndsAt: null };
+    }
+    const base = sub.trial_end
+      ? sub.trial_end * 1000
+      : Date.now();
+    const next = Math.floor(Math.max(base, Date.now()) / 1000) + days * 86400;
+    const body = new URLSearchParams();
+    body.set("trial_end", String(next));
+    body.set("proration_behavior", "none");
+    const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
+      method: "POST",
+      body,
+    })) as { trial_end?: number };
+    const endUnix = updated.trial_end ?? next;
+    console.log("[stripe] trial extended", sub.id, endUnix);
+    return {
+      ok: true as const,
+      stripe: true as const,
+      trialEndsAt: new Date(endUnix * 1000).toISOString(),
+    };
+  });
+
+/**
  * Cancel the user's active Stripe subscription at period end so they keep
  * access until the paid term expires. Idempotent.
  */
