@@ -128,6 +128,8 @@ function SettingsPanel() {
     isRestoring,
     cancelSubscription,
     isCancelling,
+    extendTrial,
+    isExtendingTrial,
     fetchActiveSubscription,
     isTrialActive,
     trialDaysLeft,
@@ -159,6 +161,11 @@ function SettingsPanel() {
 
   async function handleConfirmCancel() {
     const ok = await cancelSubscription();
+    if (ok) setConfirmCancelOpen(false);
+  }
+
+  async function handleExtendTrial() {
+    const ok = await extendTrial(7);
     if (ok) setConfirmCancelOpen(false);
   }
 
@@ -364,9 +371,9 @@ function SettingsPanel() {
               </div>
             )}
 
-            {isPremium && activeSub && (
+            {isPremium && (
               <>
-                {activeSub.cancel_at_period_end ? (
+                {activeSub?.cancel_at_period_end ? (
                   <div className="rounded-md border border-border/60 bg-background/40 px-4 py-3 text-[12px] text-muted-foreground">
                     Your subscription is set to cancel
                     {activeSub.current_period_end
@@ -379,15 +386,10 @@ function SettingsPanel() {
                     type="button"
                     onClick={() => setConfirmCancelOpen(true)}
                     disabled={isCancelling}
-                    className="w-full flex items-center justify-between rounded-md border border-border bg-background/40 px-4 py-3 hover:border-red-500/40 transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 rounded-md border border-white/12 bg-transparent px-4 py-3 text-sm text-white/60 hover:text-red-300 hover:border-red-500/40 transition-colors disabled:opacity-50"
                   >
-                    <span className="flex items-center gap-2.5 text-sm text-white/85">
-                      <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
-                      Cancel subscription
-                    </span>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      Abonnement kündigen
-                    </span>
+                    <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
+                    Cancel subscription
                   </button>
                 )}
               </>
@@ -400,7 +402,9 @@ function SettingsPanel() {
         <CancelConfirmModal
           onKeep={() => setConfirmCancelOpen(false)}
           onConfirm={handleConfirmCancel}
-          isBusy={isCancelling}
+          onExtend={handleExtendTrial}
+          isBusy={isCancelling || isExtendingTrial}
+          isTrial={isTrialActive}
           currentPeriodEnd={activeSub?.current_period_end ?? null}
         />
       )}
@@ -950,37 +954,27 @@ function PremiumDetailsModal({
 function CancelConfirmModal({
   onKeep,
   onConfirm,
+  onExtend,
   isBusy,
+  isTrial,
   currentPeriodEnd,
 }: {
   onKeep: () => void;
   onConfirm: () => Promise<void> | void;
+  onExtend: () => Promise<void> | void;
   isBusy: boolean;
+  isTrial: boolean;
   currentPeriodEnd: number | null;
 }) {
   const alreadyExtended = safeStorage.getItem(TRIAL_EXT_KEY) === "true";
-  // Heuristic trial detection: if the subscription's paid period ends within
-  // the next 21 days, treat this as a trial-eligible cancel and offer the
-  // one-time 7-day extension. Users on long paid terms will not see it.
-  const nowMs = Date.now();
-  const periodEndMs = currentPeriodEnd ? currentPeriodEnd * 1000 : null;
-  const daysUntilRenewal = periodEndMs ? Math.round((periodEndMs - nowMs) / 86_400_000) : null;
-  const isTrialLike = daysUntilRenewal != null && daysUntilRenewal <= 21;
-  const canExtend = isTrialLike && !alreadyExtended;
+  const canExtend = isTrial && !alreadyExtended;
+  const renewalDate = currentPeriodEnd
+    ? new Date(currentPeriodEnd * 1000).toLocaleDateString()
+    : null;
 
-  // Retention numbers based on the user's actual local history.
-  const focusedMin = focusedMinutesSince(getPremiumStart());
-  const focusedHours = (focusedMin / 60).toFixed(1);
-  const projectedLossHours = Math.max(4, Math.round(Number(focusedHours) * 0.7));
-
-  function handleExtend() {
+  async function handleExtend() {
     safeStorage.setItem(TRIAL_EXT_KEY, "true");
-    void import("sonner").then(({ toast }) =>
-      toast.success("Trial extended by 7 days", {
-        description: "You're locked in. Keep the streak going.",
-      }),
-    );
-    onKeep();
+    await onExtend();
   }
 
   return (
@@ -996,62 +990,59 @@ function CancelConfirmModal({
           </div>
           <div>
             <h3 className="font-display text-xl tracking-tight text-white">
-              Wait — here's what you'd walk away from
+              {isTrial
+                ? "Give your focus a little more time."
+                : "Are you sure you want to cancel?"}
             </h3>
             <p className="mt-2 text-[13px] text-white/65 leading-relaxed">
-              You've protected <span className="text-white/95 font-medium">{focusedHours}h</span> of
-              deep work since going Premium. Losing the system typically costs
-              another <span className="text-white/95 font-medium">~{projectedLossHours}h</span> of
-              momentum in the following two weeks (loss aversion effect).
+              {isTrial
+                ? "You will lose access to your weekly focus recaps, curated soundscapes, and advanced analytics."
+                : `You'll keep every Premium feature until the end of your current billing cycle${
+                    renewalDate ? ` on ${renewalDate}` : ""
+                  }. After that your account moves back to the free plan.`}
             </p>
           </div>
         </div>
 
-        <ul className="mt-4 space-y-1.5 text-[12px] text-white/70">
-          <li className="flex items-start gap-2">
-            <X className="h-3.5 w-3.5 text-red-400/80 mt-0.5 shrink-0" strokeWidth={2} />
-            <span>You lose Custom Analytics ranges, Warm-up Calibration & Sunday reports.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <X className="h-3.5 w-3.5 text-red-400/80 mt-0.5 shrink-0" strokeWidth={2} />
-            <span>Cloud backup pauses. Sessions stay only on this device.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <X className="h-3.5 w-3.5 text-red-400/80 mt-0.5 shrink-0" strokeWidth={2} />
-            <span>Streak-freeze inventory stops refilling.</span>
-          </li>
-        </ul>
+        {isTrial && canExtend && (
+          <p className="mt-4 rounded-xl border border-[#E2B05C]/30 bg-[#E2B05C]/[0.07] px-4 py-3 text-[12.5px] text-[#E2B05C]">
+            We'd love to extend your trial by another 7 days — completely free,
+            no strings attached.
+          </p>
+        )}
 
         <div className="mt-6 flex flex-col gap-2">
-          {canExtend && (
+          {isTrial && canExtend ? (
             <button
               type="button"
-              onClick={handleExtend}
+              onClick={() => void handleExtend()}
               disabled={isBusy}
-              className="w-full h-11 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
+              className="w-full h-12 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
             >
-              Extend my trial by 7 days
+              {isBusy ? "Just a moment…" : "Extend trial by 7 days & stay"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onKeep}
+              disabled={isBusy}
+              className="w-full h-12 rounded-xl font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A] transition-all disabled:opacity-60"
+            >
+              {isTrial ? "Keep my trial" : "Keep my subscription"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onKeep}
-            disabled={isBusy}
-            className={`w-full h-11 rounded-xl text-sm transition-all disabled:opacity-60 ${
-              canExtend
-                ? "text-white/85 border border-white/15 hover:border-white/40"
-                : "font-semibold tracking-wide text-black bg-gradient-to-b from-[#F0C97A] to-[#C8933F] hover:from-[#F5D28A] hover:to-[#D19E4A]"
-            }`}
-          >
-            Keep my focus system
-          </button>
+
           <button
             type="button"
             onClick={() => void onConfirm()}
             disabled={isBusy}
-            className="w-full h-10 rounded-xl text-xs text-white/45 hover:text-white/70 transition-all disabled:opacity-60"
+            className="w-full h-10 rounded-xl text-xs text-white/45 hover:text-white/75 transition-all disabled:opacity-60"
           >
-            {isBusy ? "Cancelling…" : "No thanks — confirm cancellation"}
+            {isBusy
+              ? "Cancelling…"
+              : isTrial
+                ? "No thanks, cancel my trial"
+                : "Proceed with cancellation"}
           </button>
         </div>
       </div>

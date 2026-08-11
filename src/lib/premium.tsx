@@ -13,6 +13,7 @@ import {
   createCheckoutSession,
   cancelUserSubscription,
   findActiveSubscription,
+  extendUserTrial,
 } from "@/lib/api/stripe.functions";
 import { toast } from "sonner";
 
@@ -54,6 +55,9 @@ interface PremiumContextValue {
   isRestoring: boolean;
   cancelSubscription: () => Promise<boolean>;
   isCancelling: boolean;
+  /** Retention: push the free trial out by N days (default 7). */
+  extendTrial: (days?: number) => Promise<boolean>;
+  isExtendingTrial: boolean;
   fetchActiveSubscription: () => Promise<ActiveSubscription | null>;
 }
 
@@ -305,6 +309,48 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const [isExtendingTrial, setExtending] = useState(false);
+  const extendTrial = useCallback(async (days = 7) => {
+    setExtending(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess.session?.access_token;
+      const userId = sess.session?.user?.id;
+      if (!accessToken || !userId) {
+        toast.error("Please sign in first to manage your trial.");
+        return false;
+      }
+      let nextEnd: string | null = null;
+      try {
+        const res = await extendUserTrial({ data: { accessToken, days } });
+        nextEnd = res.trialEndsAt;
+      } catch (err) {
+        console.error("[premium] stripe trial extension failed", err);
+      }
+      if (!nextEnd) {
+        const base = Math.max(
+          Date.now(),
+          trialEndsAt ? new Date(trialEndsAt).getTime() : Date.now(),
+        );
+        nextEnd = new Date(base + days * 86_400_000).toISOString();
+      }
+      const { error } = await supabase
+        .from("profiles")
+        .update({ trial_ends_at: nextEnd })
+        .eq("user_id", userId);
+      if (error) console.error("[premium] failed to persist trial_ends_at", error);
+      setTrialEndsAt(nextEnd);
+      toast.success(`Trial extended by ${days} days!`);
+      return true;
+    } catch (err) {
+      console.error("[premium] extendTrial failed", err);
+      toast.error("Couldn't extend your trial. Please try again.");
+      return false;
+    } finally {
+      setExtending(false);
+    }
+  }, [trialEndsAt]);
+
   const fetchActiveSubscription = useCallback(async (): Promise<ActiveSubscription | null> => {
     try {
       const { data: sess } = await supabase.auth.getSession();
@@ -338,6 +384,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       isRestoring,
       cancelSubscription,
       isCancelling,
+      extendTrial,
+      isExtendingTrial,
       fetchActiveSubscription,
     }),
     [
@@ -356,6 +404,8 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
       isRestoring,
       cancelSubscription,
       isCancelling,
+      extendTrial,
+      isExtendingTrial,
       fetchActiveSubscription,
     ],
   );
@@ -397,6 +447,8 @@ export function usePremium(): PremiumContextValue {
       isRestoring: false,
       cancelSubscription: async () => false,
       isCancelling: false,
+      extendTrial: async () => false,
+      isExtendingTrial: false,
       fetchActiveSubscription: async () => null,
     };
   }
