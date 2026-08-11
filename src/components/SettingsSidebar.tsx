@@ -839,8 +839,10 @@ function PremiumDetailsModal({
   onClose: () => void;
   onCancel: () => void;
   activeSub: {
+    status?: string;
     cancel_at_period_end: boolean;
     current_period_end: number | null;
+    trial_end?: number | null;
     created?: number | null;
   } | null;
 }) {
