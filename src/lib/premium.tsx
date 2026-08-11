@@ -249,20 +249,17 @@ export function PremiumProvider({ children }: { children: ReactNode }) {
         toast.error("Please sign in first to restore your purchases.");
         return;
       }
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("is_premium")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (error) {
-        console.error("[premium] restore failed", error);
+      const state = await loadProfilePremium(userId);
+      if (!state) {
         toast.error("Couldn't restore purchases. Please try again.");
         return;
       }
-      const active = Boolean(data?.is_premium);
-      setIsPremium(active);
+      setEntitled(state.isPremium);
+      setTrialEndsAt(state.trialEndsAt);
+      const active = state.isPremium || trialIsActive(state.trialEndsAt);
       if (active) toast.success("Premium restored to this device.");
       else toast("No active premium purchase found on this account.");
+
     } finally {
       setRestoring(false);
     }
