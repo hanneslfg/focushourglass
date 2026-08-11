@@ -119,8 +119,9 @@ export function PremiumPaywall({
 
         {/* Exit-intent sheet — full cover so the page CTA never shows behind it */}
         {exitSheet && (
-          <div className="absolute inset-0 z-20 flex items-end bg-[#0A0A0A]/95 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-h-full overflow-y-auto rounded-t-2xl border-t border-white/10 bg-[#0F0F0F] p-6 sm:p-8 shadow-[0_-20px_60px_-10px_rgba(0,0,0,0.9)] animate-in slide-in-from-bottom-8 duration-500">
+          <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0F0F0F] p-6 sm:p-8 shadow-[0_-20px_60px_-10px_rgba(0,0,0,0.9)] animate-in slide-in-from-bottom-8 duration-500">
+
 
               <h3 className="font-display text-2xl text-white tracking-tight">
                 Give your brain a little more time.
