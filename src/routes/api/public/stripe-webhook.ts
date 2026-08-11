@@ -70,6 +70,7 @@ async function setPremium(
   userId: string,
   isPremium: boolean,
   trialEndsAt?: string | null,
+  extra?: { stripeCustomerId?: string | null; subscriptionStatus?: string | null },
 ) {
   const url = process.env.HG_SUPABASE_URL;
   const serviceKey = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
@@ -83,8 +84,12 @@ async function setPremium(
     updated_at: new Date().toISOString(),
   };
   if (trialEndsAt !== undefined) row.trial_ends_at = trialEndsAt;
+  if (extra?.stripeCustomerId) row.stripe_customer_id = extra.stripeCustomerId;
+  if (extra?.subscriptionStatus !== undefined && extra.subscriptionStatus !== null) {
+    row.subscription_status = extra.subscriptionStatus;
+  }
 
-  // Upsert into profiles(user_id, is_premium, trial_ends_at)
+  // Upsert into profiles(user_id, is_premium, trial_ends_at, ...)
   async function upsert(payload: Record<string, unknown>) {
     return fetch(`${url}/rest/v1/profiles?on_conflict=user_id`, {
       method: "POST",
@@ -99,11 +104,17 @@ async function setPremium(
   }
 
   let res = await upsert(row);
-  if (!res.ok && "trial_ends_at" in row) {
-    // Column may not exist yet — retry without it so premium still lands.
+  if (!res.ok) {
+    // Optional columns may not exist yet — retry with the minimal payload so
+    // premium still lands.
     const text = await res.text();
-    console.error("[stripe-webhook] upsert with trial_ends_at failed", res.status, text);
-    const { trial_ends_at: _omit, ...rest } = row;
+    console.error("[stripe-webhook] upsert with optional columns failed", res.status, text);
+    const {
+      trial_ends_at: _t,
+      stripe_customer_id: _c,
+      subscription_status: _s,
+      ...rest
+    } = row;
     res = await upsert(rest);
   }
   if (!res.ok) {
@@ -111,7 +122,12 @@ async function setPremium(
     console.error("[stripe-webhook] failed to upsert profile", res.status, text);
     throw new Error("Failed to update profile");
   }
-  console.log("[stripe-webhook] profile updated", { userId, isPremium, trialEndsAt });
+  console.log("[stripe-webhook] profile updated", {
+    userId,
+    isPremium,
+    trialEndsAt,
+    status: extra?.subscriptionStatus,
+  });
 }
 
 
