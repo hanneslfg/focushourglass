@@ -143,46 +143,111 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
     return { url: session.url };
   });
 
+type StripeSub = {
+  id: string;
+  status: string;
+  cancel_at_period_end?: boolean;
+  current_period_end?: number;
+  trial_end?: number;
+  created?: number;
+  start_date?: number;
+};
+
 /**
- * Look up whether the user currently has an active Stripe subscription tied
- * to their Supabase user_id (stored in subscription metadata at checkout).
+ * Resolve the Stripe customer id for a Supabase user via `profiles`, falling
+ * back to an email lookup in Stripe. The Search API is intentionally NOT used
+ * ("Queries cannot have a mix of AND and OR").
+ */
+async function resolveCustomerId(user: {
+  id: string;
+  email: string | null;
+}): Promise<string | null> {
+  const url = process.env.HG_SUPABASE_URL;
+  const anon = process.env.HG_SUPABASE_ANON_KEY;
+  const service = process.env.HG_SUPABASE_SERVICE_ROLE_KEY;
+  if (url && anon) {
+    try {
+      const key = service || anon;
+      const res = await fetch(
+        `${url}/rest/v1/profiles?select=stripe_customer_id&user_id=eq.${user.id}&limit=1`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+      );
+      if (res.ok) {
+        const rows = (await res.json()) as Array<{ stripe_customer_id?: string | null }>;
+        const cid = rows?.[0]?.stripe_customer_id;
+        if (cid) return cid;
+      } else {
+        console.error("[stripe] profiles lookup failed", res.status);
+      }
+    } catch (err) {
+      console.error("[stripe] profiles lookup error", err);
+    }
+  }
+  if (user.email) {
+    const params = new URLSearchParams({ email: user.email, limit: "1" });
+    const list = (await stripeFetch(`/customers?${params.toString()}`)) as {
+      data?: Array<{ id: string }>;
+    };
+    return list.data?.[0]?.id ?? null;
+  }
+  return null;
+}
+
+/** List subscriptions for the user and filter in code (no Search API). */
+async function listUserSubscriptions(user: {
+  id: string;
+  email: string | null;
+}): Promise<StripeSub[]> {
+  const customerId = await resolveCustomerId(user);
+  if (!customerId) return [];
+  const params = new URLSearchParams({
+    customer: customerId,
+    status: "all",
+    limit: "5",
+  });
+  const res = (await stripeFetch(`/subscriptions?${params.toString()}`)) as {
+    data?: StripeSub[];
+  };
+  return res.data ?? [];
+}
+
+function activeOrTrialing(subs: StripeSub[]): StripeSub | undefined {
+  return subs.find((s) => s.status === "active" || s.status === "trialing");
+}
+
+function errMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Look up whether the user currently has an active Stripe subscription.
  */
 export const findActiveSubscription = createServerFn({ method: "POST" })
   .inputValidator(z.object({ accessToken: z.string().min(10) }))
   .handler(async ({ data }) => {
-    const user = await verifySupabaseUser(data.accessToken);
-    const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
-    );
-    const res = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
-      data?: Array<{
-        id: string;
-        status: string;
-        cancel_at_period_end?: boolean;
-        current_period_end?: number;
-        trial_end?: number;
-        created?: number;
-        start_date?: number;
-      }>;
-    };
-    const sub = res.data?.[0];
-    if (!sub) return { subscription: null as null };
-    return {
-      subscription: {
-        id: sub.id,
-        status: sub.status,
-        cancel_at_period_end: Boolean(sub.cancel_at_period_end),
-        current_period_end: sub.current_period_end ?? null,
-        trial_end: sub.trial_end ?? null,
-        created: sub.created ?? sub.start_date ?? null,
-      },
-    };
+    try {
+      const user = await verifySupabaseUser(data.accessToken);
+      const sub = activeOrTrialing(await listUserSubscriptions(user));
+      if (!sub) return { subscription: null, error: null as string | null };
+      return {
+        subscription: {
+          id: sub.id,
+          status: sub.status,
+          cancel_at_period_end: Boolean(sub.cancel_at_period_end),
+          current_period_end: sub.current_period_end ?? null,
+          trial_end: sub.trial_end ?? null,
+          created: sub.created ?? sub.start_date ?? null,
+        },
+        error: null as string | null,
+      };
+    } catch (err) {
+      console.error("[stripe] findActiveSubscription failed", err);
+      return { subscription: null, error: errMessage(err) };
+    }
   });
 
 /**
  * Retention: push the user's free-trial end date out by N days (default 7).
- * Works only while the subscription is still `trialing`. Returns the new
- * trial end as an ISO string so the caller can persist it to `profiles`.
  */
 export const extendUserTrial = createServerFn({ method: "POST" })
   .inputValidator(
@@ -192,37 +257,37 @@ export const extendUserTrial = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data }) => {
-    const user = await verifySupabaseUser(data.accessToken);
     const days = data.days ?? 7;
-    const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND status:'trialing'`,
-    );
-    const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
-      data?: Array<{ id: string; trial_end?: number }>;
-    };
-    const sub = search.data?.[0];
-    if (!sub) {
-      // No Stripe trial (e.g. app-granted trial) — caller extends locally.
-      return { ok: true as const, stripe: false as const, trialEndsAt: null };
+    try {
+      const user = await verifySupabaseUser(data.accessToken);
+      const sub = (await listUserSubscriptions(user)).find(
+        (s) => s.status === "trialing",
+      );
+      if (!sub) {
+        // No Stripe trial (e.g. app-granted trial) — caller extends locally.
+        return { ok: true as const, stripe: false, trialEndsAt: null, error: null as string | null };
+      }
+      const base = sub.trial_end ? sub.trial_end * 1000 : Date.now();
+      const next = Math.floor(Math.max(base, Date.now()) / 1000) + days * 86400;
+      const body = new URLSearchParams();
+      body.set("trial_end", String(next));
+      body.set("proration_behavior", "none");
+      const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
+        method: "POST",
+        body,
+      })) as { trial_end?: number };
+      const endUnix = updated.trial_end ?? next;
+      console.log("[stripe] trial extended", sub.id, endUnix);
+      return {
+        ok: true as const,
+        stripe: true,
+        trialEndsAt: new Date(endUnix * 1000).toISOString(),
+        error: null as string | null,
+      };
+    } catch (err) {
+      console.error("[stripe] extendUserTrial failed", err);
+      return { ok: false as const, stripe: false, trialEndsAt: null, error: errMessage(err) };
     }
-    const base = sub.trial_end
-      ? sub.trial_end * 1000
-      : Date.now();
-    const next = Math.floor(Math.max(base, Date.now()) / 1000) + days * 86400;
-    const body = new URLSearchParams();
-    body.set("trial_end", String(next));
-    body.set("proration_behavior", "none");
-    const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
-      method: "POST",
-      body,
-    })) as { trial_end?: number };
-    const endUnix = updated.trial_end ?? next;
-    console.log("[stripe] trial extended", sub.id, endUnix);
-    return {
-      ok: true as const,
-      stripe: true as const,
-      trialEndsAt: new Date(endUnix * 1000).toISOString(),
-    };
   });
 
 /**
@@ -232,33 +297,45 @@ export const extendUserTrial = createServerFn({ method: "POST" })
 export const cancelUserSubscription = createServerFn({ method: "POST" })
   .inputValidator(z.object({ accessToken: z.string().min(10) }))
   .handler(async ({ data }) => {
-    const user = await verifySupabaseUser(data.accessToken);
-    const query = encodeURIComponent(
-      `metadata['user_id']:'${user.id}' AND (status:'active' OR status:'trialing')`,
-    );
-    const search = (await stripeFetch(`/subscriptions/search?query=${query}&limit=1`)) as {
-      data?: Array<{ id: string; status?: string }>;
-    };
-    const sub = search.data?.[0];
-    if (!sub) {
+    try {
+      const user = await verifySupabaseUser(data.accessToken);
+      const sub = activeOrTrialing(await listUserSubscriptions(user));
+      if (!sub) {
+        return {
+          ok: false as const,
+          error: "No active subscription found for this account.",
+          subscriptionId: null,
+          status: null,
+          trial_end: null,
+          current_period_end: null,
+        };
+      }
+      const body = new URLSearchParams();
+      body.set("cancel_at_period_end", "true");
+      const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
+        method: "POST",
+        body,
+      })) as { status?: string; trial_end?: number; current_period_end?: number };
+      console.log("[stripe] scheduled cancellation for", sub.id, updated.status);
+      return {
+        ok: true as const,
+        error: null as string | null,
+        subscriptionId: sub.id,
+        status: updated.status ?? sub.status ?? null,
+        trial_end: updated.trial_end ?? sub.trial_end ?? null,
+        current_period_end: updated.current_period_end ?? sub.current_period_end ?? null,
+      };
+    } catch (err) {
+      console.error("[stripe] cancelUserSubscription failed", err);
       return {
         ok: false as const,
-        error: "No active subscription found for this account.",
+        error: errMessage(err),
+        subscriptionId: null,
+        status: null,
+        trial_end: null,
+        current_period_end: null,
       };
     }
-    const body = new URLSearchParams();
-    body.set("cancel_at_period_end", "true");
-    const updated = (await stripeFetch(`/subscriptions/${sub.id}`, {
-      method: "POST",
-      body,
-    })) as { status?: string; trial_end?: number; current_period_end?: number };
-    console.log("[stripe] scheduled cancellation for", sub.id, updated.status);
-    return {
-      ok: true as const,
-      subscriptionId: sub.id,
-      status: updated.status ?? sub.status ?? null,
-      trial_end: updated.trial_end ?? null,
-      current_period_end: updated.current_period_end ?? null,
-    };
   });
+
 
