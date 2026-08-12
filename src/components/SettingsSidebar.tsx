@@ -15,7 +15,6 @@ import {
   Check,
   Lock,
   RotateCcw,
-  ShieldOff,
   Skull,
   AlertTriangle,
 } from "lucide-react";
@@ -387,29 +386,6 @@ function SettingsPanel() {
               </div>
             )}
 
-            {isPremium && (
-              <>
-                {activeSub?.cancel_at_period_end ? (
-                  <div className="rounded-md border border-border/60 bg-background/40 px-4 py-3 text-[12px] text-muted-foreground">
-                    Your subscription is set to cancel
-                    {activeSub.current_period_end
-                      ? ` on ${new Date(activeSub.current_period_end * 1000).toLocaleDateString()}`
-                      : " at the end of the paid period"}
-                    . You keep premium access until then.
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmCancelOpen(true)}
-                    disabled={isCancelling}
-                    className="w-full flex items-center justify-center gap-2 rounded-md border border-white/12 bg-transparent px-4 py-3 text-sm text-white/60 hover:text-red-300 hover:border-red-500/40 transition-colors disabled:opacity-50"
-                  >
-                    <ShieldOff className="h-4 w-4" strokeWidth={1.5} />
-                    Cancel subscription
-                  </button>
-                )}
-              </>
-            )}
           </div>
         </section>
       )}
