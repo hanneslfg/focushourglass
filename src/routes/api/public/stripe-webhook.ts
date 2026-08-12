@@ -250,14 +250,20 @@ export const stripeWebhookHandler = async ({ request }: { request: Request }) =>
       if (!userId) {
         console.error("[stripe-webhook] could not resolve user for subscription event");
       } else if (status === "active" || status === "trialing") {
-        await setPremium(
-          userId,
-          true,
+        // Only touch trial_ends_at when we have real information:
+        //  - trialing + future trial_end  -> authoritative value from Stripe
+        //  - active (trial finished/none) -> clear it
+        //  - anything else                -> leave the existing value alone
+        const trialEndsAt =
           trialEndUnix && trialEndUnix * 1000 > Date.now()
             ? new Date(trialEndUnix * 1000).toISOString()
-            : null,
-          { stripeCustomerId: customerId || null, subscriptionStatus: status },
-        );
+            : status === "active"
+              ? null
+              : undefined;
+        await setPremium(userId, true, trialEndsAt, {
+          stripeCustomerId: customerId || null,
+          subscriptionStatus: status,
+        });
       }
     }
   } catch (err) {
