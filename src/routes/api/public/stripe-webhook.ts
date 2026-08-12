@@ -164,112 +164,114 @@ async function userIdFromCustomer(customerId: string): Promise<string> {
   }
 }
 
+// Handle BOTH /stripe-webhook and /stripe-webhook/ (see sibling $.ts splat route).
+export const stripeWebhookHandler = async ({ request }: { request: Request }) => {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET not set");
+    return new Response("Not configured", { status: 500 });
+  }
+  const raw = await request.text();
+  const sig = request.headers.get("stripe-signature");
+  const verified = await verifyStripeSignature(raw, sig, secret);
+  if (!verified.ok) {
+    console.error("[stripe-webhook] invalid signature");
+    return new Response("Invalid signature", { status: 400 });
+  }
+
+  const event = verified.event as {
+    type: string;
+    data: { object: Record<string, unknown> };
+  };
+  console.log("[stripe-webhook] event", event.type);
+
+  try {
+    const obj = event.data.object as Record<string, unknown>;
+    const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
+    const customerId =
+      typeof obj.customer === "string"
+        ? obj.customer
+        : ((obj.customer as { id?: string } | undefined)?.id ?? "");
+    let userId =
+      meta.user_id ||
+      (obj.client_reference_id as string | undefined) ||
+      "";
+    if (!userId && customerId) {
+      userId = await userIdFromCustomer(customerId);
+      if (userId) console.log("[stripe-webhook] resolved user via customer", customerId);
+    }
+
+    const status = typeof obj.status === "string" ? (obj.status as string) : null;
+    const trialEndUnix =
+      typeof obj.trial_end === "number" ? (obj.trial_end as number) : null;
+    const trialDays = Number(meta.trial_days);
+
+    if (event.type === "checkout.session.completed") {
+      if (!userId) {
+        console.error("[stripe-webhook] could not resolve user for session");
+        return new Response("ok", { status: 200 });
+      }
+      // Subscriptions with a free trial: persist when the trial ends so
+      // the app can keep premium alive (and show "X days left").
+      let trialEndsAt: string | null = null;
+      if (obj.mode === "subscription") {
+        if (trialEndUnix) {
+          // Stripe's timestamp is authoritative.
+          trialEndsAt =
+            trialEndUnix * 1000 > Date.now()
+              ? new Date(trialEndUnix * 1000).toISOString()
+              : null;
+        } else if (Number.isFinite(trialDays) && trialDays > 0) {
+          trialEndsAt = new Date(Date.now() + trialDays * 86400_000).toISOString();
+        }
+      }
+      await setPremium(userId, true, trialEndsAt, {
+        stripeCustomerId: customerId || null,
+        subscriptionStatus: trialEndsAt ? "trialing" : (status ?? "active"),
+      });
+    } else if (
+      event.type === "customer.subscription.deleted" ||
+      (event.type === "customer.subscription.updated" &&
+        (obj.status === "canceled" ||
+          obj.status === "unpaid" ||
+          obj.status === "incomplete_expired"))
+    ) {
+      if (userId)
+        await setPremium(userId, false, null, {
+          stripeCustomerId: customerId || null,
+          subscriptionStatus: status ?? "canceled",
+        });
+    } else if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated"
+    ) {
+      // Active or trialing subscription → premium, with authoritative
+      // trial_end straight from Stripe.
+      if (!userId) {
+        console.error("[stripe-webhook] could not resolve user for subscription event");
+      } else if (status === "active" || status === "trialing") {
+        await setPremium(
+          userId,
+          true,
+          trialEndUnix && trialEndUnix * 1000 > Date.now()
+            ? new Date(trialEndUnix * 1000).toISOString()
+            : null,
+          { stripeCustomerId: customerId || null, subscriptionStatus: status },
+        );
+      }
+    }
+  } catch (err) {
+    console.error("[stripe-webhook] handler error", err);
+    return new Response("Handler error", { status: 500 });
+  }
+
+  return new Response("ok", { status: 200 });
+};
+
 export const Route = createFileRoute("/api/public/stripe-webhook")({
   server: {
     handlers: {
-      POST: async ({ request }) => {
-        const secret = process.env.STRIPE_WEBHOOK_SECRET;
-        if (!secret) {
-          console.error("[stripe-webhook] STRIPE_WEBHOOK_SECRET not set");
-          return new Response("Not configured", { status: 500 });
-        }
-        const raw = await request.text();
-        const sig = request.headers.get("stripe-signature");
-        const verified = await verifyStripeSignature(raw, sig, secret);
-        if (!verified.ok) {
-          console.error("[stripe-webhook] invalid signature");
-          return new Response("Invalid signature", { status: 400 });
-        }
-
-        const event = verified.event as {
-          type: string;
-          data: { object: Record<string, unknown> };
-        };
-        console.log("[stripe-webhook] event", event.type);
-
-        try {
-          const obj = event.data.object as Record<string, unknown>;
-          const meta = (obj.metadata as Record<string, string> | undefined) ?? {};
-          const customerId =
-            typeof obj.customer === "string"
-              ? obj.customer
-              : ((obj.customer as { id?: string } | undefined)?.id ?? "");
-          let userId =
-            meta.user_id ||
-            (obj.client_reference_id as string | undefined) ||
-            "";
-          if (!userId && customerId) {
-            userId = await userIdFromCustomer(customerId);
-            if (userId) console.log("[stripe-webhook] resolved user via customer", customerId);
-          }
-
-          const status = typeof obj.status === "string" ? (obj.status as string) : null;
-          const trialEndUnix =
-            typeof obj.trial_end === "number" ? (obj.trial_end as number) : null;
-          const trialDays = Number(meta.trial_days);
-
-          if (event.type === "checkout.session.completed") {
-            if (!userId) {
-              console.error("[stripe-webhook] could not resolve user for session");
-              return new Response("ok", { status: 200 });
-            }
-            // Subscriptions with a free trial: persist when the trial ends so
-            // the app can keep premium alive (and show "X days left").
-            let trialEndsAt: string | null = null;
-            if (obj.mode === "subscription") {
-              if (trialEndUnix) {
-                // Stripe's timestamp is authoritative.
-                trialEndsAt =
-                  trialEndUnix * 1000 > Date.now()
-                    ? new Date(trialEndUnix * 1000).toISOString()
-                    : null;
-              } else if (Number.isFinite(trialDays) && trialDays > 0) {
-                trialEndsAt = new Date(Date.now() + trialDays * 86400_000).toISOString();
-              }
-            }
-            await setPremium(userId, true, trialEndsAt, {
-              stripeCustomerId: customerId || null,
-              subscriptionStatus: trialEndsAt ? "trialing" : (status ?? "active"),
-            });
-          } else if (
-            event.type === "customer.subscription.deleted" ||
-            (event.type === "customer.subscription.updated" &&
-              (obj.status === "canceled" ||
-                obj.status === "unpaid" ||
-                obj.status === "incomplete_expired"))
-          ) {
-            if (userId)
-              await setPremium(userId, false, null, {
-                stripeCustomerId: customerId || null,
-                subscriptionStatus: status ?? "canceled",
-              });
-          } else if (
-            event.type === "customer.subscription.created" ||
-            event.type === "customer.subscription.updated"
-          ) {
-            // Active or trialing subscription → premium, with authoritative
-            // trial_end straight from Stripe.
-            if (!userId) {
-              console.error("[stripe-webhook] could not resolve user for subscription event");
-            } else if (status === "active" || status === "trialing") {
-              await setPremium(
-                userId,
-                true,
-                trialEndUnix && trialEndUnix * 1000 > Date.now()
-                  ? new Date(trialEndUnix * 1000).toISOString()
-                  : null,
-                { stripeCustomerId: customerId || null, subscriptionStatus: status },
-              );
-            }
-          }
-
-        } catch (err) {
-          console.error("[stripe-webhook] handler error", err);
-          return new Response("Handler error", { status: 500 });
-        }
-
-        return new Response("ok", { status: 200 });
-      },
+      POST: stripeWebhookHandler,
     },
   },
 });
