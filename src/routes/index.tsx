@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/Sidebar";
 import { DailyLogSidebar } from "@/components/DailyLogSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
