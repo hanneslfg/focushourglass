@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/Sidebar";
 import { DailyLogSidebar } from "@/components/DailyLogSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
@@ -56,18 +56,7 @@ function Index() {
       <TimerView />
       <DailyLogSidebar />
       <SettingsSidebar />
-      <nav
-        aria-label="Legal"
-        className="hidden md:flex fixed bottom-3 left-1/2 -translate-x-1/2 z-10 items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/30"
-      >
-        <Link to="/privacy" className="hover:text-muted-foreground transition-colors">
-          Privacy
-        </Link>
-        <span aria-hidden className="opacity-40">·</span>
-        <Link to="/terms" className="hover:text-muted-foreground transition-colors">
-          Terms
-        </Link>
-      </nav>
     </main>
   );
 }
+
