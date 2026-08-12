@@ -137,19 +137,6 @@ export function DailyLogSidebar() {
               <DailyStreakWidget />
             </section>
 
-            {/* Total today */}
-            <section className="text-center">
-              <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                Focused today
-              </div>
-              <div className="mt-2 font-display text-6xl md:text-7xl tracking-tight tabular-nums text-foreground">
-                {fmtHM(done)}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground tabular-nums">
-                {done} min · {todays.length} session{todays.length === 1 ? "" : "s"}
-              </div>
-            </section>
-
             {/* Daily Focus Budget — biological upper boundary */}
             <section className="flex justify-center">
               <DailyFocusBudget />
