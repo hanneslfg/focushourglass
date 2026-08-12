@@ -16,6 +16,7 @@ import { FocusScoreBadge } from "./FocusScoreBadge";
 import { DailyFocusBudget } from "./DailyFocusBudget";
 import { DailyStreakWidget } from "./DailyStreakWidget";
 import { AccountabilityPartner } from "./AccountabilityPartner";
+import { TodaysAgenda } from "./TodaysAgenda";
 
 
 
@@ -86,9 +87,6 @@ export function DailyLogSidebar() {
         .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
     [sessions],
   );
-
-  const pct = goal > 0 ? Math.min(100, (done / goal) * 100) : 0;
-  const reached = done >= goal && goal > 0;
 
   return (
     <>
