@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks, Plus } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
-import {
-  getTodayGoal,
-  getTodayFocusedMinutes,
-  getTodayOverride,
-  clearTodayOverride,
-  effectiveDayKey,
-} from "@/lib/settings";
+import { getTodayFocusedMinutes, effectiveDayKey } from "@/lib/settings";
 import { getDailyStreak } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
 import { AddSessionModal } from "./AddSessionModal";
@@ -40,9 +34,7 @@ export function DailyLogSidebar() {
   const [addOpen, setAddOpen] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
-  const [override, setOverride] = useState<number | null>(null);
   const [, setStreak] = useState(0);
 
 
@@ -51,9 +43,7 @@ export function DailyLogSidebar() {
   useEffect(() => {
     const sync = () => {
       setSessions(getSessions());
-      setGoal(getTodayGoal());
       setDone(getTodayFocusedMinutes());
-      setOverride(getTodayOverride());
       setStreak(getDailyStreak());
     };
     sync();
