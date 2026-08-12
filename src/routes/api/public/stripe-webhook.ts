@@ -213,7 +213,11 @@ export const stripeWebhookHandler = async ({ request }: { request: Request }) =>
       }
       // Subscriptions with a free trial: persist when the trial ends so
       // the app can keep premium alive (and show "X days left").
-      let trialEndsAt: string | null = null;
+      // If neither Stripe's trial_end nor our trial_days metadata is present
+      // here, leave the column untouched — customer.subscription.created
+      // arrives seconds later with the authoritative value.
+      let trialEndsAt: string | null | undefined =
+        obj.mode === "subscription" ? undefined : null;
       if (obj.mode === "subscription") {
         if (trialEndUnix) {
           // Stripe's timestamp is authoritative.
