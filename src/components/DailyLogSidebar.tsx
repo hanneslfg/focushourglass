@@ -1,13 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks, Plus } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
-import {
-  getTodayGoal,
-  getTodayFocusedMinutes,
-  getTodayOverride,
-  clearTodayOverride,
-  effectiveDayKey,
-} from "@/lib/settings";
+import { getTodayFocusedMinutes, effectiveDayKey } from "@/lib/settings";
 import { getDailyStreak } from "@/lib/streaks";
 import { useSyncState } from "@/lib/useRealtimeSessions";
 import { AddSessionModal } from "./AddSessionModal";
@@ -16,6 +10,7 @@ import { FocusScoreBadge } from "./FocusScoreBadge";
 import { DailyFocusBudget } from "./DailyFocusBudget";
 import { DailyStreakWidget } from "./DailyStreakWidget";
 import { AccountabilityPartner } from "./AccountabilityPartner";
+import { TodaysAgenda } from "./TodaysAgenda";
 
 
 
@@ -39,9 +34,7 @@ export function DailyLogSidebar() {
   const [addOpen, setAddOpen] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [goal, setGoal] = useState(180);
   const [done, setDone] = useState(0);
-  const [override, setOverride] = useState<number | null>(null);
   const [, setStreak] = useState(0);
 
 
@@ -50,9 +43,7 @@ export function DailyLogSidebar() {
   useEffect(() => {
     const sync = () => {
       setSessions(getSessions());
-      setGoal(getTodayGoal());
       setDone(getTodayFocusedMinutes());
-      setOverride(getTodayOverride());
       setStreak(getDailyStreak());
     };
     sync();
@@ -86,9 +77,6 @@ export function DailyLogSidebar() {
         .sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1)),
     [sessions],
   );
-
-  const pct = goal > 0 ? Math.min(100, (done / goal) * 100) : 0;
-  const reached = done >= goal && goal > 0;
 
   return (
     <>
@@ -167,47 +155,14 @@ export function DailyLogSidebar() {
               <DailyFocusBudget />
             </section>
 
+            {/* Today's agenda */}
+            <TodaysAgenda />
+
             {/* Accountability partner */}
             <section className="flex justify-center">
               <AccountabilityPartner />
             </section>
 
-
-
-            {/* Center: Goal progress */}
-            <section className="rounded-md border border-border bg-background/40 px-4 py-3.5">
-              <div className="flex items-baseline justify-between gap-2">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Daily goal
-                </div>
-                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  {reached ? "Goal reached" : `${Math.round(pct)}%`}
-                </div>
-              </div>
-              <div className="mt-1.5 flex items-baseline gap-1.5">
-                <span className="font-display text-2xl tabular-nums tracking-tight">
-                  {done}
-                </span>
-                <span className="text-sm text-muted-foreground tabular-nums">
-                  / {goal} min
-                </span>
-                {override != null && (
-                  <button
-                    onClick={clearTodayOverride}
-                    className="ml-auto text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground transition-colors"
-                    title="Reset to default daily goal"
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
-              <div className="mt-2.5 h-1.5 w-full rounded-full bg-border/60 overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-500"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </section>
 
             {/* Bottom: Completed blocks today */}
             <section>
