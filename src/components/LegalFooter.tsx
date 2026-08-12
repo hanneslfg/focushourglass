@@ -1,12 +1,13 @@
 /**
- * Minimalist legal footer + Impressum/Datenschutz modals.
+ * Legal links (Settings only): two merged documents.
+ *  A) Privacy & Terms  — privacy policy + terms of service
+ *  B) Impressum & Legal Notice — imprint + mandatory disclosures
  */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 
-type LegalKey = "impressum" | "datenschutz";
+type LegalKey = "privacyTerms" | "impressum";
 
 export function LegalFooter({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState<LegalKey | null>(null);
@@ -23,33 +24,27 @@ export function LegalFooter({ className = "" }: { className?: string }) {
 
   return (
     <>
-      <footer
-        className={`w-full flex items-center justify-center gap-4 text-[10px] uppercase tracking-[0.22em] text-muted-foreground/40 ${className}`}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen("impressum")}
-          className="hover:text-muted-foreground transition-colors"
-        >
-          {t("legal.impressum")}
-        </button>
-        <span aria-hidden className="opacity-40">·</span>
-        <button
-          type="button"
-          onClick={() => setOpen("datenschutz")}
-          className="hover:text-muted-foreground transition-colors"
-        >
-          {t("legal.datenschutz")}
-        </button>
-        <span aria-hidden className="opacity-40">·</span>
-        <Link to="/privacy" className="hover:text-muted-foreground transition-colors">
-          Privacy
-        </Link>
-        <span aria-hidden className="opacity-40">·</span>
-        <Link to="/terms" className="hover:text-muted-foreground transition-colors">
-          Terms
-        </Link>
-      </footer>
+      <section className={className}>
+        <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-3">
+          {t("legal.aboutLegal")}
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen("privacyTerms")}
+            className="w-full text-left text-sm text-foreground/70 hover:text-foreground transition-colors py-1.5"
+          >
+            {t("legal.privacyTerms")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen("impressum")}
+            className="w-full text-left text-sm text-foreground/70 hover:text-foreground transition-colors py-1.5"
+          >
+            {t("legal.impressumLegal")}
+          </button>
+        </div>
+      </section>
 
       {open && <LegalModal which={open} onClose={() => setOpen(null)} />}
     </>
@@ -76,7 +71,7 @@ function LegalModal({ which, onClose }: { which: LegalKey; onClose: () => void }
               {t("legal.legal")}
             </div>
             <h2 className="font-display text-2xl tracking-tight mt-0.5">
-              {which === "impressum" ? t("legal.impressum") : t("legal.datenschutz")}
+              {which === "privacyTerms" ? t("legal.privacyTerms") : t("legal.impressumLegal")}
             </h2>
           </div>
           <button
@@ -88,7 +83,7 @@ function LegalModal({ which, onClose }: { which: LegalKey; onClose: () => void }
           </button>
         </header>
         <div className="flex-1 overflow-y-auto px-6 py-6 text-sm leading-relaxed text-foreground/80">
-          {which === "impressum" ? <ImpressumBody /> : <DatenschutzBody />}
+          {which === "privacyTerms" ? <PrivacyTermsBody /> : <ImpressumBody />}
         </div>
       </div>
     </div>
@@ -103,38 +98,7 @@ function H({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ImpressumBody() {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-4">
-      <H>{t("legal.imprintTitle")}</H>
-      <p>
-        [Full Name]
-        <br />
-        [Mailing Address — Straße Nr.]
-        <br />
-        [PLZ Ort]
-        <br />
-        [Land]
-      </p>
-
-      <H>{t("legal.contact")}</H>
-      <p>E-Mail: [Contact E-Mail]</p>
-
-      <H>{t("legal.responsible")}</H>
-      <p>
-        [Full Name]
-        <br />
-        [Mailing Address]
-      </p>
-
-      <H>{t("legal.disclaimer")}</H>
-      <p className="text-foreground/60">{t("legal.disclaimerBody")}</p>
-    </div>
-  );
-}
-
-function DatenschutzBody() {
+function PrivacyTermsBody() {
   const { t } = useTranslation();
   return (
     <div className="space-y-4">
@@ -173,6 +137,66 @@ function DatenschutzBody() {
 
       <H>{t("legal.complaint")}</H>
       <p className="text-foreground/60">{t("legal.complaintBody")}</p>
+
+      <div className="my-8 border-t border-border/60" />
+
+      <H>{t("legal.termsScope")}</H>
+      <p>{t("legal.termsScopeBody")}</p>
+
+      <H>{t("legal.termsAccount")}</H>
+      <p>{t("legal.termsAccountBody")}</p>
+
+      <H>{t("legal.termsSubscriptions")}</H>
+      <p>{t("legal.termsSubscriptionsBody")}</p>
+
+      <H>{t("legal.termsContent")}</H>
+      <p>{t("legal.termsContentBody")}</p>
+
+      <H>{t("legal.termsLiability")}</H>
+      <p>{t("legal.termsLiabilityBody")}</p>
+
+      <H>{t("legal.termsChanges")}</H>
+      <p>{t("legal.termsChangesBody")}</p>
+
+      <H>{t("legal.asOf")}</H>
+      <p className="text-foreground/60">[Datum der letzten Aktualisierung]</p>
+    </div>
+  );
+}
+
+function ImpressumBody() {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-4">
+      <H>{t("legal.imprintTitle")}</H>
+      <p>
+        [Full Name]
+        <br />
+        [Mailing Address — Straße Nr.]
+        <br />
+        [PLZ Ort]
+        <br />
+        [Land]
+      </p>
+
+      <H>{t("legal.contact")}</H>
+      <p>E-Mail: [Contact E-Mail]</p>
+
+      <H>{t("legal.responsible")}</H>
+      <p>
+        [Full Name]
+        <br />
+        [Mailing Address]
+      </p>
+
+      <H>{t("legal.vatId")}</H>
+      <p className="text-foreground/60">[USt-IdNr. / Umsatzsteuer-ID — falls vorhanden]</p>
+
+      <H>{t("legal.disputeResolution")}</H>
+      <p className="text-foreground/60">{t("legal.disputeResolutionBody")}</p>
+
+      <H>{t("legal.disclaimer")}</H>
+      <p className="text-foreground/60">{t("legal.disclaimerBody")}</p>
 
       <H>{t("legal.asOf")}</H>
       <p className="text-foreground/60">[Datum der letzten Aktualisierung]</p>
