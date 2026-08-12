@@ -20,6 +20,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiPublicNewsletterUnsubscribeRouteImport } from './routes/api/public/newsletter-unsubscribe'
 import { Route as ApiPublicSendSundayNewsletterRouteImport } from './routes/api/public/send-sunday-newsletter'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe-webhook'
+import { Route as ApiPublicStripeWebhookSplatRouteImport } from './routes/api/public/stripe-webhook/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -78,6 +79,12 @@ const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   path: '/api/public/stripe-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicStripeWebhookSplatRoute =
+  ApiPublicStripeWebhookSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => ApiPublicStripeWebhookRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -90,7 +97,8 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
   '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRouteWithChildren
+  '/api/public/stripe-webhook/$': typeof ApiPublicStripeWebhookSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -103,7 +111,8 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
   '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRouteWithChildren
+  '/api/public/stripe-webhook/$': typeof ApiPublicStripeWebhookSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,7 +126,8 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
   '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
-  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRoute
+  '/api/public/stripe-webhook': typeof ApiPublicStripeWebhookRouteWithChildren
+  '/api/public/stripe-webhook/$': typeof ApiPublicStripeWebhookSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/api/public/newsletter-unsubscribe'
     | '/api/public/send-sunday-newsletter'
     | '/api/public/stripe-webhook'
+    | '/api/public/stripe-webhook/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '/api/public/newsletter-unsubscribe'
     | '/api/public/send-sunday-newsletter'
     | '/api/public/stripe-webhook'
+    | '/api/public/stripe-webhook/$'
   id:
     | '__root__'
     | '/'
@@ -159,6 +171,7 @@ export interface FileRouteTypes {
     | '/api/public/newsletter-unsubscribe'
     | '/api/public/send-sunday-newsletter'
     | '/api/public/stripe-webhook'
+    | '/api/public/stripe-webhook/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -172,7 +185,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   ApiPublicNewsletterUnsubscribeRoute: typeof ApiPublicNewsletterUnsubscribeRoute
   ApiPublicSendSundayNewsletterRoute: typeof ApiPublicSendSundayNewsletterRoute
-  ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -254,8 +267,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/stripe-webhook/$': {
+      id: '/api/public/stripe-webhook/$'
+      path: '/$'
+      fullPath: '/api/public/stripe-webhook/$'
+      preLoaderRoute: typeof ApiPublicStripeWebhookSplatRouteImport
+      parentRoute: typeof ApiPublicStripeWebhookRoute
+    }
   }
 }
+
+interface ApiPublicStripeWebhookRouteChildren {
+  ApiPublicStripeWebhookSplatRoute: typeof ApiPublicStripeWebhookSplatRoute
+}
+
+const ApiPublicStripeWebhookRouteChildren: ApiPublicStripeWebhookRouteChildren =
+  {
+    ApiPublicStripeWebhookSplatRoute: ApiPublicStripeWebhookSplatRoute,
+  }
+
+const ApiPublicStripeWebhookRouteWithChildren =
+  ApiPublicStripeWebhookRoute._addFileChildren(
+    ApiPublicStripeWebhookRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -268,8 +302,18 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   ApiPublicNewsletterUnsubscribeRoute: ApiPublicNewsletterUnsubscribeRoute,
   ApiPublicSendSundayNewsletterRoute: ApiPublicSendSundayNewsletterRoute,
-  ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
