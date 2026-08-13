@@ -184,6 +184,8 @@ export function ProjectsView() {
         </div>
       )}
 
+      <UnassignedGoalsBanner projects={projects} />
+
       {projects.length === 0 && !adding ? (
         <div className="border border-dashed border-border rounded-xl py-16 text-center">
           <FolderKanban
