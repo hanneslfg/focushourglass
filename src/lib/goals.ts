@@ -163,27 +163,23 @@ export async function addGoal(
 
 
 /**
- * One-time safety net (app load only): goals that genuinely have NO
- * project_tag get attached to the user's default (first) active project.
- * Never touches goals that already carry a tag, so it can't bundle goals
- * from several projects into whichever project is currently on screen.
+ * Assigns goals that genuinely have NO project_tag to an EXPLICIT target
+ * project chosen by the user. Never guesses a target: without an explicit
+ * project this is a no-op, so untagged goals can no longer be silently
+ * swallowed by whichever project happens to sort first alphabetically.
  */
 export async function repairUntaggedGoals(explicitTarget?: string | null): Promise<number> {
   const legacyGoals = getUntaggedGoals();
   if (legacyGoals.length === 0) return 0;
 
-  let target = (explicitTarget ?? "").trim();
+  const target = (explicitTarget ?? "").trim();
   if (!target) {
-    const { getProjects } = await import("./projects");
-    target = getProjects()[0]?.name?.trim() ?? "";
-  }
-  if (!target) {
-    console.warn("[goals] untagged goals found but no default project to assign them to", {
+    console.warn("[goals] untagged goals found — waiting for a manual assignment", {
       count: legacyGoals.length,
     });
     return 0;
   }
-  console.warn("[goals] repairing untagged goals → default project", {
+  console.warn("[goals] assigning untagged goals → project", {
     count: legacyGoals.length,
     project_tag: target,
   });

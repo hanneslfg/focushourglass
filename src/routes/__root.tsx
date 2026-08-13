@@ -28,7 +28,7 @@ import { useTimer } from "@/lib/TimerContext";
 import { hydrateMementoFromCloud, hydrateDayStartFromCloud } from "@/lib/settings";
 import { hydrateFreezesFromCloud } from "@/lib/streakFreezes";
 import { supabase, handleAccountSwitchIfNeeded } from "@/lib/supabase";
-import { hydrateGoalsFromRemote, reclaimOrphanedGoals, repairUntaggedGoals } from "@/lib/goals";
+import { hydrateGoalsFromRemote, reclaimOrphanedGoals } from "@/lib/goals";
 import { hydrateRhythmsFromRemote } from "@/lib/rhythms";
 import { getUnlockedFreeSound, setUnlockedFreeSound } from "@/lib/freeSound";
 import { hydrateProjectSettingsFromRemote } from "@/lib/projects";
@@ -202,12 +202,11 @@ function RootComponent() {
       if (!uid) return;
       void hydrateGoalsFromRemote();
       void hydrateRhythmsFromRemote();
-      // Project settings first, then a ONE-TIME safe repair of goals that
-      // genuinely have no project_tag. Never re-tags goals that already
-      // belong to a project.
+      // Project settings first, then an exact-match reclaim (slug/id hits
+      // only). Untagged goals are NEVER auto-assigned — the user assigns
+      // them manually from the Projects page.
       void hydrateProjectSettingsFromRemote()
-        .then(() => reclaimOrphanedGoals())
-        .then(() => repairUntaggedGoals());
+        .then(() => reclaimOrphanedGoals());
       // Memento Mori mode + demographics live on the auth profile.
       void hydrateMementoFromCloud();
       // Custom day-start hour + streak freeze balance follow the account.

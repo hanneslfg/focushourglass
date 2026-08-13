@@ -9,7 +9,7 @@ import {
   type ProjectTag,
 } from "@/lib/projects";
 import { getSessions, dayKey, sessionGoalTexts, type Session } from "@/lib/sessions";
-import { findGoalByText, reclaimOrphanedGoalsInto } from "@/lib/goals";
+import { findGoalByText, getUntaggedGoals, reclaimOrphanedGoalsInto, repairUntaggedGoals } from "@/lib/goals";
 import { SessionDetailModal } from "./SessionDetailModal";
 import { SessionGoalToggler } from "./SessionGoalToggler";
 import { ProjectGoalsSection } from "./ProjectGoalsSection";
@@ -183,6 +183,8 @@ export function ProjectsView() {
           </div>
         </div>
       )}
+
+      <UnassignedGoalsBanner projects={projects} />
 
       {projects.length === 0 && !adding ? (
         <div className="border border-dashed border-border rounded-xl py-16 text-center">
@@ -652,3 +654,63 @@ function ProjectHeaderEditable({ project }: { project: ProjectTag }) {
   );
 }
 
+
+/**
+ * Untagged goals are never auto-assigned anymore (that used to dump them into
+ * the alphabetically first project). Surface them here so the user picks the
+ * target project explicitly.
+ */
+function UnassignedGoalsBanner({ projects }: { projects: ProjectTag[] }) {
+  const [count, setCount] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setCount(getUntaggedGoals().length);
+    sync();
+    window.addEventListener("hourglass:goals", sync);
+    return () => window.removeEventListener("hourglass:goals", sync);
+  }, []);
+
+  if (count === 0 || projects.length === 0) return null;
+
+  const assign = async (name: string) => {
+    setBusy(true);
+    await repairUntaggedGoals(name);
+    setBusy(false);
+    setOpen(false);
+    setCount(getUntaggedGoals().length);
+  };
+
+  return (
+    <div className="mb-8 rounded-xl border border-amber-300/30 bg-amber-300/[0.06] p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-foreground/90">
+          {count} {count === 1 ? "goal has" : "goals have"} no project assigned —
+          assign {count === 1 ? "it" : "them"} manually.
+        </p>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="px-4 h-9 rounded-full border border-border hover:border-foreground/60 text-[11px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {open ? "Cancel" : "Assign"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {projects.map((p) => (
+            <button
+              key={p.id}
+              disabled={busy}
+              onClick={() => void assign(p.name)}
+              className="inline-flex items-center gap-2 px-3 h-9 rounded-full border border-border hover:border-foreground/60 text-xs disabled:opacity-40"
+            >
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: p.color }} />
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
