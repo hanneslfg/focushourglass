@@ -188,7 +188,7 @@ export function Sidebar() {
   }, []);
 
   const items = [
-    { to: "/", label: t("nav.timer"), icon: HourglassIcon },
+    { to: "/app", label: t("nav.timer"), icon: HourglassIcon },
     { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
     { to: "/analytics", label: t("nav.analytics"), icon: BarChart3 },
     { to: "/focus-blocks", label: t("nav.focusBlocks"), icon: Layers },

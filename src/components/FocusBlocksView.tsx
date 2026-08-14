@@ -86,7 +86,7 @@ export function FocusBlocksView() {
     toast(t("focusBlocks.activatedToast", { name: r.name }), {
       description: t("focusBlocks.activatedDesc"),
     });
-    navigate({ to: "/" });
+    navigate({ to: "/app" });
   }
 
   function handleDeactivate() {
