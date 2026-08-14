@@ -58,6 +58,10 @@
   --ring: oklch(0.7 0.01 270);
   --sand: oklch(0.97 0.012 85);
   --sand-glow: oklch(0.92 0.04 80);
+  /* App-wide gold scale (hourglass / premium accents) */
+  --gold-1: #f2cd82;
+  --gold-2: #e2b05c;
+  --gold-3: #c8933f;
 }
 
 
