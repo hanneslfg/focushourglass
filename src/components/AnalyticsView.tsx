@@ -1290,13 +1290,23 @@ export function AnalyticsView({
       {/* Metrics & graphs */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label="Total Focused Hours" value={fmtHM(totalMinutes)} sub={`across ${totalDays} day${totalDays === 1 ? "" : "s"}`}>
-          <Sparkline data={daily.map((d) => d.min)} variant="line" />
+          <Sparkline data={daily.map((d) => d.min)} variant="line" labels={dayLabels} />
         </StatCard>
         <StatCard label="Average Daily Focus" value={fmtHM(avgDaily)} sub="7-day rolling">
-          <Sparkline data={wave} variant="wave" />
+          <Sparkline
+            data={wave}
+            variant="wave"
+            labels={dayLabels}
+            formatValue={(v) => `${Math.round(v)} min avg`}
+          />
         </StatCard>
         <StatCard label="Sessions" value={`${inRange.length}`} sub={filtersActive ? "matching filters" : "in range"}>
-          <Sparkline data={daily.map((d) => d.min > 0 ? 1 : 0)} variant="bar" />
+          <Sparkline
+            data={daily.map((d) => d.min > 0 ? 1 : 0)}
+            variant="bar"
+            labels={dayLabels}
+            formatValue={(v) => (v > 0 ? "focused" : "no focus")}
+          />
         </StatCard>
 
         <div className="md:col-span-2 lg:col-span-3">
@@ -1305,7 +1315,12 @@ export function AnalyticsView({
             value={`${hourly.reduce((a, x) => a + x, 0) > 0 ? `${hourly.indexOf(Math.max(...hourly))}:00` : "—"}`}
             sub="peak hour"
           >
-            <Sparkline data={hourly} variant="bar" height={96} />
+            <Sparkline
+              data={hourly}
+              variant="bar"
+              height={96}
+              labels={hourly.map((_, i) => `${String(i).padStart(2, "0")}:00`)}
+            />
             <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
               <span>00</span><span>06</span><span>12</span><span>18</span><span>23</span>
             </div>
