@@ -246,17 +246,21 @@ function RootComponent() {
       <TimerProvider>
         <PremiumProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <GuestBanner />
+          {!isLanding && <GuestBanner />}
           <Outlet />
           {/* Mounted once at the root so ambient audio keeps playing across
               navigation; the UI portals into the timer page when visible. */}
           <GlobalAmbientSound />
           <Toaster position="bottom-center" />
-          <MilestoneOverlay />
-          <OnboardingOverlay />
-          <Day5RewardOverlay />
-          <GoalCompletionOverlay />
-          <StreakMilestoneOverlay />
+          {!isLanding && (
+            <>
+              <MilestoneOverlay />
+              <OnboardingOverlay />
+              <Day5RewardOverlay />
+              <GoalCompletionOverlay />
+              <StreakMilestoneOverlay />
+            </>
+          )}
         </PremiumProvider>
       </TimerProvider>
     </QueryClientProvider>
