@@ -972,6 +972,17 @@ export function AnalyticsView({
     return days;
   }, [inRange, range.start, range.end]);
 
+  // Compact labels for chart scrubbing, e.g. "Tue, 12 Aug"
+  const dayLabels = useMemo(
+    () =>
+      daily.map((d) =>
+        d.date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }),
+      ),
+    [daily],
+  );
+
+
+
   const totalMinutes = useMemo(() => daily.reduce((a, d) => a + d.min, 0), [daily]);
   const totalDays = Math.max(1, daily.length);
   const avgDaily = Math.round(totalMinutes / totalDays);
