@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Check, Trash2, Calendar as CalendarIcon, AlertTriangle, Lock, Plus } from "lucide-react";
 import { usePremium } from "@/lib/premium";
 import { formatDeadline } from "@/lib/deadline";
@@ -405,12 +405,26 @@ function RangeGrid({ sessions, range, selectedDayKey, onSelect }: RangeGridProps
 
 /* =================== Charts =================== */
 
+const GOLD_1 = "var(--gold-1, #f2cd82)";
+const GOLD_2 = "var(--gold-2, #e2b05c)";
+
 function Sparkline({
   data,
   variant = "line",
   height = 64,
-}: { data: number[]; variant?: "line" | "area" | "wave" | "bar"; height?: number }) {
+  labels,
+  formatValue,
+}: {
+  data: number[];
+  variant?: "line" | "area" | "wave" | "bar";
+  height?: number;
+  /** Label per data point shown while scrubbing (e.g. "Tue, 12 Aug"). */
+  labels?: string[];
+  /** Value formatter shown while scrubbing (defaults to "N min"). */
+  formatValue?: (value: number, index: number) => string;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const gradientId = useId().replace(/[^a-zA-Z0-9-_]/g, "");
   const [w, setW] = useState(600);
   useLayoutEffect(() => {
     const el = wrapRef.current; if (!el) return;
@@ -430,6 +444,58 @@ function Sparkline({
     return [x, y] as const;
   });
 
+  // --- Scrub interaction (mouse + touch via pointer events) ---------------
+  const [active, setActive] = useState<number | null>(null);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [bounce, setBounce] = useState(false);
+  const bounceTimer = useRef<number | null>(null);
+  const lastIndex = useRef<number | null>(null);
+
+  useEffect(() => () => { if (bounceTimer.current) window.clearTimeout(bounceTimer.current); }, []);
+
+  const indexFromEvent = (clientX: number) => {
+    const el = wrapRef.current;
+    if (!el || data.length === 0) return null;
+    const rect = el.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const idx = variant === "bar"
+      ? Math.floor(x / (rect.width / n))
+      : Math.round(x / (rect.width / Math.max(1, n - 1)));
+    return Math.min(data.length - 1, Math.max(0, idx));
+  };
+
+  const updateFromEvent = (clientX: number) => {
+    const idx = indexFromEvent(clientX);
+    if (idx === null) return;
+    setActive(idx);
+    if (lastIndex.current !== idx) {
+      lastIndex.current = idx;
+      // Tick feedback: brief scale bounce when snapping to a new point.
+      setBounce(true);
+      if (bounceTimer.current) window.clearTimeout(bounceTimer.current);
+      bounceTimer.current = window.setTimeout(() => setBounce(false), 80);
+    }
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (data.length === 0) return;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    setScrubbing(true);
+    updateFromEvent(e.clientX);
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbing) return;
+    e.preventDefault();
+    updateFromEvent(e.clientX);
+  };
+  const endScrub = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbing) return;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    setScrubbing(false);
+    setActive(null);
+    lastIndex.current = null;
+  };
+
   let path = "";
   if (variant === "wave") {
     // Smooth catmull-rom-ish to cubic
@@ -446,19 +512,46 @@ function Sparkline({
 
   const areaPath = `${path} L ${w} ${height} L 0 ${height} Z`;
 
+  const barSlot = w / n;
+  const activeX = active === null
+    ? 0
+    : variant === "bar"
+      ? active * barSlot + barSlot / 2
+      : points[active]?.[0] ?? 0;
+  const activeY = active === null
+    ? 0
+    : variant === "bar"
+      ? height - py - (height - py * 2) * (data[active] / max)
+      : points[active]?.[1] ?? 0;
+  const activeValue = active === null ? 0 : data[active];
+  const readout = active === null
+    ? ""
+    : `${labels?.[active] ? `${labels[active]} · ` : ""}${
+        formatValue ? formatValue(activeValue, active) : `${Math.round(activeValue)} min`
+      }`;
+
   return (
-    <div ref={wrapRef} className="w-full">
+    <div
+      ref={wrapRef}
+      className="w-full relative select-none cursor-crosshair"
+      style={{ touchAction: scrubbing ? "none" : "auto" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endScrub}
+      onPointerCancel={endScrub}
+      onPointerLeave={endScrub}
+    >
       <svg width="100%" height={height} viewBox={`0 0 ${w} ${height}`}>
         <defs>
-          <linearGradient id="amberFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="rgba(251,191,36,0.45)" />
-            <stop offset="100%" stopColor="rgba(245,158,11,0)" />
+          <linearGradient id={`gold-${gradientId}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={GOLD_2} stopOpacity={0.45} />
+            <stop offset="100%" stopColor={GOLD_2} stopOpacity={0} />
           </linearGradient>
         </defs>
         {variant === "bar" ? (
           data.map((v, i) => {
-            const bw = Math.max(2, (w / n) * 0.7);
-            const x = i * (w / n) + (w / n - bw) / 2;
+            const bw = Math.max(2, barSlot * 0.7);
+            const x = i * barSlot + (barSlot - bw) / 2;
             const h = (height - py * 2) * (v / max);
             const y = height - py - h;
             return (
@@ -469,19 +562,63 @@ function Sparkline({
                 width={bw}
                 height={h}
                 rx={1.5}
-                fill="rgba(251,191,36,0.85)"
-                style={{ filter: v > 0 ? "drop-shadow(0 0 4px rgba(251,191,36,0.45))" : "none" }}
+                fill={active === i ? GOLD_1 : GOLD_2}
+                opacity={active === null || active === i ? 0.9 : 0.5}
+                style={{
+                  transition: "opacity 160ms ease-out",
+                  filter: v > 0 ? "drop-shadow(0 0 4px rgba(226,176,92,0.45))" : "none",
+                }}
               />
             );
           })
         ) : (
           <>
-            <path d={areaPath} fill="url(#amberFill)" />
-            <path d={path} fill="none" stroke="rgba(251,191,36,0.95)" strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round"
-              style={{ filter: "drop-shadow(0 0 6px rgba(251,191,36,0.4))" }} />
+            <path d={areaPath} fill={`url(#gold-${gradientId})`} />
+            <path d={path} fill="none" stroke={GOLD_1} strokeWidth={1.6} strokeLinejoin="round" strokeLinecap="round"
+              style={{ filter: "drop-shadow(0 0 6px rgba(226,176,92,0.4))" }} />
           </>
         )}
+
+        {/* Scrub indicator */}
+        <g
+          style={{
+            opacity: active === null ? 0 : 1,
+            transition: "opacity 220ms ease-out",
+            pointerEvents: "none",
+          }}
+        >
+          <line x1={activeX} x2={activeX} y1={0} y2={height} stroke={GOLD_2} strokeWidth={1} opacity={0.55} />
+          <circle
+            cx={activeX}
+            cy={activeY}
+            r={3.4}
+            fill={GOLD_1}
+            stroke="rgba(0,0,0,0.55)"
+            strokeWidth={1}
+            style={{
+              transformOrigin: `${activeX}px ${activeY}px`,
+              transform: bounce ? "scale(1.3)" : "scale(1)",
+              transition: "transform 80ms ease-out",
+              filter: "drop-shadow(0 0 6px rgba(242,205,130,0.7))",
+            }}
+          />
+        </g>
       </svg>
+
+      {/* Live readout */}
+      <div
+        className="pointer-events-none absolute -top-1 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border px-2 py-1 text-[10px] tabular-nums backdrop-blur"
+        style={{
+          left: Math.min(Math.max(activeX, 42), Math.max(42, w - 42)),
+          opacity: active === null ? 0 : 1,
+          transition: "opacity 220ms ease-out",
+          borderColor: "rgba(226,176,92,0.4)",
+          background: "rgba(20,18,14,0.92)",
+          color: "var(--gold-1, #f2cd82)",
+        }}
+      >
+        {readout}
+      </div>
     </div>
   );
 }
@@ -835,6 +972,17 @@ export function AnalyticsView({
     return days;
   }, [inRange, range.start, range.end]);
 
+  // Compact labels for chart scrubbing, e.g. "Tue, 12 Aug"
+  const dayLabels = useMemo(
+    () =>
+      daily.map((d) =>
+        d.date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }),
+      ),
+    [daily],
+  );
+
+
+
   const totalMinutes = useMemo(() => daily.reduce((a, d) => a + d.min, 0), [daily]);
   const totalDays = Math.max(1, daily.length);
   const avgDaily = Math.round(totalMinutes / totalDays);
@@ -1153,13 +1301,23 @@ export function AnalyticsView({
       {/* Metrics & graphs */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label="Total Focused Hours" value={fmtHM(totalMinutes)} sub={`across ${totalDays} day${totalDays === 1 ? "" : "s"}`}>
-          <Sparkline data={daily.map((d) => d.min)} variant="line" />
+          <Sparkline data={daily.map((d) => d.min)} variant="line" labels={dayLabels} />
         </StatCard>
         <StatCard label="Average Daily Focus" value={fmtHM(avgDaily)} sub="7-day rolling">
-          <Sparkline data={wave} variant="wave" />
+          <Sparkline
+            data={wave}
+            variant="wave"
+            labels={dayLabels}
+            formatValue={(v) => `${Math.round(v)} min avg`}
+          />
         </StatCard>
         <StatCard label="Sessions" value={`${inRange.length}`} sub={filtersActive ? "matching filters" : "in range"}>
-          <Sparkline data={daily.map((d) => d.min > 0 ? 1 : 0)} variant="bar" />
+          <Sparkline
+            data={daily.map((d) => d.min > 0 ? 1 : 0)}
+            variant="bar"
+            labels={dayLabels}
+            formatValue={(v) => (v > 0 ? "focused" : "no focus")}
+          />
         </StatCard>
 
         <div className="md:col-span-2 lg:col-span-3">
@@ -1168,7 +1326,12 @@ export function AnalyticsView({
             value={`${hourly.reduce((a, x) => a + x, 0) > 0 ? `${hourly.indexOf(Math.max(...hourly))}:00` : "—"}`}
             sub="peak hour"
           >
-            <Sparkline data={hourly} variant="bar" height={96} />
+            <Sparkline
+              data={hourly}
+              variant="bar"
+              height={96}
+              labels={hourly.map((_, i) => `${String(i).padStart(2, "0")}:00`)}
+            />
             <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.22em] text-muted-foreground/50 tabular-nums">
               <span>00</span><span>06</span><span>12</span><span>18</span><span>23</span>
             </div>
