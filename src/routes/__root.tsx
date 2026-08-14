@@ -151,6 +151,8 @@ function GlobalAmbientSound() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isLanding = pathname === "/";
   useRealtimeSessions();
 
   // Apply the stored/browser language only after hydration; SSR always
