@@ -116,6 +116,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       trialDays: data.trialDays,
     });
 
+    // Open-redirect hardening: reject any origin not on the explicit allowlist
+    // BEFORE it is used to build Stripe success/cancel URLs.
+    if (!ALLOWED_ORIGINS.has(data.origin)) {
+      console.error("[stripe] rejected origin", data.origin);
+      throw new Error("Invalid origin");
+    }
+
     const user = await verifySupabaseUser(data.accessToken);
     const productId = PRODUCTS[data.plan as Plan];
     const priceId = await resolveActivePriceId(productId);
