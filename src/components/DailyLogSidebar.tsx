@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ListChecks, Plus } from "lucide-react";
+import { ListChecks, Plus, Share2 } from "lucide-react";
 import { getSessions, type Session } from "@/lib/sessions";
 import { getTodayFocusedMinutes, effectiveDayKey } from "@/lib/settings";
 import { getDailyStreak } from "@/lib/streaks";
@@ -11,6 +11,7 @@ import { DailyFocusBudget } from "./DailyFocusBudget";
 import { DailyStreakWidget } from "./DailyStreakWidget";
 import { AccountabilityPartner } from "./AccountabilityPartner";
 import { TodaysAgenda } from "./TodaysAgenda";
+import { FocusShareCard } from "./FocusShareCard";
 
 
 
@@ -32,6 +33,7 @@ function isToday(iso: string) {
 export function DailyLogSidebar() {
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [editSession, setEditSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [done, setDone] = useState(0);
@@ -115,13 +117,23 @@ export function DailyLogSidebar() {
                 Focus log
               </h2>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              className="h-10 w-10 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
-              aria-label="Close"
-            >
-              <span className="text-lg leading-none">×</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShareOpen(true)}
+                className="h-10 w-10 rounded-full border border-border hover:border-[var(--gold-2)] hover:text-[var(--gold-1)] flex items-center justify-center text-muted-foreground transition-colors"
+                aria-label="Share your focus"
+                title="Share your focus"
+              >
+                <Share2 className="h-4 w-4" strokeWidth={1.6} />
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                className="h-10 w-10 rounded-full border border-border hover:border-foreground/60 flex items-center justify-center"
+                aria-label="Close"
+              >
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
           </header>
 
           <div
@@ -214,6 +226,7 @@ export function DailyLogSidebar() {
         </div>
       </aside>
 
+      <FocusShareCard open={shareOpen} onOpenChange={setShareOpen} />
       <AddSessionModal open={addOpen} onOpenChange={setAddOpen} />
       <SessionDetailModal
         session={editSession}
