@@ -9,7 +9,7 @@
  * and simple linear gradients.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Download, MessageCircle, Share2 } from "lucide-react";
+import { Flame, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSessions } from "@/lib/sessions";
 import { getDailyStreak } from "@/lib/streaks";
