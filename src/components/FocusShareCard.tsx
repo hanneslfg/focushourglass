@@ -163,16 +163,18 @@ export function FocusShareCard({
     });
   }
 
-  async function handleSaveImage() {
+  async function handleShareImage() {
     setBusy(true);
     try {
       const blob = await renderPng();
       if (!blob) throw new Error("render failed");
       const file = new File([blob], "focus-hourglass.png", { type: "image/png" });
+      // Primary path: open the native OS share sheet when file sharing is supported.
       if (navigator.canShare?.({ files: [file] }) && navigator.share) {
         await navigator.share({ files: [file], text: shareText });
         toast.success("Shared");
       } else {
+        // Fallback (e.g. desktop browsers without file-share support): classic download.
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
