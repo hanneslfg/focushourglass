@@ -392,7 +392,8 @@ function Landing() {
       <section className="mori" id="mori">
         <div className="wrap mori-grid">
           <div className="hourglass-wrap reveal">
-            <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of an hourglass with sand running through it, symbolising finite focus time">
+              <title>Hourglass with sand running through it, symbolising finite focus time</title>
               <defs>
                 <linearGradient id="glassGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3a3020" stopOpacity=".5" />
