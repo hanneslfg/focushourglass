@@ -368,12 +368,12 @@ export function FocusShareCard({
         {/* Export actions */}
         <div className="grid grid-cols-2 gap-2 mt-4">
           <button
-            onClick={handleSaveImage}
+            onClick={handleShareImage}
             disabled={busy}
             className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--gold-2)] text-[var(--gold-1)] px-4 py-2.5 text-[11px] uppercase tracking-[0.2em] disabled:opacity-50 hover:bg-[var(--gold-2)]/10 transition-colors"
           >
-            <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
-            {busy ? "Rendering…" : "Save image"}
+            <Share2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+            {busy ? "Rendering…" : "Share"}
           </button>
           <button
             onClick={handleShareText}
