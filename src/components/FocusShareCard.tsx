@@ -9,7 +9,7 @@
  * and simple linear gradients.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Flame, Download, MessageCircle, Share2 } from "lucide-react";
+import { Flame, MessageCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSessions } from "@/lib/sessions";
 import { getDailyStreak } from "@/lib/streaks";
@@ -163,16 +163,18 @@ export function FocusShareCard({
     });
   }
 
-  async function handleSaveImage() {
+  async function handleShareImage() {
     setBusy(true);
     try {
       const blob = await renderPng();
       if (!blob) throw new Error("render failed");
       const file = new File([blob], "focus-hourglass.png", { type: "image/png" });
+      // Primary path: open the native OS share sheet when file sharing is supported.
       if (navigator.canShare?.({ files: [file] }) && navigator.share) {
         await navigator.share({ files: [file], text: shareText });
         toast.success("Shared");
       } else {
+        // Fallback (e.g. desktop browsers without file-share support): classic download.
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -366,12 +368,12 @@ export function FocusShareCard({
         {/* Export actions */}
         <div className="grid grid-cols-2 gap-2 mt-4">
           <button
-            onClick={handleSaveImage}
+            onClick={handleShareImage}
             disabled={busy}
             className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--gold-2)] text-[var(--gold-1)] px-4 py-2.5 text-[11px] uppercase tracking-[0.2em] disabled:opacity-50 hover:bg-[var(--gold-2)]/10 transition-colors"
           >
-            <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
-            {busy ? "Rendering…" : "Save image"}
+            <Share2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+            {busy ? "Rendering…" : "Share"}
           </button>
           <button
             onClick={handleShareText}
