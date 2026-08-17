@@ -163,10 +163,12 @@ export function DailyLogSidebar() {
             {/* Today's agenda */}
             <TodaysAgenda />
 
-            {/* Accountability partner */}
-            <section className="flex justify-center">
-              <AccountabilityPartner />
-            </section>
+            {/* Accountability partner — hidden until FOCUS_BUDDY_ENABLED */}
+            {FOCUS_BUDDY_ENABLED && (
+              <section className="flex justify-center">
+                <AccountabilityPartner />
+              </section>
+            )}
 
 
             {/* Bottom: Completed blocks today */}
