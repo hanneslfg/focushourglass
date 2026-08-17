@@ -17,6 +17,7 @@ import { Route as FocusBlocksRouteImport } from './routes/focus-blocks'
 import { Route as MementoMoriRouteImport } from './routes/memento-mori'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiPublicNewsletterUnsubscribeRouteImport } from './routes/api/public/newsletter-unsubscribe'
 import { Route as ApiPublicSendSundayNewsletterRouteImport } from './routes/api/public/send-sunday-newsletter'
@@ -63,6 +64,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/memento-mori': typeof MementoMoriRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
   '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/memento-mori': typeof MementoMoriRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
   '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/memento-mori': typeof MementoMoriRoute
   '/privacy': typeof PrivacyRoute
   '/projects': typeof ProjectsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/api/public/newsletter-unsubscribe': typeof ApiPublicNewsletterUnsubscribeRoute
   '/api/public/send-sunday-newsletter': typeof ApiPublicSendSundayNewsletterRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/memento-mori'
     | '/privacy'
     | '/projects'
+    | '/sitemap.xml'
     | '/terms'
     | '/api/public/newsletter-unsubscribe'
     | '/api/public/send-sunday-newsletter'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/memento-mori'
     | '/privacy'
     | '/projects'
+    | '/sitemap.xml'
     | '/terms'
     | '/api/public/newsletter-unsubscribe'
     | '/api/public/send-sunday-newsletter'
@@ -179,6 +190,7 @@ export interface FileRouteTypes {
     | '/memento-mori'
     | '/privacy'
     | '/projects'
+    | '/sitemap.xml'
     | '/terms'
     | '/api/public/newsletter-unsubscribe'
     | '/api/public/send-sunday-newsletter'
@@ -195,6 +207,7 @@ export interface RootRouteChildren {
   MementoMoriRoute: typeof MementoMoriRoute
   PrivacyRoute: typeof PrivacyRoute
   ProjectsRoute: typeof ProjectsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   ApiPublicNewsletterUnsubscribeRoute: typeof ApiPublicNewsletterUnsubscribeRoute
   ApiPublicSendSundayNewsletterRoute: typeof ApiPublicSendSundayNewsletterRoute
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   MementoMoriRoute: MementoMoriRoute,
   PrivacyRoute: PrivacyRoute,
   ProjectsRoute: ProjectsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   ApiPublicNewsletterUnsubscribeRoute: ApiPublicNewsletterUnsubscribeRoute,
   ApiPublicSendSundayNewsletterRoute: ApiPublicSendSundayNewsletterRoute,

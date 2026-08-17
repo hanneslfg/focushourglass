@@ -303,7 +303,8 @@ function Landing() {
       <nav className={`nav${solid ? " solid" : ""}`}>
         <div className="wrap nav-inner">
           <div className="brand">
-            <svg viewBox="0 0 48 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 48 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Focus Hourglass logo">
+              <title>Focus Hourglass logo</title>
               <path
                 d="M10 6H38M10 66H38M12 6C12 22 24 30 24 30C24 30 12 38 12 66M36 6C36 22 24 30 24 30C24 30 36 38 36 66"
                 stroke="url(#navGrad)"
@@ -391,7 +392,8 @@ function Landing() {
       <section className="mori" id="mori">
         <div className="wrap mori-grid">
           <div className="hourglass-wrap reveal">
-            <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of an hourglass with sand running through it, symbolising finite focus time">
+              <title>Hourglass with sand running through it, symbolising finite focus time</title>
               <defs>
                 <linearGradient id="glassGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3a3020" stopOpacity=".5" />
