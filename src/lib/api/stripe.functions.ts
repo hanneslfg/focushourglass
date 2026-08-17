@@ -19,6 +19,22 @@ const PLAN_MODE: Record<Plan, "subscription" | "payment"> = {
   lifetime: "payment",
 };
 
+/**
+ * Strict allowlist of origins permitted as Stripe checkout redirect targets.
+ * The client passes `window.location.origin`, so every environment the app is
+ * served from must be listed here explicitly. Never use wildcard matching —
+ * an unlisted origin must be rejected to prevent open-redirect abuse.
+ */
+const ALLOWED_ORIGINS: ReadonlySet<string> = new Set([
+  "https://www.focushourglass.com",
+  "https://focushourglass.com",
+  "https://focushourglass.lovable.app",
+  "https://id-preview--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app",
+  // Local development
+  "http://localhost:8080",
+  "http://localhost:3000",
+]);
+
 async function stripeFetch(
   path: string,
   init: { method?: string; body?: URLSearchParams } = {},
@@ -99,6 +115,13 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
       plan: data.plan,
       trialDays: data.trialDays,
     });
+
+    // Open-redirect hardening: reject any origin not on the explicit allowlist
+    // BEFORE it is used to build Stripe success/cancel URLs.
+    if (!ALLOWED_ORIGINS.has(data.origin)) {
+      console.error("[stripe] rejected origin", data.origin);
+      throw new Error("Invalid origin");
+    }
 
     const user = await verifySupabaseUser(data.accessToken);
     const productId = PRODUCTS[data.plan as Plan];
