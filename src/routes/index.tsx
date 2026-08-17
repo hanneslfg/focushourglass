@@ -303,7 +303,8 @@ function Landing() {
       <nav className={`nav${solid ? " solid" : ""}`}>
         <div className="wrap nav-inner">
           <div className="brand">
-            <svg viewBox="0 0 48 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg viewBox="0 0 48 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Focus Hourglass logo">
+              <title>Focus Hourglass logo</title>
               <path
                 d="M10 6H38M10 66H38M12 6C12 22 24 30 24 30C24 30 12 38 12 66M36 6C36 22 24 30 24 30C24 30 36 38 36 66"
                 stroke="url(#navGrad)"
