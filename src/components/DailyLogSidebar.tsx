@@ -13,6 +13,12 @@ import { AccountabilityPartner } from "./AccountabilityPartner";
 import { TodaysAgenda } from "./TodaysAgenda";
 import { FocusShareCard } from "./FocusShareCard";
 
+// TODO: re-enable once buddy_invites + scoped channels are built.
+// Master switch for the entire Focus Buddy / Virtual Focus Room feature.
+// All visible entry points (sidebar section, onboarding, modals) render only when true.
+// Set to false to fully hide the feature without removing any code.
+export const FOCUS_BUDDY_ENABLED = false;
+
 
 
 
