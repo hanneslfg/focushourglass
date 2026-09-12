@@ -99,8 +99,9 @@ async function refresh() {
  * device propagate immediately. Reconnect-triggers a full re-hydrate so the
  * cloud always wins as the source of truth.
  */
-export function useRealtimeSessions() {
+export function useRealtimeSessions(enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
@@ -210,5 +211,5 @@ export function useRealtimeSessions() {
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [enabled]);
 }

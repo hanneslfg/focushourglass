@@ -165,7 +165,7 @@ function RootComponent() {
 function AppRuntime() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isLanding = pathname === "/";
-  useRealtimeSessions();
+  useRealtimeSessions(!isLanding);
 
   // Apply the stored/browser language only after hydration; SSR always
   // renders "en", so switching earlier causes a hydration mismatch.
@@ -192,6 +192,7 @@ function AppRuntime() {
   }, []);
 
   useEffect(() => {
+    if (isLanding) return;
     const run = () => checkMilestones();
     run();
     window.addEventListener("hourglass:sessions", run);
@@ -200,12 +201,13 @@ function AppRuntime() {
       window.removeEventListener("hourglass:sessions", run);
       window.removeEventListener("hourglass:settings", run);
     };
-  }, []);
+  }, [isLanding]);
 
   // Hydrate app-config tables (goals, custom_rhythms, project_settings) from
   // Supabase whenever we have a signed-in session. DB is the source of truth;
   // localStorage is just an offline cache used between hydrations.
   useEffect(() => {
+    if (isLanding) return;
     let lastUserId: string | null | undefined = undefined;
     const hydrateFor = (uid: string | null) => {
       // Only re-hydrate when the effective user actually changes. Supabase
@@ -251,7 +253,7 @@ function AppRuntime() {
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [isLanding]);
 
 
 
