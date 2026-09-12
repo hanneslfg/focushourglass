@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { DailyLogSidebar } from "@/components/DailyLogSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { TimerView } from "@/components/TimerView";
+import { AuthGate } from "@/components/AuthGate";
 
 const TITLE = "Focus Hourglass App — Deep Work Timer & Daily Focus Budget";
 const DESCRIPTION =
@@ -30,11 +31,13 @@ export const Route = createFileRoute("/app")({
 
 function AppPage() {
   return (
-    <main className="min-h-screen flex bg-background text-foreground pb-20 md:pb-0">
-      <Sidebar />
-      <TimerView />
-      <DailyLogSidebar />
-      <SettingsSidebar />
-    </main>
+    <AuthGate>
+      <main className="min-h-screen flex bg-background text-foreground pb-20 md:pb-0">
+        <Sidebar />
+        <TimerView />
+        <DailyLogSidebar />
+        <SettingsSidebar />
+      </main>
+    </AuthGate>
   );
 }

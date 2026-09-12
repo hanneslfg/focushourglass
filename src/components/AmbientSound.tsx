@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouterState } from "@tanstack/react-router";
+import { getAmbientSlot, subscribeAmbientSlot } from "@/components/AmbientSlot";
 import { Volume2, VolumeX, Music2, ChevronDown, Lock } from "lucide-react";
 import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
@@ -489,27 +489,16 @@ export function AmbientSound({ running }: { running: boolean }) {
   // The player lives at the app root so audio keeps playing while navigating.
   // Its UI ALWAYS renders inside the timer view's `#ambient-slot` (between the
   // project row and the hourglass) — never in a fixed/floating footer.
-  const pathname = useRouterState({ select: (st) => st.location.pathname });
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
     if (!mounted) return;
-    const find = () => setSlot(document.getElementById("ambient-slot"));
-    let obs: MutationObserver | null = null;
-    // Defer past hydration entirely (macrotask, not just a frame): portalling
-    // into the slot while React is still hydrating the lazy timer route causes
-    // a hydration mismatch.
-    const id = window.setTimeout(() => {
-      find();
-      // The slot may mount a tick later (lazy routes, guest/auth gates), so
-      // watch the DOM until it appears or disappears.
-      obs = new MutationObserver(find);
-      obs.observe(document.body, { childList: true, subtree: true });
-    }, 150);
-    return () => {
-      window.clearTimeout(id);
-      obs?.disconnect();
-    };
-  }, [mounted, pathname]);
+    // The slot registers itself from its own effect (i.e. after the timer
+    // route has hydrated), so portalling here can never race hydration.
+    const sync = () => setSlot(getAmbientSlot());
+    sync();
+    return subscribeAmbientSlot(sync);
+  }, [mounted]);
+
 
 
   // Render nothing during SSR / first paint so hydration matches.
