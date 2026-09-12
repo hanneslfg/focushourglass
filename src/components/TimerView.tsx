@@ -171,11 +171,11 @@ export function TimerView() {
           />
         </div>
 
-        {/* Ambient sound selector — between the project row and the hourglass */}
-        <div
-          id="ambient-slot"
-          className="relative inline-flex min-h-8 justify-center -mt-2"
-        />
+        {/* Ambient sound selector — between the project row and the hourglass.
+            The root-level player portals into this node, but only after this
+            subtree has hydrated (see AmbientSlot). */}
+        <AmbientSlot />
+
 
         {/* Hourglass */}
         <div
