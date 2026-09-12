@@ -5,7 +5,7 @@ import { useAuthState } from "@/components/AuthGate";
 
 const TITLE = "Focus Hourglass — Your time is running out. Stop pretending it isn't.";
 const DESCRIPTION =
-  "Three 90-minute blocks a day. Nothing more. A live countdown of your remaining time and a hard daily cap, so the one thing that matters finally gets finished.";
+  "You already think about your work all day — Focus Hourglass turns that into focus that actually gets shit done, before your time runs out.";
 const URL = "https://www.focushourglass.com/";
 const OG_IMAGE =
   "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c2e3f20e-03f4-4783-b42d-6bb55b5a1592/id-preview-f372b578--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app-1780490616026.png";
