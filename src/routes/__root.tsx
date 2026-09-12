@@ -25,6 +25,7 @@ import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
 import { AmbientSound } from "@/components/AmbientSound";
 import { GuestBanner } from "@/components/GuestBanner";
+import { AuthGate } from "@/components/AuthGate";
 import { useTimer } from "@/lib/TimerContext";
 import { hydrateMementoFromCloud, hydrateDayStartFromCloud } from "@/lib/settings";
 import { hydrateFreezesFromCloud } from "@/lib/streakFreezes";
@@ -151,6 +152,17 @@ function GlobalAmbientSound() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthGate>
+        <AppRuntime />
+      </AuthGate>
+    </QueryClientProvider>
+  );
+}
+
+function AppRuntime() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isLanding = pathname === "/";
   useRealtimeSessions();
@@ -244,27 +256,25 @@ function RootComponent() {
 
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TimerProvider>
-        <PremiumProvider>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          {!isLanding && <GuestBanner />}
-          <Outlet />
-          {/* Mounted once at the root so ambient audio keeps playing across
-              navigation; the UI portals into the timer page when visible. */}
-          <GlobalAmbientSound />
-          <Toaster position="bottom-center" />
-          {!isLanding && (
-            <>
-              <MilestoneOverlay />
-              <OnboardingOverlay />
-              <Day5RewardOverlay />
-              <GoalCompletionOverlay />
-              <StreakMilestoneOverlay />
-            </>
-          )}
-        </PremiumProvider>
-      </TimerProvider>
-    </QueryClientProvider>
+    <TimerProvider>
+      <PremiumProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        {!isLanding && <GuestBanner />}
+        <Outlet />
+        {/* Mounted once at the root so ambient audio keeps playing across
+            navigation; the UI portals into the timer page when visible. */}
+        <GlobalAmbientSound />
+        <Toaster position="bottom-center" />
+        {!isLanding && (
+          <>
+            <MilestoneOverlay />
+            <OnboardingOverlay />
+            <Day5RewardOverlay />
+            <GoalCompletionOverlay />
+            <StreakMilestoneOverlay />
+          </>
+        )}
+      </PremiumProvider>
+    </TimerProvider>
   );
 }

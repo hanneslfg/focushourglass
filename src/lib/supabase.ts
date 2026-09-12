@@ -3,6 +3,7 @@ import { safeStorage } from "./safeStorage";
 
 const SUPABASE_URL = "https://ujksluqzycmbflqdhczo.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sf6MyvFRTIcSYOtGhh21mw_IAjx2cPl";
+const AUTH_STORAGE_KEY = "hourglass.sb.auth.v1";
 
 // Probe whether the host browser actually allows persistent storage. In some
 // in-app browsers (WhatsApp / Instagram / restricted iOS WebViews) accessing
@@ -38,7 +39,7 @@ export const supabase: SupabaseClient =
       persistSession: canPersist,
       autoRefreshToken: canPersist,
       detectSessionInUrl: true,
-      storageKey: "hourglass.sb.auth.v1",
+      storageKey: AUTH_STORAGE_KEY,
     },
   }));
 
@@ -144,7 +145,13 @@ export function clearAllLocalAppState(opts?: { keepAuth?: boolean }) {
     const kill: string[] = [];
     for (let i = 0; i < ls.length; i++) {
       const k = ls.key(i);
-      if (k && prefixes.some((p) => k.startsWith(p))) kill.push(k);
+      if (
+        k &&
+        prefixes.some((p) => k.startsWith(p)) &&
+        !(opts?.keepAuth && k === AUTH_STORAGE_KEY)
+      ) {
+        kill.push(k);
+      }
     }
     for (const k of kill) ls.removeItem(k);
   } catch (e) {
@@ -180,7 +187,10 @@ export function handleAccountSwitchIfNeeded(newUserId: string | null) {
     } catch {
       /* ignore */
     }
-    window.location.replace("/");
+    // Keep the current destination. Redirecting to `/` briefly rendered the
+    // landing page before its returning-user redirect sent the user back to
+    // `/app`, while auth-dependent providers were still initializing.
+    window.location.reload();
     return;
   }
   if (newUserId && prev !== newUserId) {
