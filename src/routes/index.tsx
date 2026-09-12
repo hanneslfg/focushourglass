@@ -205,11 +205,12 @@ function Landing() {
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const audioCtx = useRef<AudioContext | null>(null);
 
-  // If sign-in completes without a full OAuth navigation, continue directly
-  // to the app. A normal visit to `/` always remains on the landing page.
+  // Signed-in visitors go straight to the app screen. `/app` only ever
+  // redirects back when there is NO session, so the two cannot ping-pong.
   useEffect(() => {
-    if (authOpen && session) void navigate({ to: "/app" });
-  }, [authOpen, navigate, session]);
+    if (session) void navigate({ to: "/app", replace: true });
+  }, [navigate, session]);
+
 
   // Ambient hover/click tones + CTA spotlight tracking (1:1 from source design).
   useEffect(() => {
@@ -271,7 +272,19 @@ function Landing() {
     };
   }, []);
 
+  // Signed in: never show the landing page, only the neutral loader while the
+  // navigation to /app happens.
+  if (session) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background" aria-busy="true">
+        <span className="sr-only">Loading</span>
+        <span className="h-6 w-6 rounded-full border border-border/60 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
+
     <div className="fhl">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <main>
