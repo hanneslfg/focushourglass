@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouterState } from "@tanstack/react-router";
+import { getAmbientSlot, subscribeAmbientSlot } from "@/components/AmbientSlot";
 import { Volume2, VolumeX, Music2, ChevronDown, Lock } from "lucide-react";
 import { publicSupabase } from "@/lib/supabase";
 import { safeStorage } from "@/lib/safeStorage";
