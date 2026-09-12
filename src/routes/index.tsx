@@ -272,7 +272,19 @@ function Landing() {
     };
   }, []);
 
+  // Signed in: never show the landing page, only the neutral loader while the
+  // navigation to /app happens.
+  if (session) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-background" aria-busy="true">
+        <span className="sr-only">Loading</span>
+        <span className="h-6 w-6 rounded-full border border-border/60 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
+
     <div className="fhl">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <main>
