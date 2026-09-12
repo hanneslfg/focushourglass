@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { DailyLogSidebar } from "@/components/DailyLogSidebar";
 import { SettingsSidebar } from "@/components/SettingsSidebar";
 import { TimerView } from "@/components/TimerView";
+import { AuthGate } from "@/components/AuthGate";
 
 const TITLE = "Focus Hourglass App — Deep Work Timer & Daily Focus Budget";
 const DESCRIPTION =
