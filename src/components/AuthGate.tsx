@@ -1,11 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-import type { Session } from "@supabase/supabase-js";
+import { useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -14,50 +7,35 @@ import { supabase } from "@/lib/supabase";
  * for a tick, then swap to the signed-in state mid-render — which produced the
  * "landing flash → Something went wrong" crash on a fresh /app load.
  *
- * The resolved session is exposed to routes so they never need to start a
- * competing initialization request before deciding what to render.
+ * Guests are allowed through (the app works signed-out); the gate only waits
+ * for auth to be *resolved*, it does not redirect.
  */
-type AuthState = { session: Session | null; ready: boolean };
-
-const AuthStateContext = createContext<AuthState | null>(null);
-
-export function useAuthState(): AuthState {
-  const state = useContext(AuthStateContext);
-  if (!state) throw new Error("useAuthState must be used inside <AuthGate>");
-  return state;
-}
-
 export function AuthGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    let authRevision = 0;
+    let done = false;
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (cancelled) return;
-      authRevision += 1;
-      setSession(nextSession);
+    const finish = () => {
+      if (cancelled || done) return;
+      done = true;
       setReady(true);
-    });
+    };
 
-    const revisionAtStart = authRevision;
-    void supabase.auth.getSession().then(
-      ({ data }) => {
-        if (cancelled || authRevision !== revisionAtStart) return;
-        setSession(data.session);
-        setReady(true);
-      },
-      () => {
-        if (cancelled || authRevision !== revisionAtStart) return;
-        setSession(null);
-        setReady(true);
-      },
-    );
+    void supabase.auth
+      .getSession()
+      .then(finish)
+      .catch(finish);
+
+    // Safety net: never leave the user on a loader if Supabase never answers.
+    const timeout = window.setTimeout(finish, 4000);
+
+    const { data: sub } = supabase.auth.onAuthStateChange(() => finish());
 
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
       sub.subscription.unsubscribe();
     };
   }, []);
@@ -74,9 +52,5 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return (
-    <AuthStateContext.Provider value={{ session, ready }}>
-      {children}
-    </AuthStateContext.Provider>
-  );
+  return <>{children}</>;
 }

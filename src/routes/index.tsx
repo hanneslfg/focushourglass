@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { AuthOptions } from "@/components/AuthOptions";
-import { useAuthState } from "@/components/AuthGate";
+import { safeStorage } from "@/lib/safeStorage";
 
 const TITLE = "Focus Hourglass — Your time is running out. Stop pretending it isn't.";
 const DESCRIPTION =
-  "You already think about your work all day — Focus Hourglass turns that into focus that actually gets shit done, before your time runs out.";
+  "Three 90-minute blocks a day. Nothing more. A live countdown of your remaining time and a hard daily cap, so the one thing that matters finally gets finished.";
 const URL = "https://www.focushourglass.com/";
 const OG_IMAGE =
   "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/c2e3f20e-03f4-4783-b42d-6bb55b5a1592/id-preview-f372b578--c58e05b9-28c8-4b4a-9943-bced0d439556.lovable.app-1780490616026.png";
@@ -198,19 +197,17 @@ const CSS = `
 }
 `;
 
+const ONBOARDING_KEY = "hourglass_onboarding_completed";
+
 function Landing() {
   const navigate = useNavigate();
-  const { session } = useAuthState();
-  const [authOpen, setAuthOpen] = useState(false);
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const audioCtx = useRef<AudioContext | null>(null);
 
-  // Signed-in visitors go straight to the app screen. `/app` only ever
-  // redirects back when there is NO session, so the two cannot ping-pong.
+  // Returning users skip straight into the app (onboarding stays untouched).
   useEffect(() => {
-    if (session) void navigate({ to: "/app", replace: true });
-  }, [navigate, session]);
-
+    if (safeStorage.getItem(ONBOARDING_KEY)) void navigate({ to: "/app" });
+  }, [navigate]);
 
   // Ambient hover/click tones + CTA spotlight tracking (1:1 from source design).
   useEffect(() => {
@@ -272,19 +269,7 @@ function Landing() {
     };
   }, []);
 
-  // Signed in: never show the landing page, only the neutral loader while the
-  // navigation to /app happens.
-  if (session) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-background" aria-busy="true">
-        <span className="sr-only">Loading</span>
-        <span className="h-6 w-6 rounded-full border border-border/60 border-t-primary animate-spin" />
-      </div>
-    );
-  }
-
   return (
-
     <div className="fhl">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <main>
@@ -312,35 +297,17 @@ function Landing() {
           <a
             ref={ctaRef}
             className="cta"
-            href={session ? "/app" : "#sign-in"}
+            href="/app"
             onClick={(e) => {
               e.preventDefault();
-              if (session) void navigate({ to: "/app" });
-              else setAuthOpen(true);
+              void navigate({ to: "/app" });
             }}
           >
-            {session ? "Open app" : "unlock 100x focus"}
+            unlock 100x focus
           </a>
           <p className="hint">no card required</p>
         </div>
       </main>
-      {authOpen && !session && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            aria-label="Close sign in"
-            onClick={() => setAuthOpen(false)}
-          />
-          <div className="relative w-full max-w-sm rounded-lg border border-white/10 bg-[#0b0b0d] p-6 text-left shadow-2xl">
-            <h2 className="font-sans text-lg font-semibold text-white">Start focusing</h2>
-            <p className="mt-2 font-sans text-sm text-white/55">Sign in to open your Focus Hourglass.</p>
-            <div className="mt-5 font-sans">
-              <AuthOptions showGuest={false} />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

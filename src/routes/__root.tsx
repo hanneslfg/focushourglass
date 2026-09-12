@@ -25,7 +25,6 @@ import { TimerProvider } from "@/lib/TimerContext";
 import { PremiumProvider } from "@/lib/premium";
 import { AmbientSound } from "@/components/AmbientSound";
 import { GuestBanner } from "@/components/GuestBanner";
-import { AuthGate } from "@/components/AuthGate";
 import { useTimer } from "@/lib/TimerContext";
 import { hydrateMementoFromCloud, hydrateDayStartFromCloud } from "@/lib/settings";
 import { hydrateFreezesFromCloud } from "@/lib/streakFreezes";
@@ -152,20 +151,9 @@ function GlobalAmbientSound() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthGate>
-        <AppRuntime />
-      </AuthGate>
-    </QueryClientProvider>
-  );
-}
-
-function AppRuntime() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isLanding = pathname === "/";
-  useRealtimeSessions(!isLanding);
+  useRealtimeSessions();
 
   // Apply the stored/browser language only after hydration; SSR always
   // renders "en", so switching earlier causes a hydration mismatch.
@@ -192,7 +180,6 @@ function AppRuntime() {
   }, []);
 
   useEffect(() => {
-    if (isLanding) return;
     const run = () => checkMilestones();
     run();
     window.addEventListener("hourglass:sessions", run);
@@ -201,13 +188,12 @@ function AppRuntime() {
       window.removeEventListener("hourglass:sessions", run);
       window.removeEventListener("hourglass:settings", run);
     };
-  }, [isLanding]);
+  }, []);
 
   // Hydrate app-config tables (goals, custom_rhythms, project_settings) from
   // Supabase whenever we have a signed-in session. DB is the source of truth;
   // localStorage is just an offline cache used between hydrations.
   useEffect(() => {
-    if (isLanding) return;
     let lastUserId: string | null | undefined = undefined;
     const hydrateFor = (uid: string | null) => {
       // Only re-hydrate when the effective user actually changes. Supabase
@@ -253,30 +239,32 @@ function AppRuntime() {
       }
     });
     return () => sub.subscription.unsubscribe();
-  }, [isLanding]);
+  }, []);
 
 
 
   return (
-    <TimerProvider>
-      <PremiumProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        {!isLanding && <GuestBanner />}
-        <Outlet />
-        {/* Mounted once at the root so ambient audio keeps playing across
-            navigation; the UI portals into the timer page when visible. */}
-        <GlobalAmbientSound />
-        <Toaster position="bottom-center" />
-        {!isLanding && (
-          <>
-            <MilestoneOverlay />
-            <OnboardingOverlay />
-            <Day5RewardOverlay />
-            <GoalCompletionOverlay />
-            <StreakMilestoneOverlay />
-          </>
-        )}
-      </PremiumProvider>
-    </TimerProvider>
+    <QueryClientProvider client={queryClient}>
+      <TimerProvider>
+        <PremiumProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          {!isLanding && <GuestBanner />}
+          <Outlet />
+          {/* Mounted once at the root so ambient audio keeps playing across
+              navigation; the UI portals into the timer page when visible. */}
+          <GlobalAmbientSound />
+          <Toaster position="bottom-center" />
+          {!isLanding && (
+            <>
+              <MilestoneOverlay />
+              <OnboardingOverlay />
+              <Day5RewardOverlay />
+              <GoalCompletionOverlay />
+              <StreakMilestoneOverlay />
+            </>
+          )}
+        </PremiumProvider>
+      </TimerProvider>
+    </QueryClientProvider>
   );
 }
