@@ -28,14 +28,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
       .then(finish)
       .catch(finish);
 
-    // Safety net: never leave the user on a loader if Supabase never answers.
-    const timeout = window.setTimeout(finish, 4000);
-
     const { data: sub } = supabase.auth.onAuthStateChange(() => finish());
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timeout);
       sub.subscription.unsubscribe();
     };
   }, []);
