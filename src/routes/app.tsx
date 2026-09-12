@@ -30,11 +30,13 @@ export const Route = createFileRoute("/app")({
 
 function AppPage() {
   return (
-    <main className="min-h-screen flex bg-background text-foreground pb-20 md:pb-0">
-      <Sidebar />
-      <TimerView />
-      <DailyLogSidebar />
-      <SettingsSidebar />
-    </main>
+    <AuthGate>
+      <main className="min-h-screen flex bg-background text-foreground pb-20 md:pb-0">
+        <Sidebar />
+        <TimerView />
+        <DailyLogSidebar />
+        <SettingsSidebar />
+      </main>
+    </AuthGate>
   );
 }

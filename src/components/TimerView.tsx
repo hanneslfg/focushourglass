@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 import { Hourglass } from "./Hourglass";
 import { ProjectPickerCompact } from "./ProjectPickerCompact";
 import { VisualWarmup } from "./VisualWarmup";
+import { AmbientSlot } from "./AmbientSlot";
 
 
 
