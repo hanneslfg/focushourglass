@@ -1,4 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -7,28 +14,47 @@ import { supabase } from "@/lib/supabase";
  * for a tick, then swap to the signed-in state mid-render — which produced the
  * "landing flash → Something went wrong" crash on a fresh /app load.
  *
- * Guests are allowed through (the app works signed-out); the gate only waits
- * for auth to be *resolved*, it does not redirect.
+ * The resolved session is exposed to routes so they never need to start a
+ * competing initialization request before deciding what to render.
  */
+type AuthState = { session: Session | null; ready: boolean };
+
+const AuthStateContext = createContext<AuthState | null>(null);
+
+export function useAuthState(): AuthState {
+  const state = useContext(AuthStateContext);
+  if (!state) throw new Error("useAuthState must be used inside <AuthGate>");
+  return state;
+}
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    let done = false;
+    let authRevision = 0;
 
-    const finish = () => {
-      if (cancelled || done) return;
-      done = true;
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (cancelled) return;
+      authRevision += 1;
+      setSession(nextSession);
       setReady(true);
-    };
+    });
 
-    void supabase.auth
-      .getSession()
-      .then(finish)
-      .catch(finish);
-
-    const { data: sub } = supabase.auth.onAuthStateChange(() => finish());
+    const revisionAtStart = authRevision;
+    void supabase.auth.getSession().then(
+      ({ data }) => {
+        if (cancelled || authRevision !== revisionAtStart) return;
+        setSession(data.session);
+        setReady(true);
+      },
+      () => {
+        if (cancelled || authRevision !== revisionAtStart) return;
+        setSession(null);
+        setReady(true);
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -48,5 +74,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <AuthStateContext.Provider value={{ session, ready }}>
+      {children}
+    </AuthStateContext.Provider>
+  );
 }

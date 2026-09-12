@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { safeStorage } from "@/lib/safeStorage";
+import { AuthOptions } from "@/components/AuthOptions";
+import { useAuthState } from "@/components/AuthGate";
 
 const TITLE = "Focus Hourglass — Your time is running out. Stop pretending it isn't.";
 const DESCRIPTION =
@@ -197,17 +198,18 @@ const CSS = `
 }
 `;
 
-const ONBOARDING_KEY = "hourglass_onboarding_completed";
-
 function Landing() {
   const navigate = useNavigate();
+  const { session } = useAuthState();
+  const [authOpen, setAuthOpen] = useState(false);
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const audioCtx = useRef<AudioContext | null>(null);
 
-  // Returning users skip straight into the app (onboarding stays untouched).
+  // If sign-in completes without a full OAuth navigation, continue directly
+  // to the app. A normal visit to `/` always remains on the landing page.
   useEffect(() => {
-    if (safeStorage.getItem(ONBOARDING_KEY)) void navigate({ to: "/app" });
-  }, [navigate]);
+    if (authOpen && session) void navigate({ to: "/app" });
+  }, [authOpen, navigate, session]);
 
   // Ambient hover/click tones + CTA spotlight tracking (1:1 from source design).
   useEffect(() => {
@@ -297,17 +299,35 @@ function Landing() {
           <a
             ref={ctaRef}
             className="cta"
-            href="/app"
+            href={session ? "/app" : "#sign-in"}
             onClick={(e) => {
               e.preventDefault();
-              void navigate({ to: "/app" });
+              if (session) void navigate({ to: "/app" });
+              else setAuthOpen(true);
             }}
           >
-            unlock 100x focus
+            {session ? "Open app" : "unlock 100x focus"}
           </a>
           <p className="hint">no card required</p>
         </div>
       </main>
+      {authOpen && !session && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close sign in"
+            onClick={() => setAuthOpen(false)}
+          />
+          <div className="relative w-full max-w-sm rounded-lg border border-white/10 bg-[#0b0b0d] p-6 text-left shadow-2xl">
+            <h2 className="font-sans text-lg font-semibold text-white">Start focusing</h2>
+            <p className="mt-2 font-sans text-sm text-white/55">Sign in to open your Focus Hourglass.</p>
+            <div className="mt-5 font-sans">
+              <AuthOptions showGuest={false} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
