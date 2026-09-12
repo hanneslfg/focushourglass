@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@heroui/react/button";
 import { supabase } from "@/lib/supabase";
 import { signInWithGoogle } from "@/lib/supabase";
 import { setGuestMode } from "@/lib/guest";
@@ -172,10 +173,12 @@ export function GoogleOneTap({
 
       {/* Fallback: no client ID configured or GIS blocked → redirect flow. */}
       {!ready && (
-        <button
-          type="button"
-          onClick={() => void signInWithGoogle()}
-          className="w-full inline-flex items-center justify-center gap-3 rounded-md border border-white/15 bg-white px-4 py-3 text-sm font-medium text-black hover:bg-white/90 transition-all"
+        <Button
+          fullWidth
+          size="lg"
+          variant="secondary"
+          onPress={() => void signInWithGoogle()}
+          className="border border-border bg-primary text-primary-foreground shadow-sm transition-[background-color,transform,box-shadow] hover:bg-primary/90 hover:shadow-md pressed:scale-[0.99]"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
             <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.2-2.2H12v4.1h6.6c-.1 1.1-.9 2.8-2.5 3.9l3.8 3c2.3-2.1 3.6-5.2 3.6-8.8z" />
@@ -184,7 +187,7 @@ export function GoogleOneTap({
             <path fill="#EA4335" d="M12 4.7c2.3 0 3.8 1 4.7 1.8l3.4-3.3C18 1.2 15.2 0 12 0 7.2 0 3.1 2.7 1.1 6.6l4 3.1c1-2.9 3.7-5 6.9-5z" />
           </svg>
           {fallbackLabel}
-        </button>
+        </Button>
       )}
 
       {error && <p className="mt-2 text-[11px] text-red-400">{error}</p>}
