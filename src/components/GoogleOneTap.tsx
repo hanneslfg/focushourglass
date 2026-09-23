@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@heroui/react/button";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { signInWithGoogle } from "@/lib/supabase";
 import { setGuestMode } from "@/lib/guest";
@@ -174,11 +174,10 @@ export function GoogleOneTap({
       {/* Fallback: no client ID configured or GIS blocked → redirect flow. */}
       {!ready && (
         <Button
-          fullWidth
           size="lg"
           variant="secondary"
-          onPress={() => void signInWithGoogle()}
-          className="border border-border bg-primary text-primary-foreground shadow-sm transition-[background-color,transform,box-shadow] hover:bg-primary/90 hover:shadow-md pressed:scale-[0.99]"
+          onClick={() => void signInWithGoogle()}
+          className="w-full gap-2 border border-border bg-primary text-primary-foreground shadow-sm transition-[background-color,transform,box-shadow] hover:bg-primary/90 hover:shadow-md active:scale-[0.99]"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden>
             <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.2-2.2H12v4.1h6.6c-.1 1.1-.9 2.8-2.5 3.9l3.8 3c2.3-2.1 3.6-5.2 3.6-8.8z" />
