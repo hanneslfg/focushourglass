@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { safeStorage } from "@/lib/safeStorage";
+import { supabase } from "@/lib/supabase";
 
 const TITLE = "Focus Hourglass — Your time is running out. Stop pretending it isn't.";
 const DESCRIPTION =
@@ -73,6 +74,10 @@ const CSS = `
   -webkit-font-smoothing: antialiased;
 }
 .fhl main { width: 100%; max-width: 36rem; }
+/* Hidden (but still in the DOM for crawlers) until we know the visitor is
+   new. Returning / signed-in users are redirected before anything shows. */
+.fhl.fhl-pending main { visibility: hidden; }
+.fhl.fhl-pending, .fhl.fhl-pending * { animation-play-state: paused; }
 .fhl * { margin: 0; padding: 0; }
 
 .fhl .eyebrow {
