@@ -209,9 +209,40 @@ function Landing() {
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const audioCtx = useRef<AudioContext | null>(null);
 
-  // Returning users skip straight into the app (onboarding stays untouched).
+  // "pending" until we know whether this visitor is new.
+  const [pending, setPending] = useState(true);
+
   useEffect(() => {
-    if (safeStorage.getItem(ONBOARDING_KEY)) void navigate({ to: "/app" });
+    let cancelled = false;
+    let settled = false;
+
+    const goToApp = () => {
+      if (cancelled || settled) return;
+      settled = true;
+      void navigate({ to: "/app", replace: true });
+    };
+    const showLanding = () => {
+      if (cancelled || settled) return;
+      settled = true;
+      setPending(false);
+    };
+
+    if (safeStorage.getItem(ONBOARDING_KEY)) {
+      goToApp();
+      return;
+    }
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => (data.session ? goToApp() : showLanding()))
+      .catch(showLanding);
+
+    const timeout = window.setTimeout(showLanding, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
   }, [navigate]);
 
   // Ambient hover/click tones + CTA spotlight tracking (1:1 from source design).
@@ -275,7 +306,7 @@ function Landing() {
   }, []);
 
   return (
-    <div className="fhl">
+    <div className={pending ? "fhl fhl-pending" : "fhl"} aria-busy={pending}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <main>
         <p className="eyebrow">memento mori</p>
