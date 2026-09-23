@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { safeStorage } from "@/lib/safeStorage";
 import { supabase } from "@/lib/supabase";
 
@@ -205,21 +205,28 @@ const CSS = `
 const ONBOARDING_KEY = "hourglass_onboarding_completed";
 
 function Landing() {
-  const navigate = useNavigate();
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const audioCtx = useRef<AudioContext | null>(null);
 
-  // "pending" until we know whether this visitor is new.
+  // "pending" until we know whether this visitor is new. Signed-in users and
+  // anyone who already finished onboarding go straight to /app and never see
+  // the landing page; only genuinely new visitors get it (landing -> CTA ->
+  // /app, where OnboardingOverlay takes over).
   const [pending, setPending] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     let settled = false;
 
+    // Full page load instead of a client-side route change: swapping the
+    // landing tree + its <head> tags for the app in place is what crashes in
+    // production ("removeChild ... not a child of this node"), while a fresh
+    // load of /app always works. replace() keeps "/" out of the history so
+    // the back button can't bounce the user through the landing again.
     const goToApp = () => {
       if (cancelled || settled) return;
       settled = true;
-      void navigate({ to: "/app", replace: true });
+      window.location.replace("/app");
     };
     const showLanding = () => {
       if (cancelled || settled) return;
@@ -227,23 +234,27 @@ function Landing() {
       setPending(false);
     };
 
+    // Fast path: onboarding already completed on this device.
     if (safeStorage.getItem(ONBOARDING_KEY)) {
       goToApp();
       return;
     }
 
+    // Otherwise check for a restored Supabase session (covers signed-in
+    // users on a new device / cleared storage / incognito).
     supabase.auth
       .getSession()
       .then(({ data }) => (data.session ? goToApp() : showLanding()))
       .catch(showLanding);
 
+    // Safety net: never leave a visitor on a blank screen.
     const timeout = window.setTimeout(showLanding, 3000);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [navigate]);
+  }, []);
 
   // Ambient hover/click tones + CTA spotlight tracking (1:1 from source design).
   useEffect(() => {
@@ -334,10 +345,6 @@ function Landing() {
             ref={ctaRef}
             className="cta"
             href="/app"
-            onClick={(e) => {
-              e.preventDefault();
-              void navigate({ to: "/app" });
-            }}
           >
             unlock 100x focus
           </a>
