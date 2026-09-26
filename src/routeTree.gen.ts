@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as EmbedRouteImport } from './routes/embed'
 import { Route as FocusBlocksRouteImport } from './routes/focus-blocks'
 import { Route as MementoMoriRouteImport } from './routes/memento-mori'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -42,6 +43,11 @@ const AppRoute = AppRouteImport.update({
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmbedRoute = EmbedRouteImport.update({
+  id: '/embed',
+  path: '/embed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FocusBlocksRoute = FocusBlocksRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/app': typeof AppRoute
   '/calendar': typeof CalendarRoute
+  '/embed': typeof EmbedRoute
   '/focus-blocks': typeof FocusBlocksRoute
   '/memento-mori': typeof MementoMoriRoute
   '/privacy': typeof PrivacyRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/app': typeof AppRoute
   '/calendar': typeof CalendarRoute
+  '/embed': typeof EmbedRoute
   '/focus-blocks': typeof FocusBlocksRoute
   '/memento-mori': typeof MementoMoriRoute
   '/privacy': typeof PrivacyRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/app': typeof AppRoute
   '/calendar': typeof CalendarRoute
+  '/embed': typeof EmbedRoute
   '/focus-blocks': typeof FocusBlocksRoute
   '/memento-mori': typeof MementoMoriRoute
   '/privacy': typeof PrivacyRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/app'
     | '/calendar'
+    | '/embed'
     | '/focus-blocks'
     | '/memento-mori'
     | '/privacy'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/app'
     | '/calendar'
+    | '/embed'
     | '/focus-blocks'
     | '/memento-mori'
     | '/privacy'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/app'
     | '/calendar'
+    | '/embed'
     | '/focus-blocks'
     | '/memento-mori'
     | '/privacy'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AppRoute: typeof AppRoute
   CalendarRoute: typeof CalendarRoute
+  EmbedRoute: typeof EmbedRoute
   FocusBlocksRoute: typeof FocusBlocksRoute
   MementoMoriRoute: typeof MementoMoriRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -242,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/embed': {
+      id: '/embed'
+      path: '/embed'
+      fullPath: '/embed'
+      preLoaderRoute: typeof EmbedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/focus-blocks': {
@@ -336,6 +356,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AppRoute: AppRoute,
   CalendarRoute: CalendarRoute,
+  EmbedRoute: EmbedRoute,
   FocusBlocksRoute: FocusBlocksRoute,
   MementoMoriRoute: MementoMoriRoute,
   PrivacyRoute: PrivacyRoute,
