@@ -243,6 +243,11 @@ function RootComponent() {
 
 
 
+  // Embed mode: render only the route itself — no banners, overlays, audio.
+  if (pathname === "/embed" || pathname === "/embed/") {
+    return <Outlet />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <TimerProvider>
